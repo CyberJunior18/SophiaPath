@@ -2,14 +2,15 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/screens/profile_screen.dart';
-import 'package:sophia_path/models/course_info.dart';
+import 'package:sophia_path/screens/chat/chats_list_screen.dart';
+import 'package:sophia_path/screens/profile/profile_screen.dart';
+import 'package:sophia_path/models/course/course_info.dart';
 import 'package:sophia_path/widgets/screen_app_bar.dart';
 import 'package:sophia_path/screens/settings_screen.dart';
 import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
-import 'models/user.dart';
-import 'screens/course_info_screen.dart';
-import 'screens/learning_screen.dart';
+import 'models/user/user.dart';
+import 'screens/course/course_info_screen.dart';
+import 'screens/course/learning_screen.dart';
 import 'services/user_preferences_services.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -154,11 +155,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  showDialog(
-                    context: context,
-                    builder: (ctx) {
-                      return toBeImplemented(context);
-                    },
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => const ChatsListScreen(),
+                    ),
                   );
                 },
               );

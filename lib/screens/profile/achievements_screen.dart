@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/services/achievements_helper.dart';
-import 'package:sophia_path/services/user_stats_service.dart';
+import 'package:sophia_path/services/course/user_stats_service.dart';
 import 'package:share_plus/share_plus.dart';
-import '../models/achievements.dart';
+import '../../models/user/achievements.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});

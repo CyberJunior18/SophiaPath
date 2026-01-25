@@ -1,23 +1,29 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/navigation_screen.dart';
+import 'package:sophia_path/screens/chat/chat_screen.dart';
+import 'package:sophia_path/screens/chat/chats_list_screen.dart';
 import 'package:sophia_path/services/profile_state.dart';
-import 'package:sophia_path/services/user_stats_service.dart';
+import 'package:sophia_path/services/course/user_stats_service.dart';
 import 'package:sophia_path/widgets/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'models/data.dart';
 import 'screens/register_screen.dart';
-import 'services/scores_repo.dart';
+import 'services/course/scores_repo.dart';
 import 'services/user_preferences_services.dart';
+import 'package:sophia_path/services/chat/chat_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await ScoresRepository.initializeScores(coursesInfo.length, 10);
   });
+
   final statsService = UserStatsService();
   await statsService.updateLoginStreak();
 
@@ -26,9 +32,15 @@ void main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
+  // Initialize SharedPreferences for chat
+  await SharedPreferences.getInstance();
+
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => ProfileState(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ProfileState()),
+        Provider(create: (context) => ChatService()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -89,6 +101,16 @@ class _MyAppState extends State<MyApp> {
       home: _buildHomeScreen(),
       routes: {
         '/home': (context) => NavigationScreen(onToggleTheme: toggleTheme),
+        '/chats': (context) => const ChatsListScreen(),
+        '/chat': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+          return ChatScreen(
+            chatUser: args['user'],
+            chatId: args['chatId'], // Now this will work
+          );
+        },
       },
     );
   }

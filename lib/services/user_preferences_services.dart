@@ -1,7 +1,7 @@
 // services/user_preferences_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../models/user.dart';
+import '../models/user/user.dart';
 
 class UserPreferencesService {
   UserPreferencesService._privateConstructor();

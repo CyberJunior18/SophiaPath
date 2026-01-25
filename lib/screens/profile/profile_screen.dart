@@ -3,13 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/screens/achievements_screen.dart';
-import 'package:sophia_path/services/user_stats_service.dart';
+import 'package:sophia_path/screens/profile/achievements_screen.dart';
+import 'package:sophia_path/services/course/user_stats_service.dart';
 
-import '../models/achievements.dart';
-import '../models/user.dart';
-import '../services/user_preferences_services.dart';
-import '../services/database_helper.dart';
+import '../../models/user/achievements.dart';
+import '../../models/user/user.dart';
+import '../../services/user_preferences_services.dart';
+import '../../services/course/database_helper.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {

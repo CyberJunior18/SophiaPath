@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:sophia_path/models/course/question.dart';
 
-import 'course_info.dart';
-import 'question.dart';
-import 'achievements.dart';
-import 'lesson.dart';
+import 'course/course_info.dart';
+import 'user/achievements.dart';
+import 'course/lesson.dart';
 
 final List<CourseInfo> coursesInfo = [
   CourseInfo(

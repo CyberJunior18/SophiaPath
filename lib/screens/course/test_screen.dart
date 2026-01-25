@@ -1,9 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/services/user_stats_service.dart';
-
-import '../models/question.dart';
+import 'package:sophia_path/models/course/question.dart';
+import 'package:sophia_path/services/course/user_stats_service.dart';
 
 class TestScreen extends StatefulWidget {
   final String section;

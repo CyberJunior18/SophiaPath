@@ -7,8 +7,8 @@ import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
 import 'package:provider/provider.dart';
 import 'package:sophia_path/services/profile_state.dart';
 
-import '../models/user.dart';
-import '../screens/achievements_screen.dart';
+import '../models/user/user.dart';
+import '../screens/profile/achievements_screen.dart';
 
 AppBar screenAppBar(
   BuildContext context,

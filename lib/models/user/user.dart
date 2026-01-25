@@ -1,4 +1,4 @@
-import 'course_info.dart';
+import '../course/course_info.dart';
 
 class User {
   final String username;
@@ -10,6 +10,10 @@ class User {
   final List<double> achievementsProgress;
   final List<CourseInfo> registeredCourses;
   final List<int> registedCoursesIndexes;
+  DateTime? lastSeen;
+  bool isOnline = false;
+  String? status;
+  String? bio;
 
   User({
     required this.username,
@@ -24,6 +28,22 @@ class User {
     required this.registedCoursesIndexes,
   });
 
+  bool get isAvailableForChat => isOnline && lastSeen != null;
+
+  String get lastSeenFormatted {
+    if (lastSeen == null) return 'Never seen';
+    
+    final now = DateTime.now();
+    final difference = now.difference(lastSeen!);
+    
+    if (difference.inMinutes < 1) return 'Just now';
+    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
+    if (difference.inDays < 1) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    
+    return '${lastSeen!.day}/${lastSeen!.month}/${lastSeen!.year}';
+  }
+
   // Convert to Map for SQL insert
   Map<String, dynamic> toMap() {
     return {
@@ -33,6 +53,8 @@ class User {
       'age': age,
       'gender': sex,
       'profilePicture': profileImage,
+      'lastSeen': lastSeen?.toIso8601String(),
+      'isOnline': isOnline,
     };
   }
 
@@ -48,7 +70,8 @@ class User {
       achievementsProgress: [],
       registeredCourses: [],
       registedCoursesIndexes: [],
-    );
+    )..lastSeen = map['lastSeen'] != null ? DateTime.parse(map['lastSeen']) : null
+     ..isOnline = map['isOnline'] ?? false;
   }
 
   User copyWith({
@@ -61,6 +84,10 @@ class User {
     List<double>? achievementsScores,
     List<CourseInfo>? registeredCourses,
     List<int>? registedCoursesIndexes,
+    DateTime? lastSeen,
+    bool? isOnline,
+    String? status,
+    String? bio,
   }) {
     return User(
       username: username ?? this.username,
@@ -71,9 +98,11 @@ class User {
       profileImage: profilePicture ?? profileImage,
       achievementsProgress: achievementsScores ?? achievementsProgress,
       registeredCourses: registeredCourses ?? this.registeredCourses,
-      registedCoursesIndexes:
-          registedCoursesIndexes ?? this.registedCoursesIndexes,
-    );
+      registedCoursesIndexes: registedCoursesIndexes ?? this.registedCoursesIndexes,
+    )..lastSeen = lastSeen ?? this.lastSeen
+     ..isOnline = isOnline ?? this.isOnline
+     ..status = status ?? this.status
+     ..bio = bio ?? this.bio;
   }
 }
 

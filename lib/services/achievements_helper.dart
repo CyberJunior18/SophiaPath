@@ -1,7 +1,7 @@
-import 'package:sophia_path/models/achievements.dart';
+import 'package:sophia_path/models/user/achievements.dart';
 import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/services/database_helper.dart';
-import 'package:sophia_path/services/user_stats_service.dart';
+import 'package:sophia_path/services/course/database_helper.dart';
+import 'package:sophia_path/services/course/user_stats_service.dart';
 
 class AchievementsHelper {
   static Future<List<Achievement>> calculateAchievementsProgress() async {

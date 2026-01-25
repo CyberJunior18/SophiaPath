@@ -2,12 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:sophia_path/services/database_helper.dart';
-import '../models/user.dart';
-import '../services/scores_repo.dart';
+import 'package:sophia_path/services/course/database_helper.dart';
+import '../models/user/user.dart';
+import '../services/course/scores_repo.dart';
 import '../services/user_preferences_services.dart';
 import '../navigation_screen.dart';
-import '../services/user_stats_service.dart';
+import '../services/course/user_stats_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final bool isEditing;

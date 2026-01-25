@@ -3,13 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/data.dart';
-import '../models/question.dart';
-import '../models/lesson.dart';
-import '../services/database_helper.dart';
-import '../models/course_info.dart';
-import '../services/scores_repo.dart';
+import 'package:sophia_path/models/course/question.dart';
+
+import '../../models/course/lesson.dart';
+import '../../services/course/database_helper.dart';
+import '../../models/course/course_info.dart';
+import '../../services/course/scores_repo.dart';
 import 'test_screen.dart';
-import '../services/user_stats_service.dart';
+import '../../services/course/user_stats_service.dart';
 
 class LessonPathScreen extends StatefulWidget {
   final CourseInfo course;
