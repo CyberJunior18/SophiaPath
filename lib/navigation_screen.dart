@@ -7,7 +7,6 @@ import 'package:sophia_path/screens/profile/profile_screen.dart';
 import 'package:sophia_path/models/course/course_info.dart';
 import 'package:sophia_path/widgets/screen_app_bar.dart';
 import 'package:sophia_path/screens/settings_screen.dart';
-import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
 import 'models/user/user.dart';
 import 'screens/course/course_info_screen.dart';
 import 'screens/course/learning_screen.dart';

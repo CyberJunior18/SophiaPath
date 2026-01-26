@@ -43,10 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _sendTypingIndicator(bool isTyping) {
-    // Send to server
-    // chatService.sendTypingIndicator(widget.chatUser!.id, isTyping);
-  }
+  void _sendTypingIndicator(bool isTyping) {}
 
   // Add message reactions
   void _showMessageOptions(ChatMessage message) {

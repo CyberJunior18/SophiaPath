@@ -3,8 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/chat/chat_contact.dart';
 import 'package:sophia_path/models/user/user.dart'; // Use your existing User model
 import 'package:sophia_path/screens/chat/chat_screen.dart';
-import 'package:provider/provider.dart';
-import 'package:sophia_path/services/profile_state.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});

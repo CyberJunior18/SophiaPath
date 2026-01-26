@@ -2,7 +2,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:sophia_path/models/chat/chat_message.dart';
 import 'package:sophia_path/models/chat/chat_contact.dart';
-import 'package:sophia_path/models/user/user.dart';
 
 class ChatService {
   static ChatService? _instance;
