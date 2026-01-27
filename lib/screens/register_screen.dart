@@ -35,7 +35,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
-  String _selectedGender = 'Male';
+  String? _selectedGender;
   String _profileImage = '';
 
   final List<String> _availableTags = [
@@ -98,7 +98,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       fullName: _fullNameController.text.trim(),
       tag: _tagController.text.trim(),
       age: int.tryParse(_ageController.text) ?? 0,
-      sex: _selectedGender,
+      sex: _selectedGender!,
       profileImage: _profileImage.isEmpty
           ? 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg'
           : _profileImage,
@@ -155,13 +155,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     await service.resetAllProgress();
     await ScoresRepository.clearScores();
 
-      final DatabaseService dbService = DatabaseService();
-      final courses = await dbService.getCourses();
-      for (var course in courses) {
-        if (course.id != null) {
-          await dbService.deleteCourse(course.id!);
-        }
+    final DatabaseService dbService = DatabaseService();
+    final courses = await dbService.getCourses();
+    for (var course in courses) {
+      if (course.id != null) {
+        await dbService.deleteCourse(course.id!);
       }
+    }
 
     setState(() => _isLoading = false);
 
@@ -321,14 +321,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(labelText: 'Username'),
-                      validator: (v) =>
-                          v == null || v.length < 3 ? 'Invalid username' : null,
+                      validator: (v) => v == null || v.isEmpty
+                          ? "Please enter a valid username"
+                          : v.length < 3
+                          ? 'Invalid username'
+                          : null,
+                      // todo : when we create database,check if username already exists, show : username exists
                     ),
                     const SizedBox(height: 16),
 
                     TextFormField(
                       controller: _fullNameController,
                       decoration: const InputDecoration(labelText: 'Full Name'),
+                      validator: (v) => v == null || v.isEmpty
+                          ? "Please enter a valid Name"
+                          : v.length < 3
+                          ? 'Invalid Name'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -336,6 +345,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       controller: _ageController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(labelText: 'Age'),
+                      validator: (v) => v == null
+                          ? 'Please enter a value'
+                          : int.tryParse(v) == null
+                          ? 'Please enter a valid number'
+                          : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -348,6 +362,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           )
                           .toList(),
                       onChanged: (v) => setState(() => _selectedGender = v!),
+                      validator: (v) =>
+                          v == null ? "Please Select a Gender" : null,
                     ),
                     const SizedBox(height: 16),
 
@@ -364,6 +380,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           )
                           .toList(),
                       onChanged: (v) => _tagController.text = v!,
+                      validator: (v) => v == null || v.isEmpty
+                          ? "Please Select a Profession"
+                          : null,
                     ),
 
                     const SizedBox(height: 30),
