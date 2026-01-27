@@ -1,6 +1,8 @@
 class ChatContact {
   final String userId;
   final String chatId;
+
+  // for _buildChatItem in chats_list_screen
   final DateTime lastMessageTime;
   final String lastMessage;
   final int unreadCount;
@@ -13,6 +15,7 @@ class ChatContact {
     this.unreadCount = 0,
   });
 
+  // builds map of chat data
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -23,6 +26,7 @@ class ChatContact {
     };
   }
 
+  //Create a ChatContact using the map in parameter
   factory ChatContact.fromMap(Map<String, dynamic> map) {
     return ChatContact(
       userId: map['userId'],
@@ -33,6 +37,7 @@ class ChatContact {
     );
   }
 
+  //copy another chatcontact with ability to change any value
   ChatContact copyWith({
     String? userId,
     String? chatId,

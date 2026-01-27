@@ -89,6 +89,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Future<void> _saveUser() async {
+    // signInAnonymously();
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);

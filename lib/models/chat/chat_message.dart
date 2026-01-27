@@ -75,10 +75,6 @@ class ChatMessage {
   }
 }
 
-enum MessageType {
-  text,
-  image,
-  file,
-  system,
-}
+enum MessageType { text, image, file, system }
+
 enum MessageStatus { sending, sent, delivered, read, failed }

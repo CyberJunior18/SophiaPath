@@ -15,7 +15,7 @@ class ProfileState extends ChangeNotifier {
 
   Future<void> _loadUserData() async {
     _currentUser = await _userService.getUser();
-    notifyListeners();
+    notifyListeners(); // so ui updates automatically
   }
 
   Future<void> refreshUser() async {
@@ -28,3 +28,4 @@ class ProfileState extends ChangeNotifier {
     notifyListeners();
   }
 }
+// to use , just  profileState = context.read<ProfileState>() 

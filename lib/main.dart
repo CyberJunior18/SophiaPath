@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/navigation_screen.dart';
@@ -11,7 +12,9 @@ import 'package:sophia_path/widgets/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'firebase_options.dart';
 import 'models/data.dart';
+import 'screens/authentication/myauthscreen.dart';
 import 'screens/register_screen.dart';
 import 'services/course/scores_repo.dart';
 import 'services/user_preferences_services.dart';
@@ -31,7 +34,8 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Initialize SharedPreferences for chat
   await SharedPreferences.getInstance();
 

@@ -53,7 +53,7 @@ class ChatService {
         contact.copyWith(
           lastMessageTime: message.timestamp,
           lastMessage: message.message,
-          unreadCount: message.senderId != _getCurrentUserId()
+          unreadCount: message.senderId != await _getCurrentUserId()
               ? contact.unreadCount + 1
               : contact.unreadCount,
         ),
@@ -127,7 +127,7 @@ class ChatService {
 
   // Create new chat
   Future<String> createChat(String otherUserId) async {
-    final chatId = 'chat_${_getCurrentUserId()}_$otherUserId';
+    final chatId = 'chat_${await _getCurrentUserId()}_$otherUserId';
 
     final contact = ChatContact(
       userId: otherUserId,

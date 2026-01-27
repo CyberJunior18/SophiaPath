@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "140855462814",
+    "project_id": "sophiapath-project",
+    "storage_bucket": "sophiapath-project.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:140855462814:android:bf08dd001836bab605e48f",
+        "android_client_info": {
+          "package_name": "com.example.sophia_path"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAV4jUOuQrNIXiKfC5-cijFJKDHPNthhEw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
