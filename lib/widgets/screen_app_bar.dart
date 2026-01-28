@@ -37,7 +37,7 @@ AppBar screenAppBar(
               context,
               MaterialPageRoute(
                 builder: (ctx) {
-                  return UserProfileScreen(
+                  return MyAuthScreen(
                     isEditing: true,
                     onToggleTheme: onToggleTheme,
                   );

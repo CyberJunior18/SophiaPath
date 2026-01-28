@@ -34,7 +34,7 @@ void main() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
-  WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Initialize SharedPreferences for chat
   await SharedPreferences.getInstance();
@@ -97,25 +97,25 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: _themeMode,
-      home: _buildHomeScreen(),
-      routes: {
-        '/home': (context) => NavigationScreen(onToggleTheme: toggleTheme),
-        '/chats': (context) => const ChatsListScreen(),
-        '/chat': (context) {
-          final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
-          return ChatScreen(
-            chatUser: args['user'],
-            chatId: args['chatId'], // Now this will work
-          );
+    return Directionality(
+      textDirection: TextDirection.ltr, // Add this
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: _themeMode,
+        home: _buildHomeScreen(),
+        routes: {
+          '/home': (context) => NavigationScreen(onToggleTheme: toggleTheme),
+          '/chats': (context) => const ChatsListScreen(),
+          '/chat': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return ChatScreen(chatUser: args['user'], chatId: args['chatId']);
+          },
         },
-      },
+      ),
     );
   }
 
@@ -124,8 +124,9 @@ class _MyAppState extends State<MyApp> {
       return const SplashScreen();
     }
 
+    // For new users or first launch
     if (!_hasUser || _isFirstLaunch) {
-      return UserProfileScreen(isEditing: false, onToggleTheme: toggleTheme);
+      return MyAuthScreen(onToggleTheme: toggleTheme, isEditing: false);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);
@@ -139,21 +140,29 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.school, size: 80, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 20),
-            Text(
-              'Learning App',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            const CircularProgressIndicator(),
-          ],
+      body: Directionality(
+        // Also wrap SplashScreen with Directionality
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.school,
+                size: 80,
+                color: Theme.of(context).primaryColor,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Learning App',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const CircularProgressIndicator(),
+            ],
+          ),
         ),
       ),
     );

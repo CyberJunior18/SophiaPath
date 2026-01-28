@@ -1,6 +1,8 @@
 import '../course/course_info.dart';
 
 class User {
+  final String? uid; // Local database ID
+  final String? firebaseUid;
   final String username;
   final String fullName;
   final String tag;
@@ -16,6 +18,8 @@ class User {
   String? bio;
 
   User({
+    this.uid,
+    this.firebaseUid,
     required this.username,
     required this.tag,
     required this.age,
@@ -32,21 +36,22 @@ class User {
 
   String get lastSeenFormatted {
     if (lastSeen == null) return 'Never seen';
-    
+
     final now = DateTime.now();
     final difference = now.difference(lastSeen!);
-    
+
     if (difference.inMinutes < 1) return 'Just now';
     if (difference.inHours < 1) return '${difference.inMinutes}m ago';
     if (difference.inDays < 1) return '${difference.inHours}h ago';
     if (difference.inDays < 7) return '${difference.inDays}d ago';
-    
+
     return '${lastSeen!.day}/${lastSeen!.month}/${lastSeen!.year}';
   }
 
   // Convert to Map for SQL insert
   Map<String, dynamic> toMap() {
     return {
+      'firebaseUid': firebaseUid,
       'username': username,
       'firstName': fullName,
       'tag': tag,
@@ -61,17 +66,22 @@ class User {
   // Convert from SQL to Model
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
-      username: map['username'] ?? '',
-      fullName: map['firstName'] ?? '',
-      tag: map['tag'] ?? '',
-      age: map['age'] ?? 0,
-      sex: map['gender'] ?? '',
-      profileImage: map['profilePicture'] ?? '',
-      achievementsProgress: [],
-      registeredCourses: [],
-      registedCoursesIndexes: [],
-    )..lastSeen = map['lastSeen'] != null ? DateTime.parse(map['lastSeen']) : null
-     ..isOnline = map['isOnline'] ?? false;
+        uid: map['uid'],
+        firebaseUid: map['firebaseUid'],
+        username: map['username'] ?? '',
+        fullName: map['firstName'] ?? '',
+        tag: map['tag'] ?? '',
+        age: map['age'] ?? 0,
+        sex: map['gender'] ?? '',
+        profileImage: map['profilePicture'] ?? '',
+        achievementsProgress: [],
+        registeredCourses: [],
+        registedCoursesIndexes: [],
+      )
+      ..lastSeen = map['lastSeen'] != null
+          ? DateTime.parse(map['lastSeen'])
+          : null
+      ..isOnline = map['isOnline'] ?? false;
   }
 
   User copyWith({
@@ -90,19 +100,21 @@ class User {
     String? bio,
   }) {
     return User(
-      username: username ?? this.username,
-      fullName: firstname ?? fullName,
-      tag: tag ?? this.tag,
-      age: age ?? this.age,
-      sex: gender ?? sex,
-      profileImage: profilePicture ?? profileImage,
-      achievementsProgress: achievementsScores ?? achievementsProgress,
-      registeredCourses: registeredCourses ?? this.registeredCourses,
-      registedCoursesIndexes: registedCoursesIndexes ?? this.registedCoursesIndexes,
-    )..lastSeen = lastSeen ?? this.lastSeen
-     ..isOnline = isOnline ?? this.isOnline
-     ..status = status ?? this.status
-     ..bio = bio ?? this.bio;
+        username: username ?? this.username,
+        fullName: firstname ?? fullName,
+        tag: tag ?? this.tag,
+        age: age ?? this.age,
+        sex: gender ?? sex,
+        profileImage: profilePicture ?? profileImage,
+        achievementsProgress: achievementsScores ?? achievementsProgress,
+        registeredCourses: registeredCourses ?? this.registeredCourses,
+        registedCoursesIndexes:
+            registedCoursesIndexes ?? this.registedCoursesIndexes,
+      )
+      ..lastSeen = lastSeen ?? this.lastSeen
+      ..isOnline = isOnline ?? this.isOnline
+      ..status = status ?? this.status
+      ..bio = bio ?? this.bio;
   }
 }
 
