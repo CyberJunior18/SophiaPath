@@ -1,6 +1,8 @@
 // ignore_for_file: file_names
 
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:sophia_path/screens/register_screen.dart';
 import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
@@ -9,6 +11,7 @@ import 'package:sophia_path/services/profile_state.dart';
 
 import '../models/user/user.dart';
 import '../screens/profile/achievements_screen.dart';
+import '../services/user_preferences_services.dart';
 
 AppBar screenAppBar(
   BuildContext context,
@@ -134,13 +137,51 @@ AppBar screenAppBar(
             ),
             const PopupMenuDivider(),
             PopupMenuItem(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) {
-                    return toBeImplemented(context);
-                  },
-                );
+              onTap: () async {
+                // showDialog(
+                //   context: context,
+                //   builder: (ctx) {
+                //     return toBeImplemented(context);
+                //   },
+                // );
+                // In UserPreferencesService or a separate AuthService
+
+                try {
+                  // 1. Update Firestore status (if using)
+                  final currentUser = FirebaseAuth.instance.currentUser;
+                  if (currentUser != null) {
+                    try {
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(currentUser.uid)
+                          .update({
+                            'isOnline': false,
+                            'lastSeen': FieldValue.serverTimestamp(),
+                          });
+                    } catch (e) {
+                      print('Error updating Firestore status: $e');
+                    }
+                  }
+
+                  // 2. Sign out from Firebase Auth
+                  await FirebaseAuth.instance.signOut();
+
+                  // 3. Clear local user data
+                  await UserPreferencesService.instance.clearAllData();
+
+                  print('Logout successful');
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) {
+                        return MyAuthScreen(onToggleTheme: onToggleTheme);
+                      },
+                    ),
+                  );
+                } catch (e) {
+                  print('Error during logout: $e');
+                  rethrow;
+                }
               },
               value: 'logout',
               child: Row(

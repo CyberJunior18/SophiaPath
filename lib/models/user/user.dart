@@ -65,26 +65,50 @@ class User {
 
   // Convert from SQL to Model
   factory User.fromMap(Map<String, dynamic> map) {
+    // Handle achievementsProgress from Firestore
+    final achievementsProgress =
+        (map['achievementsProgress'] as List<dynamic>?)
+            ?.map((e) => (e as num).toDouble())
+            .toList() ??
+        [];
+
+    // Handle registeredCourses from Firestore
+    final registeredCourses =
+        (map['registeredCourses'] as List<dynamic>?)
+            ?.map((courseMap) => CourseInfo.fromMap(courseMap))
+            .toList() ??
+        [];
+
+    // Handle registedCoursesIndexes from Firestore
+    final registedCoursesIndexes =
+        (map['registedCoursesIndexes'] as List<dynamic>?)
+            ?.map((e) => e as int)
+            .toList() ??
+        [];
+
     return User(
-        uid: map['uid'],
-        firebaseUid: map['firebaseUid'],
+        uid: map['uid']?.toString(),
+        firebaseUid: map['firebaseUid']?.toString(),
         username: map['username'] ?? '',
-        fullName: map['firstName'] ?? '',
+        fullName: map['firstName'] ?? map['fullName'] ?? '',
         tag: map['tag'] ?? '',
-        age: map['age'] ?? 0,
-        sex: map['gender'] ?? '',
-        profileImage: map['profilePicture'] ?? '',
-        achievementsProgress: [],
-        registeredCourses: [],
-        registedCoursesIndexes: [],
+        age: (map['age'] as num?)?.toInt() ?? 0,
+        sex: map['gender'] ?? map['sex'] ?? '',
+        profileImage: map['profilePicture'] ?? map['profileImage'] ?? '',
+        achievementsProgress: achievementsProgress,
+        registeredCourses: registeredCourses,
+        registedCoursesIndexes: registedCoursesIndexes,
       )
       ..lastSeen = map['lastSeen'] != null
           ? DateTime.parse(map['lastSeen'])
           : null
-      ..isOnline = map['isOnline'] ?? false;
+      ..isOnline = map['isOnline'] ?? false
+      ..status = map['status']?.toString()
+      ..bio = map['bio']?.toString();
   }
 
   User copyWith({
+    String? firebaseUid,
     String? username,
     String? firstname,
     String? tag,
@@ -100,6 +124,7 @@ class User {
     String? bio,
   }) {
     return User(
+        firebaseUid: firebaseUid,
         username: username ?? this.username,
         fullName: firstname ?? fullName,
         tag: tag ?? this.tag,

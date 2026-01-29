@@ -38,37 +38,61 @@ class _LoginScreenState extends State<LoginScreen> {
             password: _passwordController.text.trim(),
           );
 
-      final uid = credential.user!.uid;
+      final user = credential.user!;
+      final uid = user.uid;
 
-      // 🔹 Load user profile from Firestore
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
+      // 🔹 TRY to load user profile from Firestore (but don't fail if it doesn't exist)
+      User? localUser;
 
-      if (!doc.exists) {
-        throw Exception('User profile not found');
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+
+        if (doc.exists) {
+          final data = doc.data()!;
+          localUser = User(
+            uid: uid,
+            firebaseUid: uid,
+            username:
+                data['username'] ?? user.email?.split('@').first ?? 'User',
+            fullName: data['fullName'] ?? 'User',
+            tag: data['tag'] ?? 'Member',
+            age: data['age'] ?? 0,
+            sex: data['sex'] ?? 'Rather not say',
+            profileImage:
+                data['profileImage'] ??
+                'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
+            achievementsProgress: List.filled(13, 0.0),
+            registeredCourses: [],
+            registedCoursesIndexes: [],
+          );
+        }
+      } catch (e) {
+        print('Firestore load failed (continuing anyway): $e');
       }
 
-      final data = doc.data()!;
+      // 🔹 If Firestore failed or profile doesn't exist, create a basic one
+      if (localUser == null) {
+        print('Creating basic user profile from Firebase Auth data');
+        localUser = User(
+          uid: uid,
+          firebaseUid: uid,
+          username:
+              user.email?.split('@').first ?? 'user_${uid.substring(0, 6)}',
+          fullName: user.displayName ?? 'User',
+          tag: 'Member',
+          age: 0,
+          sex: 'Rather not say',
+          profileImage: 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
+          achievementsProgress: List.filled(13, 0.0),
+          registeredCourses: [],
+          registedCoursesIndexes: [],
+        );
+      }
 
       // 🔹 Save locally
-      final localUser = User(
-        uid: uid,
-        firebaseUid: uid,
-        username: data['username'],
-        fullName: data['fullName'],
-        tag: data['tag'],
-        age: data['age'],
-        sex: data['sex'],
-        profileImage:
-            data['profileImage'] ??
-            'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
-        achievementsProgress: List.filled(13, 0.0),
-        registeredCourses: [],
-        registedCoursesIndexes: [],
-      );
-
       await UserPreferencesService.instance.saveUser(localUser);
       await UserPreferencesService.instance.setFirstLaunchCompleted();
 
@@ -102,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+        SnackBar(content: Text('Login error: $e'), backgroundColor: Colors.red),
       );
     } finally {
       setState(() => _isLoading = false);

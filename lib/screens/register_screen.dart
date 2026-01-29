@@ -44,6 +44,9 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   String _profileImage = '';
   String? _firebaseUid;
 
+  // Add this flag
+  bool _useFirestore = false; // Set to true after you set up Firestore
+
   final List<String> _availableTags = [
     'Student',
     'Software Engineer',
@@ -90,6 +93,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     if (user != null) {
       _firebaseUid = user.uid;
 
+      // Try to get email from auth
+      if (user.email != null) {
+        _emailController.text = user.email!;
+      }
+
       final existingUser = await _userService.getUser();
       if (existingUser != null && mounted) {
         _navigateToHomeScreen();
@@ -102,10 +110,38 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Clear local user data
+      final currentUser = firebase_auth.FirebaseAuth.instance.currentUser;
+
+      if (currentUser != null) {
+        // Only delete from Firestore if enabled
+        if (_useFirestore) {
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .delete();
+
+            // Delete username reservation
+            final username = await _userService.getUser();
+            if (username != null) {
+              await FirebaseFirestore.instance
+                  .collection('usernames')
+                  .doc(normalizeUsername(username.username))
+                  .delete();
+            }
+          } catch (e) {
+            print('Firestore delete error (ignored): $e');
+          }
+        }
+
+        // Delete Firebase Auth account
+        await currentUser.delete();
+      }
+
+      // Clear local data
       await _userService.clearAllData();
 
-      // 2. Reset stats & scores
+      // Reset stats
       try {
         final service = UserStatsService();
         await service.resetAllProgress();
@@ -114,14 +150,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         debugPrint("Stats reset error: $e");
       }
 
-      // 3. Sign out (important!)
-      await firebase_auth.FirebaseAuth.instance.signOut();
-
       setState(() => _isLoading = false);
 
       if (!mounted) return;
 
-      // 4. Navigate to registration screen
+      // Navigate to registration screen
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -132,6 +165,24 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         ),
         (route) => false,
       );
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      setState(() => _isLoading = false);
+
+      if (e.code == 'requires-recent-login') {
+        // Re-authenticate needed
+        if (!mounted) return;
+
+        await _showReauthenticateDialog();
+      } else {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete account: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
       setState(() => _isLoading = false);
 
@@ -139,11 +190,76 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to reset account: $e'),
+          content: Text('Failed to delete account: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  Future<void> _showReauthenticateDialog() async {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Re-authentication Required'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Please enter your credentials to delete your account.'),
+            const SizedBox(height: 20),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final user = firebase_auth.FirebaseAuth.instance.currentUser;
+                if (user != null) {
+                  final credential = firebase_auth.EmailAuthProvider.credential(
+                    email: emailController.text,
+                    password: passwordController.text,
+                  );
+                  await user.reauthenticateWithCredential(credential);
+                  Navigator.pop(context);
+                  await _deleteAccount();
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Authentication failed: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDeleteConfirmation() {
@@ -214,6 +330,29 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     );
   }
 
+  String _getAuthErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'email-already-in-use':
+        return 'This email is already registered. Please login instead.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'operation-not-allowed':
+        return 'Email/password authentication is not enabled.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection.';
+      default:
+        return 'Authentication failed. Please try again.';
+    }
+  }
+
   Future<void> _createOrUpdateProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -224,45 +363,45 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     });
 
     try {
-      // If editing, we already have Firebase UID
-      if (!widget.isEditing && _firebaseUid == null) {
-        final username = normalizeUsername(_usernameController.text);
-        firebase_auth.UserCredential credential;
-        firebase_auth.User firebaseUser;
+      if (!widget.isEditing) {
+        // 🔐 EMAIL + PASSWORD ONLY (No anonymous)
+        final email = _emailController.text.trim();
+        final password = _passwordController.text.trim();
 
-        // 🔐 EMAIL + PASSWORD
-        if (_emailController.text.isNotEmpty &&
-            _passwordController.text.isNotEmpty) {
-          credential = await firebase_auth.FirebaseAuth.instance
-              .createUserWithEmailAndPassword(
-                email: _emailController.text.trim(),
-                password: _passwordController.text.trim(),
-              );
-        }
-        // 👤 ANONYMOUS
-        else {
-          credential = await firebase_auth.FirebaseAuth.instance
-              .signInAnonymously();
+        // Validate email and password for new users
+        if (email.isEmpty || password.isEmpty) {
+          throw Exception('Email and password are required');
         }
 
-        firebaseUser = credential.user!;
+        // Create user with email/password
+        final credential = await firebase_auth.FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
+
+        final firebaseUser = credential.user!;
         _firebaseUid = firebaseUser.uid;
 
-        // Reserve username in Firestore
-        await _reserveUsername(username, firebaseUser.uid);
+        // Reserve username (skip if Firestore not enabled)
+        if (_useFirestore) {
+          await _reserveUsername(
+            normalizeUsername(_usernameController.text),
+            firebaseUser.uid,
+          );
+        }
 
-        await _storeUserInFirestore(
-          firebaseUser.uid,
-          isAnonymous: firebaseUser.isAnonymous,
-        );
+        // Store user in Firestore (skip if not enabled)
+        if (_useFirestore) {
+          await _storeUserInFirestore(firebaseUser.uid);
+        }
       } else if (widget.isEditing && _firebaseUid != null) {
-        // Update Firestore for editing
-        await _updateUserInFirestore(_firebaseUid!);
+        // Update existing user (skip if Firestore not enabled)
+        if (_useFirestore) {
+          await _updateUserInFirestore(_firebaseUid!);
+        }
       }
 
-      // 3. Create/Update local user profile
+      // Create/Update local user profile
       final localUser = User(
-        uid: _firebaseUid, // Use Firebase UID as local ID
+        uid: _firebaseUid,
         firebaseUid: _firebaseUid,
         username: _usernameController.text.trim(),
         fullName: _fullNameController.text.trim(),
@@ -277,14 +416,13 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         registedCoursesIndexes: [],
       );
 
-      // 4. Save user to local database
+      // Save user to local database
       final saved = await _userService.saveUser(localUser);
-
       if (!saved) {
         throw Exception("Failed to save user locally");
       }
 
-      // 5. Set first launch completed (only for new users)
+      // Set first launch completed (only for new users)
       if (!widget.isEditing) {
         await _userService.setFirstLaunchCompleted();
       }
@@ -293,11 +431,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         "Profile ${widget.isEditing ? 'updated' : 'created'} successfully for UID: $_firebaseUid",
       );
 
-      // 6. Navigate to main app
+      // Navigate to main app
       _navigateToHomeScreen();
     } on firebase_auth.FirebaseAuthException catch (e) {
       setState(() {
-        _errorMessage = e.message ?? "Authentication failed";
+        _errorMessage = _getAuthErrorMessage(e.code);
       });
     } catch (e) {
       setState(() {
@@ -316,37 +454,56 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   }
 
   Future<void> _reserveUsername(String username, String uid) async {
-    final ref = FirebaseFirestore.instance
-        .collection('usernames')
-        .doc(username);
+    try {
+      final ref = FirebaseFirestore.instance
+          .collection('usernames')
+          .doc(username);
 
-    await FirebaseFirestore.instance.runTransaction((tx) async {
-      final snapshot = await tx.get(ref);
+      final snapshot = await ref.get();
 
       if (snapshot.exists) {
-        throw Exception('Username already taken');
+        throw Exception('Username "$username" is already taken');
       }
 
-      tx.set(ref, {'uid': uid, 'createdAt': FieldValue.serverTimestamp()});
-    });
+      await ref.set({'uid': uid, 'createdAt': FieldValue.serverTimestamp()});
+    } catch (e) {
+      print('Error reserving username: $e');
+      rethrow;
+    }
   }
 
-  Future<void> _storeUserInFirestore(
-    String uid, {
-    required bool isAnonymous,
-  }) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'uid': uid,
-      'username': _usernameController.text.trim(),
-      'fullName': _fullNameController.text.trim(),
-      'tag': _tagController.text.trim(),
-      'age': int.tryParse(_ageController.text) ?? 0,
-      'sex': _selectedGender,
-      'email': isAnonymous ? null : _emailController.text.trim(),
-      'isAnonymous': isAnonymous,
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+  Future<void> _storeUserInFirestore(String uid) async {
+    try {
+      final userData = {
+        'uid': uid,
+        'username': _usernameController.text.trim(),
+        'fullName': _fullNameController.text.trim(),
+        'tag': _tagController.text.trim(),
+        'age': int.tryParse(_ageController.text) ?? 0,
+        'sex': _selectedGender,
+        'email': _emailController.text.trim(),
+        'profileImage': _profileImage.isEmpty
+            ? 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg'
+            : _profileImage,
+        'achievementsProgress': List.filled(13, 0.0),
+        'registeredCourses': [],
+        'registedCoursesIndexes': [],
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'lastSeen': FieldValue.serverTimestamp(),
+        'isOnline': true,
+      };
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set(userData);
+
+      print('User saved to Firestore successfully');
+    } catch (e) {
+      print('Error saving to Firestore: $e');
+      rethrow;
+    }
   }
 
   Future<void> _updateUserInFirestore(String uid) async {
@@ -362,6 +519,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       print("User data updated in Firestore for UID: $uid");
     } catch (e) {
       print("Firestore update error: $e");
+      rethrow;
     }
   }
 
@@ -447,7 +605,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isEditing ? 'Edit Profile' : 'Create Your Profile',
+          widget.isEditing ? 'Edit Profile' : 'Create Your Account',
           style: GoogleFonts.poppins(),
         ),
         leading: widget.isEditing
@@ -475,55 +633,97 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // if (!widget.isEditing) ...[
-                    //   const SizedBox(height: 20),
-                    //   const Text(
-                    //     'Welcome! Create your account',
-                    //     style: TextStyle(fontSize: 18),
-                    //     textAlign: TextAlign.center,
-                    //   ),
-                    //   const SizedBox(height: 30),
-                    // ],
+                    if (!widget.isEditing) ...[
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Welcome! Create your account',
+                        style: TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 30),
+                    ],
+
                     _buildAvatar(),
                     const SizedBox(height: 30),
-                    if (!widget.isEditing) ...[
+
+                    // 🔐 EMAIL FIELD (Always visible for new users)
+                    if (!widget.isEditing)
                       TextFormField(
                         controller: _emailController,
                         decoration: const InputDecoration(
                           labelText: 'Email',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.email),
                         ),
-                        validator: (v) => v == null || !v.contains('@')
-                            ? 'Enter a valid email'
-                            : null,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Email is required';
+                          }
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                            return 'Enter a valid email address';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(height: 16),
 
+                    if (!widget.isEditing) const SizedBox(height: 16),
+
+                    // 🔐 PASSWORD FIELD (Always visible for new users)
+                    if (!widget.isEditing)
                       TextFormField(
                         controller: _passwordController,
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.lock),
                         ),
-                        validator: (v) => v == null || v.length < 6
-                            ? 'Min 6 characters'
-                            : null,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Password is required';
+                          }
+                          if (value.length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
                       ),
-                      const SizedBox(height: 16),
-                    ],
 
+                    if (!widget.isEditing) const SizedBox(height: 20),
+
+                    const Divider(),
+                    const SizedBox(height: 10),
+
+                    const Text(
+                      'Profile Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Username field
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
                       ),
-                      validator: (v) => v == null || v.isEmpty
-                          ? "Please enter a valid username"
-                          : v.length < 3
-                          ? 'Username must be at least 3 characters'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Username is required';
+                        }
+                        if (value.length < 3) {
+                          return 'Username must be at least 3 characters';
+                        }
+                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+                          return 'Only letters, numbers, and underscores allowed';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -532,6 +732,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Full Name',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (v) => v == null || v.isEmpty
                           ? "Please enter a valid Name"
@@ -547,6 +748,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Age',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
                       ),
                       validator: (v) => v == null || v.isEmpty
                           ? 'Please enter your age'
@@ -563,6 +765,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Gender',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
                       ),
                       items: ['Male', 'Female', 'Rather not say']
                           .map(
@@ -582,6 +785,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Profession',
                         border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.work),
                       ),
                       items: _availableTags
                           .map(
@@ -597,12 +801,49 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                     const SizedBox(height: 20),
 
                     if (_errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error, color: Colors.red),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: TextStyle(color: Colors.red.shade800),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Add this note about Firestore
+                    if (!_useFirestore && !widget.isEditing)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.info, color: Colors.amber),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Note: Cloud sync is disabled. Set up Firestore to enable data backup.',
+                                style: TextStyle(color: Colors.amber.shade800),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
@@ -613,59 +854,52 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: _isSigningIn ? null : _createOrUpdateProfile,
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                         child: _isSigningIn
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    widget.isEditing
-                                        ? 'Updating...'
-                                        : 'Creating Account...',
-                                  ),
-                                ],
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : Text(
                                 widget.isEditing
                                     ? 'Update Profile'
-                                    : 'Create Account & Continue',
+                                    : 'Create Account',
+                                style: const TextStyle(fontSize: 16),
                               ),
                       ),
                     ),
 
                     if (!widget.isEditing) ...[
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => LoginScreen(
-                                onToggleTheme: widget.onToggleTheme,
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('Already have an account? Login'),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Already have an account?'),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LoginScreen(
+                                    onToggleTheme: widget.onToggleTheme,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('Login'),
+                          ),
+                        ],
                       ),
                     ],
 
-                    if (!widget.isEditing) ...[
-                      const SizedBox(height: 20),
-                      const Divider(),
-                      const SizedBox(height: 10),
-                      Text(
-                        'By continuing, you agree to our Terms of Service and Privacy Policy',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
                     if (widget.isEditing) ...[
                       const SizedBox(height: 20),
                       SizedBox(
