@@ -80,6 +80,8 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final UserService _userService = UserService();
 
+
+
   Future<User?> signUpWithEmail(
     String email,
     String password,

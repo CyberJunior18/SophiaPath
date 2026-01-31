@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../course/course_info.dart';
 
 class User {
@@ -53,7 +54,7 @@ class User {
     return {
       'firebaseUid': firebaseUid,
       'username': username,
-      'firstName': fullName,
+      'fullName': fullName, // Changed from 'firstName' to 'fullName'
       'tag': tag,
       'age': age,
       'gender': sex,
@@ -90,7 +91,7 @@ class User {
         uid: map['uid']?.toString(),
         firebaseUid: map['firebaseUid']?.toString(),
         username: map['username'] ?? '',
-        fullName: map['firstName'] ?? map['fullName'] ?? '',
+        fullName: map['fullName'] ?? '', // Read only from 'fullName'
         tag: map['tag'] ?? '',
         age: (map['age'] as num?)?.toInt() ?? 0,
         sex: map['gender'] ?? map['sex'] ?? '',
@@ -110,7 +111,7 @@ class User {
   User copyWith({
     String? firebaseUid,
     String? username,
-    String? firstname,
+    String? fullName, // Changed parameter name from 'firstname' to 'fullName'
     String? tag,
     int? age,
     String? gender,
@@ -124,9 +125,9 @@ class User {
     String? bio,
   }) {
     return User(
-        firebaseUid: firebaseUid,
+        firebaseUid: firebaseUid ?? this.firebaseUid,
         username: username ?? this.username,
-        fullName: firstname ?? fullName,
+        fullName: fullName ?? this.fullName, // Use the new parameter name
         tag: tag ?? this.tag,
         age: age ?? this.age,
         sex: gender ?? sex,
@@ -140,6 +141,40 @@ class User {
       ..isOnline = isOnline ?? this.isOnline
       ..status = status ?? this.status
       ..bio = bio ?? this.bio;
+  }
+
+  // Add these methods to your existing User class
+  factory User.fromFirestore(Map<String, dynamic> data) {
+    return User(
+      uid: data['uid'] ?? '',
+      firebaseUid: data['firebaseUid'] ?? data['uid'] ?? '',
+      username: data['username'] ?? '',
+      fullName: data['fullName'] ?? '',
+      tag: data['tag'] ?? '',
+      age: data['age'] ?? 0,
+      sex: data['sex'] ?? '',
+      profileImage: data['profileImage'] ?? '',
+      achievementsProgress: List<double>.from(data['achievementsProgress'] ?? []),
+      registeredCourses: [],
+      registedCoursesIndexes: List<int>.from(data['registedCoursesIndexes'] ?? []),
+    )..isOnline = data['isOnline'] ?? false;
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'uid': uid,
+      'firebaseUid': firebaseUid,
+      'username': username,
+      'fullName': fullName,
+      'tag': tag,
+      'age': age,
+      'sex': sex,
+      'profileImage': profileImage,
+      'achievementsProgress': achievementsProgress,
+      'registedCoursesIndexes': registedCoursesIndexes,
+      'isOnline': isOnline,
+      'lastSeen': FieldValue.serverTimestamp(),
+    };
   }
 }
 

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class ChatMessage {
   final MessageStatus status;
   final String id;
@@ -72,6 +74,44 @@ class ChatMessage {
       type: type ?? this.type,
       reactions: reactions ?? this.reactions,
     );
+  }
+
+  factory ChatMessage.fromFirestore(Map<String, dynamic> data) {
+    return ChatMessage(
+      id: data['id'] as String? ?? '',
+      senderId: data['senderId'] as String? ?? '',
+      senderName: data['senderName'] as String? ?? '',
+      message: data['message'] as String? ?? '',
+      timestamp: data['timestamp'] != null 
+          ? (data['timestamp'] as Timestamp).toDate()
+          : DateTime.now(),
+      isRead: data['isRead'] as bool? ?? false,
+      type: MessageType.values.firstWhere(
+        (e) => e.toString() == (data['type'] as String? ?? 'MessageType.text'),
+        orElse: () => MessageType.text,
+      ),
+      status: MessageStatus.values.firstWhere(
+        (e) => e.toString() == (data['status'] as String? ?? 'MessageStatus.sent'),
+        orElse: () => MessageStatus.sent,
+      ),
+      reactions: (data['reactions'] as Map<String, dynamic>? ?? {})
+          .map((key, value) => MapEntry(key, value as String)),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'id': id,
+      'senderId': senderId,
+      'senderName': senderName,
+      'message': message,
+      'timestamp': Timestamp.fromDate(timestamp),
+      'isRead': isRead,
+      'type': type.toString(),
+      'status': status.toString(),
+      'reactions': reactions,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
   }
 }
 

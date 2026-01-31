@@ -41,8 +41,10 @@ class UserPreferencesService {
       final userMap = jsonDecode(userJson) as Map<String, dynamic>;
 
       return User(
+        uid: userMap['uid']?.toString(),
+        firebaseUid: userMap['firebaseUid']?.toString(),
         username: userMap['username'] ?? '',
-        fullName: userMap['firstName'] ?? '',
+        fullName: userMap['firstName'] ?? '', // Changed to match toMap()
         tag: userMap['tag'] ?? '',
         age: userMap['age'] ?? 0,
         sex: userMap['gender'] ?? '',
@@ -86,7 +88,7 @@ class UserPreferencesService {
 
   Future<bool> updateUser({
     String? username,
-    String? firstName,
+    String? firstName, // Keep this parameter name for external calls
     String? tag,
     int? age,
     String? gender,
@@ -100,7 +102,7 @@ class UserPreferencesService {
 
       final updatedUser = currentUser.copyWith(
         username: username,
-        firstname: firstName,
+        fullName: firstName, // Changed from firstname to fullName
         tag: tag,
         age: age,
         gender: gender,

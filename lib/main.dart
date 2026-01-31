@@ -18,7 +18,7 @@ import 'screens/authentication/myauthscreen.dart';
 import 'screens/register_screen.dart';
 import 'services/course/scores_repo.dart';
 import 'services/user_preferences_services.dart';
-import 'package:sophia_path/services/chat/chat_service.dart';
+import 'package:sophia_path/services/chat/firebase_chat_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +43,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ProfileState()),
-        Provider(create: (context) => ChatService()),
+        Provider(create: (context) => FirebaseChatService()),
       ],
       child: const MyApp(),
     ),

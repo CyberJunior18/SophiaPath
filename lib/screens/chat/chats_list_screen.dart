@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/chat/chat_contact.dart';
-import 'package:sophia_path/models/user/user.dart'; // Use your existing User model
+import 'package:sophia_path/models/user/user.dart';
 import 'package:sophia_path/screens/chat/chat_screen.dart';
+import 'package:sophia_path/services/chat/firebase_chat_service.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -12,96 +13,61 @@ class ChatsListScreen extends StatefulWidget {
 }
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
-  final List<ChatContact> _contacts = [];
-  final List<User> _chatUsers = []; // Using your User model
+  late FirebaseChatService _chatService;
+  late StreamSubscription? _chatsSubscription;
+  final List<Map<String, dynamic>> _chatRooms = [];
+  final Map<String, User> _chatUsers = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadChatContacts();
+    _chatService = FirebaseChatService();
+    _loadChats();
   }
 
-  Future<void> _loadChatContacts() async {
-    // Load contacts and their user data
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Create sample chat users using your User model
-    final sampleChatUsers = [
-      User(
-          username: "alexj",
-          fullName: "Alex Johnson",
-          tag: "Physics Student",
-          age: 22,
-          sex: "Male",
-          profileImage: "https://randomuser.me/api/portraits/men/32.jpg",
-          achievementsProgress: [],
-          registeredCourses: [],
-          registedCoursesIndexes: [],
-        )
-        ..isOnline = true
-        ..lastSeen = DateTime.now(),
-
-      User(
-          username: "mariag",
-          fullName: "Maria Garcia",
-          tag: "Philosophy Major",
-          age: 21,
-          sex: "Female",
-          profileImage: "https://randomuser.me/api/portraits/women/44.jpg",
-          achievementsProgress: [],
-          registeredCourses: [],
-          registedCoursesIndexes: [],
-        )
-        ..isOnline = false
-        ..lastSeen = DateTime.now().subtract(const Duration(hours: 2)),
-
-      // Add more sample users...
-    ];
-
-    setState(() {
-      _chatUsers.addAll(sampleChatUsers);
-      _contacts.addAll([
-        ChatContact(
-          userId: "alexj",
-          chatId: "chat1",
-          lastMessageTime: DateTime.now().subtract(const Duration(minutes: 15)),
-          lastMessage: "Hey, how's the cybersecurity course going?",
-          unreadCount: 2,
-        ),
-        ChatContact(
-          userId: "mariag",
-          chatId: "chat2",
-          lastMessageTime: DateTime.now().subtract(const Duration(hours: 3)),
-          lastMessage: "Can you help me with the ethics assignment?",
-          unreadCount: 0,
-        ),
-      ]);
-      _isLoading = false;
+  void _loadChats() {
+    _chatsSubscription = _chatService.getChatRoomsStream().listen((chatRooms) async {
+      setState(() {
+        _chatRooms.clear();
+        _chatUsers.clear();
+        _isLoading = true;
+      });
+      
+      for (final chatRoom in chatRooms) {
+        final otherUserId = chatRoom['otherUserId'] as String;
+        if (otherUserId.isNotEmpty) {
+          final userData = await _chatService.getUserData(otherUserId);
+          if (userData != null) {
+            final user = User.fromFirestore(userData);
+            _chatUsers[otherUserId] = user;
+          }
+          _chatRooms.add(chatRoom);
+        }
+      }
+      
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     });
   }
 
-  Widget _buildChatItem(ChatContact contact) {
+  Widget _buildChatItem(Map<String, dynamic> chatRoom) {
     final theme = Theme.of(context);
-    final user = _chatUsers.firstWhere(
-      (u) => u.username == contact.userId,
-      orElse: () => User(
-        username: contact.userId,
-        fullName: "Unknown User",
-        tag: "",
-        age: 0,
-        sex: "",
-        profileImage: "",
-        achievementsProgress: [],
-        registeredCourses: [],
-        registedCoursesIndexes: [],
-      ),
-    );
+    final otherUserId = chatRoom['otherUserId'] as String;
+    final user = _chatUsers[otherUserId];
+    
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final lastMessageTime = chatRoom['lastMessageTime'] as DateTime?;
+    final lastMessage = chatRoom['lastMessage'] as String? ?? '';
+    final unreadCount = chatRoom['unreadCount'] as int? ?? 0;
+    final chatRoomId = chatRoom['chatRoomId'] as String;
 
     return GestureDetector(
-      onLongPress: () {
-        _showChatOptions(contact, user);
-      },
+      onLongPress: () => _showChatOptions(chatRoom, user),
       child: ListTile(
         leading: CircleAvatar(
           radius: 28,
@@ -122,7 +88,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           ),
         ),
         subtitle: Text(
-          contact.lastMessage,
+          lastMessage,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.poppins(
@@ -134,20 +100,21 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              _formatTime(contact.lastMessageTime),
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: theme.textTheme.bodySmall!.color,
+            if (lastMessageTime != null)
+              Text(
+                _formatTime(lastMessageTime),
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: theme.textTheme.bodySmall!.color,
+                ),
               ),
-            ),
             const SizedBox(height: 4),
-            if (contact.unreadCount > 0)
+            if (unreadCount > 0)
               CircleAvatar(
                 radius: 10,
                 backgroundColor: theme.colorScheme.primary,
                 child: Text(
-                  contact.unreadCount.toString(),
+                  unreadCount.toString(),
                   style: const TextStyle(fontSize: 10, color: Colors.white),
                 ),
               )
@@ -162,18 +129,30 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               ),
           ],
         ),
-        onTap: () {
+        onTap: () async {
+          await _chatService.markMessagesAsRead(chatRoomId);
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => ChatScreen(chatUser: user)),
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                chatUser: user,
+                chatId: chatRoomId,
+                chatRoomId: chatRoomId,
+              ),
+            ),
           );
         },
       ),
     );
   }
 
-  // Long press menu
-  void _showChatOptions(ChatContact contact, User user) {
+  @override
+  void dispose() {
+    _chatsSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _showChatOptions(Map<String, dynamic> chatRoom, User user) {
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -186,7 +165,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 title: const Text('Mute notifications'),
                 onTap: () {
                   Navigator.pop(context);
-                  _muteChat(contact);
+                  print('Muting chat: ${user.username}');
                 },
               ),
               ListTile(
@@ -194,7 +173,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 title: const Text('Pin chat'),
                 onTap: () {
                   Navigator.pop(context);
-                  _pinChat(contact);
+                  print('Pinning chat: ${user.username}');
                 },
               ),
               ListTile(
@@ -202,7 +181,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 title: const Text('Block user'),
                 onTap: () {
                   Navigator.pop(context);
-                  _blockUser(user);
+                  print('Blocking user: ${user.username}');
                 },
               ),
               ListTile(
@@ -210,7 +189,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 title: const Text('Delete chat'),
                 onTap: () {
                   Navigator.pop(context);
-                  _deleteChat(contact);
+                  _deleteChat(chatRoom);
                 },
               ),
             ],
@@ -220,59 +199,17 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
-  void _muteChat(ChatContact contact) {
-    // Implement mute logic
-    print('Muting chat: ${contact.userId}');
-  }
-
-  void _pinChat(ChatContact contact) {
-    // Implement pin logic
-    print('Pinning chat: ${contact.userId}');
-  }
-
-  void _blockUser(User user) {
-    // Implement block logic
-    print('Blocking user: ${user.username}');
-  }
-
-  void _deleteChat(ChatContact contact) {
-    // Implement delete logic
-    print('Deleting chat: ${contact.userId}');
+  void _deleteChat(Map<String, dynamic> chatRoom) {
+    final chatRoomId = chatRoom['chatRoomId'] as String;
+    print('Deleting chat: $chatRoomId');
     setState(() {
-      _contacts.removeWhere((c) => c.chatId == contact.chatId);
+      _chatRooms.removeWhere((c) => c['chatRoomId'] == chatRoomId);
     });
   }
 
-  void _archiveChat(ChatContact contact) {
-    // Implement archive logic
-    print('Archiving chat: ${contact.userId}');
-    setState(() {
-      _contacts.removeWhere((c) => c.chatId == contact.chatId);
-    });
-  }
-
-  Future<bool> _showDeleteConfirmation(ChatContact contact) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Chat'),
-            content: const Text('Are you sure you want to delete this chat?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  String _formatTime(DateTime time) {
+  String _formatTime(DateTime? time) {
+    if (time == null) return '';
+    
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final messageDay = DateTime(time.year, time.month, time.day);
@@ -305,15 +242,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              // Implement search
-            },
+            onPressed: () => _showSearchDialog(),
           ),
           IconButton(
             icon: const Icon(Icons.group_add, color: Colors.white),
-            onPressed: () {
-              // Create new group
-            },
+            onPressed: () => _createNewGroup(),
           ),
         ],
       ),
@@ -324,6 +257,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: TextField(
+                    onChanged: _searchChats,
                     decoration: InputDecoration(
                       hintText: 'Search chats...',
                       hintStyle: GoogleFonts.poppins(),
@@ -342,67 +276,94 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                   ),
                 ),
                 Expanded(
-                  child: // Add pull to refresh
-                  RefreshIndicator(
-                    onRefresh: _loadChatContacts,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _contacts.length,
-                      separatorBuilder: (context, index) => Divider(
-                        height: 1,
-                        color: theme.dividerColor.withOpacity(0.3),
-                      ),
-                      itemBuilder: (context, index) {
-                        return Dismissible(
-                          key: Key(_contacts[index].chatId),
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(left: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      _chatRooms.clear();
+                      _chatUsers.clear();
+                      setState(() => _isLoading = true);
+                      _loadChats();
+                      return Future.delayed(const Duration(seconds: 1));
+                    },
+                    child: _chatRooms.isEmpty
+                        ? const Center(
+                            child: Text('No chats yet. Start a conversation!'),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: _chatRooms.length,
+                            separatorBuilder: (context, index) => Divider(
+                              height: 1,
+                              color: theme.dividerColor.withOpacity(0.3),
                             ),
-                          ),
-                          secondaryBackground: Container(
-                            color: Colors.grey,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.archive,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            if (direction == DismissDirection.startToEnd) {
-                              _deleteChat(_contacts[index]);
-                            } else {
-                              _archiveChat(_contacts[index]);
-                            }
-                          },
-                          confirmDismiss: (direction) async {
-                            if (direction == DismissDirection.startToEnd) {
-                              return await _showDeleteConfirmation(
-                                _contacts[index],
+                            itemBuilder: (context, index) {
+                              return Dismissible(
+                                key: Key(_chatRooms[index]['chatRoomId'] as String),
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerLeft,
+                                  padding: const EdgeInsets.only(left: 20),
+                                  child: const Icon(Icons.delete, color: Colors.white),
+                                ),
+                                secondaryBackground: Container(
+                                  color: Colors.grey,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(Icons.archive, color: Colors.white),
+                                ),
+                                onDismissed: (direction) {
+                                  final chatRoom = _chatRooms[index];
+                                  if (direction == DismissDirection.startToEnd) {
+                                    _deleteChat(chatRoom);
+                                  } else {
+                                    print('Archiving chat: ${chatRoom['chatRoomId']}');
+                                  }
+                                },
+                                child: _buildChatItem(_chatRooms[index]),
                               );
-                            }
-                            return true;
-                          },
-                          child: _buildChatItem(_contacts[index]),
-                        );
-                      },
-                    ),
+                            },
+                          ),
                   ),
                 ),
               ],
             ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: theme.colorScheme.primary,
-        onPressed: () {
-          // Start new chat
-        },
+        onPressed: () => _startNewChat(),
         child: const Icon(Icons.message, color: Colors.white),
       ),
     );
+  }
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Search Chats'),
+        content: TextField(
+          decoration: const InputDecoration(hintText: 'Enter name or message...'),
+          onChanged: _searchChats,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _searchChats(String query) {
+    // Implement search logic
+  }
+
+  void _createNewGroup() {
+    // TODO: Implement group creation
+    print('Create new group');
+  }
+
+  void _startNewChat() {
+    // TODO: Implement new chat screen
+    print('Start new chat');
   }
 }
