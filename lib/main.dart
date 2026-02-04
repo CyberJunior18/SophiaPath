@@ -4,8 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/navigation_screen.dart';
-import 'package:sophia_path/screens/chat/chat_screen.dart';
-import 'package:sophia_path/screens/chat/chats_list_screen.dart';
 import 'package:sophia_path/services/profile_state.dart';
 import 'package:sophia_path/services/course/user_stats_service.dart';
 import 'package:sophia_path/widgets/theme.dart';
@@ -14,7 +12,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
 import 'models/data.dart';
-import 'screens/authentication/myauthscreen.dart';
 import 'screens/register_screen.dart';
 import 'services/course/scores_repo.dart';
 import 'services/user_preferences_services.dart';
@@ -105,16 +102,6 @@ class _MyAppState extends State<MyApp> {
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeMode,
         home: _buildHomeScreen(),
-        routes: {
-          '/home': (context) => NavigationScreen(onToggleTheme: toggleTheme),
-          '/chats': (context) => const ChatsListScreen(),
-          '/chat': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return ChatScreen(chatUser: args['user'], chatId: args['chatId']);
-          },
-        },
       ),
     );
   }
