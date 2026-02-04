@@ -45,7 +45,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   String? _firebaseUid;
 
   // Add this flag
-  bool _useFirestore = false; // Set to true after you set up Firestore
+  final bool _useFirestore = false; // Set to true after you set up Firestore
 
   final List<String> _availableTags = [
     'Student',
@@ -761,7 +761,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      value: _selectedGender,
+                      initialValue: _selectedGender,
                       decoration: const InputDecoration(
                         labelText: 'Gender',
                         border: OutlineInputBorder(),
@@ -779,7 +779,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      value: _tagController.text.isEmpty
+                      initialValue: _tagController.text.isEmpty
                           ? null
                           : _tagController.text,
                       decoration: const InputDecoration(
