@@ -1,212 +1,130 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:sophia_path/models/chat/chat_message.dart';
-import 'package:sophia_path/models/chat/chat_contact.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
-class ChatService {
-  static ChatService? _instance;
+class ChatService extends ChangeNotifier {
+  static final ChatService _instance = ChatService._internal();
+  factory ChatService() => _instance;
+  ChatService._internal();
 
-  factory ChatService() => _instance ??= ChatService._();
-  ChatService._();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<SharedPreferences> get _prefs async =>
-      await SharedPreferences.getInstance();
+  List<Chat> _chats = [];
+  List<Chat> get chats => _chats;
 
-  // Contacts Management
-  Future<void> saveContact(ChatContact contact) async {
-    final prefs = await _prefs;
-    final contactsJson = prefs.getString('chat_contacts') ?? '[]';
-    final contacts = jsonDecode(contactsJson) as List;
+  /// Load chats for the current user
+  Future<void> loadChats(String currentUsername) async {
+    final snapshot = await _firestore
+        .collection('chats')
+        .where('participants', arrayContains: currentUsername)
+        .orderBy('lastUpdated', descending: true)
+        .get();
 
-    // Remove existing contact if exists
-    contacts.removeWhere((c) => c['userId'] == contact.userId);
-
-    contacts.add(contact.toMap());
-
-    await prefs.setString('chat_contacts', jsonEncode(contacts));
-  }
-
-  Future<List<ChatContact>> getContacts() async {
-    final prefs = await _prefs;
-    final contactsJson = prefs.getString('chat_contacts') ?? '[]';
-    final contacts = jsonDecode(contactsJson) as List;
-
-    return contacts.map((c) => ChatContact.fromMap(c)).toList();
-  }
-
-  // Messages Management
-  Future<void> saveMessage(String chatId, ChatMessage message) async {
-    final prefs = await _prefs;
-    final key = 'chat_messages_$chatId';
-    final messagesJson = prefs.getString(key) ?? '[]';
-    final messages = jsonDecode(messagesJson) as List;
-
-    messages.add(message.toMap());
-
-    await prefs.setString(key, jsonEncode(messages));
-
-    // Update contact's last message
-    // Find the contact for this chat
-    final contact = await getContactByChatId(chatId);
-    if (contact != null) {
-      await saveContact(
-        contact.copyWith(
-          lastMessageTime: message.timestamp,
-          lastMessage: message.message,
-          unreadCount: message.senderId != await _getCurrentUserId()
-              ? contact.unreadCount + 1
-              : contact.unreadCount,
-        ),
+    _chats = snapshot.docs.map((doc) {
+      final data = doc.data();
+      final participants = List<String>.from(data['participants'] ?? []);
+      final otherUsername = participants.firstWhere(
+        (u) => u != currentUsername,
+        orElse: () => '',
       );
-    }
+      return Chat(
+        chatId: doc.id,
+        otherUsername: otherUsername,
+        lastMessage: data['lastMessage'] ?? '',
+      );
+    }).toList();
+
+    notifyListeners();
   }
 
-  Future<List<ChatMessage>> getMessages(String chatId) async {
-    final prefs = await _prefs;
-    final key = 'chat_messages_$chatId';
-    final messagesJson = prefs.getString(key) ?? '[]';
-    final messages = jsonDecode(messagesJson) as List;
+  /// Create a new chat (or return existing chat ID)
+  Future<String> createChat({
+    required String senderUsername,
+    required String receiverUsername,
+  }) async {
+    // Check if chat already exists
+    final query = await _firestore
+        .collection('chats')
+        .where('participants', arrayContainsAny: [senderUsername, receiverUsername])
+        .get();
 
-    return messages.map((m) => ChatMessage.fromMap(m)).toList();
-  }
-
-  // Helper methods
-  Future<ChatContact?> getContactByUserId(String userId) async {
-    final contacts = await getContacts();
-    for (final contact in contacts) {
-      if (contact.userId == userId) return contact;
-    }
-    return null;
-  }
-
-  Future<String> _getCurrentUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('current_user_id') ?? _getCurrentUserFromPrefs();
-  }
-
-  String _getCurrentUserFromPrefs() {
-    // Or get from your UserPreferencesService
-    return 'current_user'; // Temporary
-  }
-
-  Future<void> markMessagesAsRead(String chatId) async {
-    final messages = await getMessages(chatId);
-    final updatedMessages = messages
-        .map((msg) => msg.copyWith(isRead: true))
-        .toList();
-
-    final prefs = await _prefs;
-    final key = 'chat_messages_$chatId';
-    await prefs.setString(
-      key,
-      jsonEncode(updatedMessages.map((m) => m.toMap()).toList()),
-    );
-
-    // Also update contact unread count to 0
-    final contact = await getContactByChatId(chatId);
-    if (contact != null) {
-      await saveContact(contact.copyWith(unreadCount: 0));
-    }
-  }
-
-  Future<void> clearChatHistory(String chatId) async {
-    final prefs = await _prefs;
-    await prefs.remove('chat_messages_$chatId');
-  }
-
-  // Get contact by chat ID
-  Future<ChatContact?> getContactByChatId(String chatId) async {
-    final contacts = await getContacts();
-    for (final contact in contacts) {
-      if (contact.chatId == chatId) {
-        return contact;
+    for (var doc in query.docs) {
+      final participants = List<String>.from(doc['participants'] ?? []);
+      if (participants.contains(senderUsername) &&
+          participants.contains(receiverUsername)) {
+        return doc.id; // chat exists
       }
     }
-    return null;
-  }
 
-  // Create new chat
-  Future<String> createChat(String otherUserId) async {
-    final chatId = 'chat_${await _getCurrentUserId()}_$otherUserId';
+    // Create new chat
+    final docRef = await _firestore.collection('chats').add({
+      'participants': [senderUsername, receiverUsername],
+      'lastMessage': '',
+      'lastUpdated': FieldValue.serverTimestamp(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
 
-    final contact = ChatContact(
-      userId: otherUserId,
-      chatId: chatId,
-      lastMessageTime: DateTime.now(),
-      lastMessage: 'Chat started',
-      unreadCount: 0,
+    // Update local chats list
+    _chats.insert(
+      0,
+      Chat(
+        chatId: docRef.id,
+        otherUsername: receiverUsername,
+        lastMessage: '',
+      ),
     );
+    notifyListeners();
 
-    await saveContact(contact);
-    return chatId;
+    return docRef.id;
   }
 
-  // Delete contact
-  Future<void> deleteContact(String userId) async {
-    final prefs = await _prefs;
-    final contactsJson = prefs.getString('chat_contacts') ?? '[]';
-    final contacts = jsonDecode(contactsJson) as List;
+  /// Send a message in a chat
+  Future<void> sendMessage({
+    required String chatId,
+    required String senderUsername,
+    required String content,
+  }) async {
+    final messagesRef =
+        _firestore.collection('chats').doc(chatId).collection('messages');
 
-    contacts.removeWhere((c) => c['userId'] == userId);
+    await messagesRef.add({
+      'sender': senderUsername,
+      'content': content,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
 
-    await prefs.setString('chat_contacts', jsonEncode(contacts));
-  }
+    // Update last message in chat
+    await _firestore.collection('chats').doc(chatId).update({
+      'lastMessage': content,
+      'lastUpdated': FieldValue.serverTimestamp(),
+    });
 
-  // Get unread count
-  Future<int> getTotalUnreadCount() async {
-    final contacts = await getContacts();
-    int total = 0;
-    for (final contact in contacts) {
-      total += contact.unreadCount;
-    }
-    return total;
-  }
-
-  // Mark contact as read
-  Future<void> markContactAsRead(String chatId) async {
-    final contact = await getContactByChatId(chatId);
-    if (contact != null) {
-      await saveContact(contact.copyWith(unreadCount: 0));
-    }
-  }
-
-  Future<void> setTypingStatus(
-    String chatId,
-    bool isTyping,
-    String userId,
-  ) async {
-    final prefs = await _prefs;
-    await prefs.setString('typing_$chatId', isTyping ? userId : '');
-  }
-
-  Future<String?> getTypingStatus(String chatId) async {
-    final prefs = await _prefs;
-    return prefs.getString('typing_$chatId');
-  }
-
-  Future<void> addMessageReaction(
-    String chatId,
-    String messageId,
-    String emoji,
-    String userId,
-  ) async {
-    final messages = await getMessages(chatId);
-    final messageIndex = messages.indexWhere((msg) => msg.id == messageId);
-
-    if (messageIndex != -1) {
-      final message = messages[messageIndex];
-      final updatedReactions = Map<String, String>.from(message.reactions);
-      updatedReactions[userId] = emoji;
-
-      final updatedMessage = message.copyWith(reactions: updatedReactions);
-      messages[messageIndex] = updatedMessage;
-
-      final prefs = await _prefs;
-      final key = 'chat_messages_$chatId';
-      await prefs.setString(
-        key,
-        jsonEncode(messages.map((m) => m.toMap()).toList()),
-      );
+    // Update local list
+    final chatIndex = _chats.indexWhere((c) => c.chatId == chatId);
+    if (chatIndex != -1) {
+      _chats[chatIndex].lastMessage = content;
+      notifyListeners();
     }
   }
+
+  /// Stream messages in a chat
+  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesStream(String chatId) {
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+}
+
+class Chat {
+  final String chatId;
+  final String otherUsername;
+  String lastMessage;
+
+  Chat({
+    required this.chatId,
+    required this.otherUsername,
+    required this.lastMessage,
+  });
 }

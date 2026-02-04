@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/chat/chat_contact.dart';
-import 'package:sophia_path/models/user/user.dart'; // Use your existing User model
-import 'package:sophia_path/screens/chat/chat_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/chat/chat_service.dart';
+import '../../services/user_preferences_services.dart';
+import 'chat_screen.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -12,396 +12,211 @@ class ChatsListScreen extends StatefulWidget {
 }
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
-  final List<ChatContact> _contacts = [];
-  final List<User> _chatUsers = []; // Using your User model
-  bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _isSearching = false;
+
+  final UserPreferencesService _userService = UserPreferencesService.instance;
+  final ChatService _chatService = ChatService();
+
+  String? _currentUsername;
+  List<Chat> _chats = [];
 
   @override
   void initState() {
     super.initState();
-    _loadChatContacts();
+    _loadCurrentUser();
   }
 
-  Future<void> _loadChatContacts() async {
-    // Load contacts and their user data
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Create sample chat users using your User model
-    final sampleChatUsers = [
-      User(
-          username: "alexj",
-          fullName: "Alex Johnson",
-          tag: "Physics Student",
-          age: 22,
-          sex: "Male",
-          profileImage: "https://randomuser.me/api/portraits/men/32.jpg",
-          achievementsProgress: [],
-          registeredCourses: [],
-          registedCoursesIndexes: [],
-        )
-        ..isOnline = true
-        ..lastSeen = DateTime.now(),
-
-      User(
-          username: "mariag",
-          fullName: "Maria Garcia",
-          tag: "Philosophy Major",
-          age: 21,
-          sex: "Female",
-          profileImage: "https://randomuser.me/api/portraits/women/44.jpg",
-          achievementsProgress: [],
-          registeredCourses: [],
-          registedCoursesIndexes: [],
-        )
-        ..isOnline = false
-        ..lastSeen = DateTime.now().subtract(const Duration(hours: 2)),
-
-      // Add more sample users...
-    ];
-
-    setState(() {
-      _chatUsers.addAll(sampleChatUsers);
-      _contacts.addAll([
-        ChatContact(
-          userId: "alexj",
-          chatId: "chat1",
-          lastMessageTime: DateTime.now().subtract(const Duration(minutes: 15)),
-          lastMessage: "Hey, how's the cybersecurity course going?",
-          unreadCount: 2,
-        ),
-        ChatContact(
-          userId: "mariag",
-          chatId: "chat2",
-          lastMessageTime: DateTime.now().subtract(const Duration(hours: 3)),
-          lastMessage: "Can you help me with the ethics assignment?",
-          unreadCount: 0,
-        ),
-      ]);
-      _isLoading = false;
-    });
-  }
-
-  Widget _buildChatItem(ChatContact contact) {
-    final theme = Theme.of(context);
-    final user = _chatUsers.firstWhere(
-      (u) => u.username == contact.userId,
-      orElse: () => User(
-        username: contact.userId,
-        fullName: "Unknown User",
-        tag: "",
-        age: 0,
-        sex: "",
-        profileImage: "",
-        achievementsProgress: [],
-        registeredCourses: [],
-        registedCoursesIndexes: [],
-      ),
-    );
-
-    return GestureDetector(
-      onLongPress: () {
-        _showChatOptions(contact, user);
-      },
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundImage: user.profileImage.isNotEmpty
-              ? NetworkImage(user.profileImage)
-              : null,
-          backgroundColor: theme.colorScheme.secondary,
-          child: user.profileImage.isEmpty
-              ? Icon(Icons.person, color: theme.colorScheme.primary, size: 28)
-              : null,
-        ),
-        title: Text(
-          user.fullName,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: theme.textTheme.bodyLarge!.color,
-          ),
-        ),
-        subtitle: Text(
-          contact.lastMessage,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
-          ),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              _formatTime(contact.lastMessageTime),
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: theme.textTheme.bodySmall!.color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (contact.unreadCount > 0)
-              CircleAvatar(
-                radius: 10,
-                backgroundColor: theme.colorScheme.primary,
-                child: Text(
-                  contact.unreadCount.toString(),
-                  style: const TextStyle(fontSize: 10, color: Colors.white),
-                ),
-              )
-            else if (user.isOnline)
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-          ],
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ChatScreen(chatUser: user)),
-          );
-        },
-      ),
-    );
-  }
-
-  // Long press menu
-  void _showChatOptions(ChatContact contact, User user) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.notifications),
-                title: const Text('Mute notifications'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _muteChat(contact);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.pin),
-                title: const Text('Pin chat'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pinChat(contact);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.block),
-                title: const Text('Block user'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _blockUser(user);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Delete chat'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _deleteChat(contact);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _muteChat(ChatContact contact) {
-    // Implement mute logic
-    print('Muting chat: ${contact.userId}');
-  }
-
-  void _pinChat(ChatContact contact) {
-    // Implement pin logic
-    print('Pinning chat: ${contact.userId}');
-  }
-
-  void _blockUser(User user) {
-    // Implement block logic
-    print('Blocking user: ${user.username}');
-  }
-
-  void _deleteChat(ChatContact contact) {
-    // Implement delete logic
-    print('Deleting chat: ${contact.userId}');
-    setState(() {
-      _contacts.removeWhere((c) => c.chatId == contact.chatId);
-    });
-  }
-
-  void _archiveChat(ChatContact contact) {
-    // Implement archive logic
-    print('Archiving chat: ${contact.userId}');
-    setState(() {
-      _contacts.removeWhere((c) => c.chatId == contact.chatId);
-    });
-  }
-
-  Future<bool> _showDeleteConfirmation(ChatContact contact) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Chat'),
-            content: const Text('Are you sure you want to delete this chat?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDay = DateTime(time.year, time.month, time.day);
-
-    if (messageDay == today) {
-      return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-    } else if (messageDay == today.subtract(const Duration(days: 1))) {
-      return 'Yesterday';
-    } else {
-      return '${time.day}/${time.month}';
+  Future<void> _loadCurrentUser() async {
+    final user = await _userService.getUser();
+    if (user?.username != null) {
+      setState(() {
+        _currentUsername = user!.username;
+      });
+      _loadChats();
     }
+  }
+
+  Future<void> _loadChats() async {
+    if (_currentUsername == null) return;
+    await _chatService.loadChats(_currentUsername!);
+    setState(() {
+      _chats = _chatService.chats;
+    });
+  }
+
+  Future<void> _searchUsers(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+
+    final usersQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('username', isGreaterThanOrEqualTo: query)
+        .where('username', isLessThanOrEqualTo: query + '\uf8ff')
+        .get();
+
+    final results = usersQuery.docs
+        .where((doc) => doc['username'] != _currentUsername) // exclude yourself
+        .map((doc) {
+      final data = doc.data();
+      return {
+        'username': data['username'] ?? '',
+        'fullName': data['fullName'] ?? '',
+        'profilePicture': data['profilePicture'] ?? '',
+      };
+    }).toList();
+
+    setState(() {
+      _searchResults = List<Map<String, dynamic>>.from(results);
+      _isSearching = false;
+    });
+  }
+
+  Future<void> _startChat(String otherUsername) async {
+    if (_currentUsername == null) return;
+
+    final chatId = await _chatService.createChat(
+      senderUsername: _currentUsername!,
+      receiverUsername: otherUsername,
+    );
+
+    // Navigate to ChatScreen
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          currentUser: _currentUsername!,
+          chatUser: otherUsername,
+          chatId: chatId,
+        ),
+      ),
+    );
+
+    // Clear search
+    _searchController.clear();
+    setState(() {
+      _searchResults = [];
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.primary,
-        elevation: 0,
-        title: Text(
-          'Chats',
-          style: GoogleFonts.poppins(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              // Implement search
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.group_add, color: Colors.white),
-            onPressed: () {
-              // Create new group
-            },
-          ),
-        ],
+        title: Text('Chats (${_currentUsername ?? 'Loading...'})'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search chats...',
-                      hintStyle: GoogleFonts.poppins(),
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: theme.colorScheme.secondary,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: // Add pull to refresh
-                  RefreshIndicator(
-                    onRefresh: _loadChatContacts,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _contacts.length,
-                      separatorBuilder: (context, index) => Divider(
-                        height: 1,
-                        color: theme.dividerColor.withOpacity(0.3),
-                      ),
-                      itemBuilder: (context, index) {
-                        return Dismissible(
-                          key: Key(_contacts[index].chatId),
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(left: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          secondaryBackground: Container(
-                            color: Colors.grey,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.archive,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            if (direction == DismissDirection.startToEnd) {
-                              _deleteChat(_contacts[index]);
-                            } else {
-                              _archiveChat(_contacts[index]);
-                            }
-                          },
-                          confirmDismiss: (direction) async {
-                            if (direction == DismissDirection.startToEnd) {
-                              return await _showDeleteConfirmation(
-                                _contacts[index],
-                              );
-                            }
-                            return true;
-                          },
-                          child: _buildChatItem(_contacts[index]),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
+      body: Column(
+        children: [
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search users...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchUsers('');
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: _searchUsers,
             ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: theme.colorScheme.primary,
-        onPressed: () {
-          // Start new chat
-        },
-        child: const Icon(Icons.message, color: Colors.white),
+          ),
+
+          if (_isSearching)
+            const Expanded(
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_searchResults.isNotEmpty)
+            // Show search results
+            Expanded(
+              child: ListView.builder(
+                itemCount: _searchResults.length,
+                itemBuilder: (context, index) {
+                  final user = _searchResults[index];
+                  return ListTile(
+                    title: Text(user['username']),
+                    subtitle: Text(user['fullName'] ?? ''),
+                    leading: CircleAvatar(
+                      backgroundImage: user['profilePicture'] != null &&
+                              user['profilePicture'].isNotEmpty
+                          ? NetworkImage(user['profilePicture'])
+                          : null,
+                      child: user['profilePicture'] == null ||
+                              user['profilePicture'].isEmpty
+                          ? const Icon(Icons.person)
+                          : null,
+                    ),
+                    onTap: () => _startChat(user['username']),
+                  );
+                },
+              ),
+            )
+          else
+            // Show existing chats
+            Expanded(
+              child: _currentUsername == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _loadChats,
+                      child: _chats.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No chats yet\nSearch users to start a conversation',
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _chats.length,
+                              itemBuilder: (context, index) {
+                                final chat = _chats[index];
+                                return ListTile(
+                                  title: Text(chat.otherUsername),
+                                  subtitle: Text(
+                                    chat.lastMessage.isNotEmpty
+                                        ? chat.lastMessage
+                                        : 'Start a conversation',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  leading: const CircleAvatar(
+                                    child: Icon(Icons.person),
+                                  ),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          currentUser: _currentUsername!,
+                                          chatUser: chat.otherUsername,
+                                          chatId: chat.chatId,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+            ),
+        ],
       ),
     );
   }
