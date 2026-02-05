@@ -44,7 +44,8 @@ class UserPreferencesService {
         uid: userMap['uid']?.toString(),
         firebaseUid: userMap['firebaseUid']?.toString(),
         username: userMap['username'] ?? '',
-        fullName: userMap['firstName'] ?? '', // Changed to match toMap()
+        fullName:
+            userMap['fullName'] ?? '', // Changed from 'firstName' to 'fullName'
         tag: userMap['tag'] ?? '',
         age: userMap['age'] ?? 0,
         sex: userMap['gender'] ?? '',

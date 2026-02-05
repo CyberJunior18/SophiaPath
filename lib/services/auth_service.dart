@@ -79,6 +79,10 @@ ValueNotifier<AuthService> authService = ValueNotifier(AuthService());
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final UserService _userService = UserService();
+  String? get currentUserUid => _auth.currentUser?.uid;
+
+  // Get current user's email
+  String? get currentUserEmail => _auth.currentUser?.email;
 
   Future<User?> signUpWithEmail(
     String email,

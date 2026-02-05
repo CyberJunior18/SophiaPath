@@ -1,9 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:sophia_path/models/chat/chat_contact.dart';
 import 'package:sophia_path/models/user/user.dart'; // Use your existing User model
 import 'package:sophia_path/screens/chat/chat_screen.dart';
+import 'package:sophia_path/screens/chat/user_tile.dart';
+import 'package:sophia_path/services/auth_service.dart';
+import 'package:sophia_path/services/chat/firebase_chat_service.dart';
+
+import '../../services/profile_state.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -13,6 +19,8 @@ class ChatsListScreen extends StatefulWidget {
 }
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
+  final ChatService _chatService = ChatService();
+  final AuthService _authService = AuthService();
   final List<ChatContact> _contacts = [];
   final List<User> _chatUsers = []; // Using your User model
   bool _isLoading = true;
@@ -82,96 +90,96 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     });
   }
 
-  Widget _buildChatItem(ChatContact contact) {
-    final theme = Theme.of(context);
-    final user = _chatUsers.firstWhere(
-      (u) => u.username == contact.userId,
-      orElse: () => User(
-        username: contact.userId,
-        fullName: "Unknown User",
-        tag: "",
-        age: 0,
-        sex: "",
-        profileImage: "",
-        achievementsProgress: [],
-        registeredCourses: [],
-        registedCoursesIndexes: [],
-      ),
-    );
+  // Widget _buildChatItem(ChatContact contact) {
+  //   final theme = Theme.of(context);
+  //   final user = _chatUsers.firstWhere(
+  //     (u) => u.username == contact.userId,
+  //     orElse: () => User(
+  //       username: contact.userId,
+  //       fullName: "Unknown User",
+  //       tag: "",
+  //       age: 0,
+  //       sex: "",
+  //       profileImage: "",
+  //       achievementsProgress: [],
+  //       registeredCourses: [],
+  //       registedCoursesIndexes: [],
+  //     ),
+  //   );
 
-    return GestureDetector(
-      onLongPress: () {
-        _showChatOptions(contact, user);
-      },
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundImage: user.profileImage.isNotEmpty
-              ? NetworkImage(user.profileImage)
-              : null,
-          backgroundColor: theme.colorScheme.secondary,
-          child: user.profileImage.isEmpty
-              ? Icon(Icons.person, color: theme.colorScheme.primary, size: 28)
-              : null,
-        ),
-        title: Text(
-          user.fullName,
-          style: GoogleFonts.poppins(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: theme.textTheme.bodyLarge!.color,
-          ),
-        ),
-        subtitle: Text(
-          contact.lastMessage,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.poppins(
-            fontSize: 14,
-            color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
-          ),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              _formatTime(contact.lastMessageTime),
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: theme.textTheme.bodySmall!.color,
-              ),
-            ),
-            const SizedBox(height: 4),
-            if (contact.unreadCount > 0)
-              CircleAvatar(
-                radius: 10,
-                backgroundColor: theme.colorScheme.primary,
-                child: Text(
-                  contact.unreadCount.toString(),
-                  style: const TextStyle(fontSize: 10, color: Colors.white),
-                ),
-              )
-            else if (user.isOnline)
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-          ],
-        ),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ChatScreen(chatUser: user)),
-          );
-        },
-      ),
-    );
-  }
+  //   return GestureDetector(
+  //     onLongPress: () {
+  //       _showChatOptions(contact, user);
+  //     },
+  //     child: ListTile(
+  //       leading: CircleAvatar(
+  //         radius: 28,
+  //         backgroundImage: user.profileImage.isNotEmpty
+  //             ? NetworkImage(user.profileImage)
+  //             : null,
+  //         backgroundColor: theme.colorScheme.secondary,
+  //         child: user.profileImage.isEmpty
+  //             ? Icon(Icons.person, color: theme.colorScheme.primary, size: 28)
+  //             : null,
+  //       ),
+  //       title: Text(
+  //         user.fullName,
+  //         style: GoogleFonts.poppins(
+  //           fontSize: 16,
+  //           fontWeight: FontWeight.w600,
+  //           color: theme.textTheme.bodyLarge!.color,
+  //         ),
+  //       ),
+  //       subtitle: Text(
+  //         contact.lastMessage,
+  //         maxLines: 1,
+  //         overflow: TextOverflow.ellipsis,
+  //         style: GoogleFonts.poppins(
+  //           fontSize: 14,
+  //           color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+  //         ),
+  //       ),
+  //       trailing: Column(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         crossAxisAlignment: CrossAxisAlignment.end,
+  //         children: [
+  //           Text(
+  //             _formatTime(contact.lastMessageTime),
+  //             style: GoogleFonts.poppins(
+  //               fontSize: 12,
+  //               color: theme.textTheme.bodySmall!.color,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 4),
+  //           if (contact.unreadCount > 0)
+  //             CircleAvatar(
+  //               radius: 10,
+  //               backgroundColor: theme.colorScheme.primary,
+  //               child: Text(
+  //                 contact.unreadCount.toString(),
+  //                 style: const TextStyle(fontSize: 10, color: Colors.white),
+  //               ),
+  //             )
+  //           else if (user.isOnline)
+  //             Container(
+  //               width: 10,
+  //               height: 10,
+  //               decoration: BoxDecoration(
+  //                 color: Colors.green,
+  //                 borderRadius: BorderRadius.circular(5),
+  //               ),
+  //             ),
+  //         ],
+  //       ),
+  //       onTap: () {
+  //         Navigator.push(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => ChatScreen(chatUser: user)),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 
   // Long press menu
   void _showChatOptions(ChatContact contact, User user) {
@@ -319,83 +327,85 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search chats...',
-                      hintStyle: GoogleFonts.poppins(),
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: theme.colorScheme.secondary,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: // Add pull to refresh
-                  RefreshIndicator(
-                    onRefresh: _loadChatContacts,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _contacts.length,
-                      separatorBuilder: (context, index) => Divider(
-                        height: 1,
-                        color: theme.dividerColor.withOpacity(0.3),
-                      ),
-                      itemBuilder: (context, index) {
-                        return Dismissible(
-                          key: Key(_contacts[index].chatId),
-                          background: Container(
-                            color: Colors.red,
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.only(left: 20),
-                            child: const Icon(
-                              Icons.delete,
-                              color: Colors.white,
-                            ),
-                          ),
-                          secondaryBackground: Container(
-                            color: Colors.grey,
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            child: const Icon(
-                              Icons.archive,
-                              color: Colors.white,
-                            ),
-                          ),
-                          onDismissed: (direction) {
-                            if (direction == DismissDirection.startToEnd) {
-                              _deleteChat(_contacts[index]);
-                            } else {
-                              _archiveChat(_contacts[index]);
-                            }
-                          },
-                          confirmDismiss: (direction) async {
-                            if (direction == DismissDirection.startToEnd) {
-                              return await _showDeleteConfirmation(
-                                _contacts[index],
-                              );
-                            }
-                            return true;
-                          },
-                          child: _buildChatItem(_contacts[index]),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          : _buildUserList(),
+
+      // : Column(
+      //     children: [
+      //       Padding(
+      //         padding: const EdgeInsets.all(16),
+      //         child: TextField(
+      //           decoration: InputDecoration(
+      //             hintText: 'Search chats...',
+      //             hintStyle: GoogleFonts.poppins(),
+      //             prefixIcon: const Icon(Icons.search),
+      //             border: OutlineInputBorder(
+      //               borderRadius: BorderRadius.circular(15),
+      //               borderSide: BorderSide.none,
+      //             ),
+      //             filled: true,
+      //             fillColor: theme.colorScheme.secondary,
+      //             contentPadding: const EdgeInsets.symmetric(
+      //               horizontal: 20,
+      //               vertical: 12,
+      //             ),
+      //           ),
+      //         ),
+      //       ),
+      //       Expanded(
+      //         child: // Add pull to refresh
+      //         RefreshIndicator(
+      //           onRefresh: _loadChatContacts,
+      //           child: ListView.separated(
+      //             padding: const EdgeInsets.symmetric(horizontal: 16),
+      //             itemCount: _contacts.length,
+      //             separatorBuilder: (context, index) => Divider(
+      //               height: 1,
+      //               color: theme.dividerColor.withOpacity(0.3),
+      //             ),
+      //             itemBuilder: (context, index) {
+      //               return Dismissible(
+      //                 key: Key(_contacts[index].chatId),
+      //                 background: Container(
+      //                   color: Colors.red,
+      //                   alignment: Alignment.centerLeft,
+      //                   padding: const EdgeInsets.only(left: 20),
+      //                   child: const Icon(
+      //                     Icons.delete,
+      //                     color: Colors.white,
+      //                   ),
+      //                 ),
+      //                 secondaryBackground: Container(
+      //                   color: Colors.grey,
+      //                   alignment: Alignment.centerRight,
+      //                   padding: const EdgeInsets.only(right: 20),
+      //                   child: const Icon(
+      //                     Icons.archive,
+      //                     color: Colors.white,
+      //                   ),
+      //                 ),
+      //                 onDismissed: (direction) {
+      //                   if (direction == DismissDirection.startToEnd) {
+      //                     _deleteChat(_contacts[index]);
+      //                   } else {
+      //                     _archiveChat(_contacts[index]);
+      //                   }
+      //                 },
+      //                 confirmDismiss: (direction) async {
+      //                   if (direction == DismissDirection.startToEnd) {
+      //                     return await _showDeleteConfirmation(
+      //                       _contacts[index],
+      //                     );
+      //                   }
+      //                   return true;
+      //                 },
+      //                 child: _buildChatItem(_contacts[index]),
+      //               );
+      //             },
+      //           ),
+      //         ),
+      //       ),
+      //     ],
+      //   ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: theme.colorScheme.primary,
         onPressed: () {
@@ -405,4 +415,136 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       ),
     );
   }
+
+  Widget _buildUserList() {
+    return StreamBuilder(
+      stream: _chatService.getUsersStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Text("Error");
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Text("Loading");
+        }
+        return ListView(
+          children: snapshot.data!
+              .map<Widget>((userData) => _buildUserListItem(userData, context))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserListItem(
+    Map<String, dynamic> userData,
+    BuildContext context,
+  ) {
+    if (userData["email"] != _authService.currentUserEmail) {
+      return UserTile(
+        text: userData["email"],
+
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (ctx) {
+                return ChatScreen(receiverEmail: userData["email"]);
+              },
+            ),
+          );
+        },
+      );
+    }
+    return Container();
+  }
+  // Widget _buildChatItem(ChatContact contact) {
+  //   final theme = Theme.of(context);
+  //   final user = _chatUsers.firstWhere(
+  //     (u) => u.username == contact.userId,
+  //     orElse: () => User(
+  //       username: contact.userId,
+  //       fullName: "Unknown User",
+  //       tag: "",
+  //       age: 0,
+  //       sex: "",
+  //       profileImage: "",
+  //       achievementsProgress: [],
+  //       registeredCourses: [],
+  //       registedCoursesIndexes: [],
+  //     ),
+  //   );
+
+  //   return GestureDetector(
+  //     onLongPress: () {
+  //       _showChatOptions(contact, user);
+  //     },
+  //     child: ListTile(
+  //       leading: CircleAvatar(
+  //         radius: 28,
+  //         backgroundImage: user.profileImage.isNotEmpty
+  //             ? NetworkImage(user.profileImage)
+  //             : null,
+  //         backgroundColor: theme.colorScheme.secondary,
+  //         child: user.profileImage.isEmpty
+  //             ? Icon(Icons.person, color: theme.colorScheme.primary, size: 28)
+  //             : null,
+  //       ),
+  //       title: Text(
+  //         user.fullName,
+  //         style: GoogleFonts.poppins(
+  //           fontSize: 16,
+  //           fontWeight: FontWeight.w600,
+  //           color: theme.textTheme.bodyLarge!.color,
+  //         ),
+  //       ),
+  //       subtitle: Text(
+  //         contact.lastMessage,
+  //         maxLines: 1,
+  //         overflow: TextOverflow.ellipsis,
+  //         style: GoogleFonts.poppins(
+  //           fontSize: 14,
+  //           color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+  //         ),
+  //       ),
+  //       trailing: Column(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         crossAxisAlignment: CrossAxisAlignment.end,
+  //         children: [
+  //           Text(
+  //             _formatTime(contact.lastMessageTime),
+  //             style: GoogleFonts.poppins(
+  //               fontSize: 12,
+  //               color: theme.textTheme.bodySmall!.color,
+  //             ),
+  //           ),
+  //           const SizedBox(height: 4),
+  //           if (contact.unreadCount > 0)
+  //             CircleAvatar(
+  //               radius: 10,
+  //               backgroundColor: theme.colorScheme.primary,
+  //               child: Text(
+  //                 contact.unreadCount.toString(),
+  //                 style: const TextStyle(fontSize: 10, color: Colors.white),
+  //               ),
+  //             )
+  //           else if (user.isOnline)
+  //             Container(
+  //               width: 10,
+  //               height: 10,
+  //               decoration: BoxDecoration(
+  //                 color: Colors.green,
+  //                 borderRadius: BorderRadius.circular(5),
+  //               ),
+  //             ),
+  //         ],
+  //       ),
+  //       onTap: () {
+  //         Navigator.push(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => ChatScreen(chatUser: user)),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 }

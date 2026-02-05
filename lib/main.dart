@@ -26,7 +26,6 @@ void main() async {
 
   final statsService = UserStatsService();
   await statsService.updateLoginStreak();
-
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -40,7 +39,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ProfileState()),
-        Provider(create: (context) => FirebaseChatService()),
+        // Provider(create: (context) => FirebaseChatService()),
       ],
       child: const MyApp(),
     ),

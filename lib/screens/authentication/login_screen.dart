@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sophia_path/models/user/user.dart';
 import 'package:sophia_path/navigation_screen.dart';
+import 'package:sophia_path/screens/register_screen.dart';
 import 'package:sophia_path/services/user_preferences_services.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   @override
   void dispose() {
     _emailController.dispose();
@@ -43,7 +45,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // 🔹 TRY to load user profile from Firestore (but don't fail if it doesn't exist)
       User? localUser;
-
+      _firestore.collection("Users").doc(uid).set({
+        'uid': uid,
+        'email': user.email,
+      });
       try {
         final doc = await FirebaseFirestore.instance
             .collection('users')
@@ -58,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
             username:
                 data['username'] ?? user.email?.split('@').first ?? 'User',
             fullName: data['fullName'] ?? 'User',
-            tag: data['tag'] ?? 'Member',
+            tag: data['tag'] ?? 'Student',
             age: data['age'] ?? 0,
             sex: data['sex'] ?? 'Rather not say',
             profileImage:
@@ -82,8 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
           username:
               user.email?.split('@').first ?? 'user_${uid.substring(0, 6)}',
           fullName: user.displayName ?? 'User',
-          tag: 'Member',
-          age: 0,
+          tag: 'Student',
+          age: 21,
           sex: 'Rather not say',
           profileImage: 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
           achievementsProgress: List.filled(13, 0.0),
@@ -136,15 +141,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.brightness_6),
-            onPressed: widget.onToggleTheme,
-          ),
-        ],
-      ),
+      // appBar: AppBar(
+      //   title: const Text('Login'),
+      //   actions: [
+      //     IconButton(
+      //       icon: const Icon(Icons.brightness_6),
+      //       onPressed: widget.onToggleTheme,
+      //     ),
+      //   ],
+      // ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -173,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
+                  obscureText: true, // make it points
                   decoration: const InputDecoration(
                     labelText: 'Password',
                     border: OutlineInputBorder(),
@@ -193,6 +198,26 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const CircularProgressIndicator()
                         : const Text('Login'),
                   ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Already have an account?'),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MyAuthScreen(
+                              onToggleTheme: widget.onToggleTheme,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text('Sign Up'),
+                    ),
+                  ],
                 ),
               ],
             ),

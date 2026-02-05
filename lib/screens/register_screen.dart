@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:sophia_path/screens/authentication/login_screen.dart';
 import 'dart:io';
 import '../models/user/user.dart';
-import '../services/course/database_helper.dart';
 import '../services/course/scores_repo.dart';
 import '../services/course/user_stats_service.dart';
 import '../services/user_preferences_services.dart';
@@ -34,7 +33,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
@@ -372,13 +371,16 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         if (email.isEmpty || password.isEmpty) {
           throw Exception('Email and password are required');
         }
-
         // Create user with email/password
         final credential = await firebase_auth.FirebaseAuth.instance
             .createUserWithEmailAndPassword(email: email, password: password);
 
         final firebaseUser = credential.user!;
         _firebaseUid = firebaseUser.uid;
+        _firestore.collection("Users").doc(_firebaseUid).set({
+          'uid': _firebaseUid,
+          'email': email,
+        });
 
         // Reserve username (skip if Firestore not enabled)
         if (_useFirestore) {
@@ -603,28 +605,31 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isEditing ? 'Edit Profile' : 'Create Your Account',
-          style: GoogleFonts.poppins(),
-        ),
-        leading: widget.isEditing
-            ? IconButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => NavigationScreen(
-                        onToggleTheme: widget.onToggleTheme,
-                        selectedIndex: 1,
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.arrow_back),
-              )
-            : null,
-      ),
+      appBar: widget.isEditing
+          ? AppBar(
+              title: Text(
+                widget.isEditing ? 'Edit Profile' : 'Create Your Account',
+                style: GoogleFonts.poppins(),
+              ),
+              centerTitle: true,
+              leading: widget.isEditing
+                  ? IconButton(
+                      onPressed: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => NavigationScreen(
+                              onToggleTheme: widget.onToggleTheme,
+                              selectedIndex: 1,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_back),
+                    )
+                  : null,
+            )
+          : null,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -634,16 +639,18 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                 child: Column(
                   children: [
                     if (!widget.isEditing) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 40),
                       const Text(
                         'Welcome! Create your account',
-                        style: TextStyle(fontSize: 18),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
                     ],
-
-                    _buildAvatar(),
+                    if (widget.isEditing) _buildAvatar(),
                     const SizedBox(height: 30),
 
                     // 🔐 EMAIL FIELD (Always visible for new users)
@@ -673,7 +680,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                     if (!widget.isEditing)
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: true, // make password points (hidden)
                         decoration: const InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(),
@@ -690,19 +697,20 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                         },
                       ),
 
-                    if (!widget.isEditing) const SizedBox(height: 20),
+                    if (!widget.isEditing) const SizedBox(height: 16),
+                    // if (widget.isEditing) ...[
+                    //   const Divider(),
+                    //   const SizedBox(height: 10),
 
-                    const Divider(),
-                    const SizedBox(height: 10),
-
-                    const Text(
-                      'Profile Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    //   const Text(
+                    //     'Profile Information',
+                    //     style: TextStyle(
+                    //       fontSize: 18,
+                    //       fontWeight: FontWeight.bold,
+                    //     ),
+                    //   ),
+                    //   const SizedBox(height: 20),
+                    // ],
 
                     // Username field
                     TextFormField(
@@ -726,7 +734,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-
                     TextFormField(
                       controller: _fullNameController,
                       decoration: const InputDecoration(
@@ -741,7 +748,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                           : null,
                     ),
                     const SizedBox(height: 16),
-
                     TextFormField(
                       controller: _ageController,
                       keyboardType: TextInputType.number,
@@ -759,7 +765,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                           : null,
                     ),
                     const SizedBox(height: 16),
-
                     DropdownButtonFormField<String>(
                       initialValue: _selectedGender,
                       decoration: const InputDecoration(
@@ -779,7 +784,9 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      initialValue: _tagController.text.isEmpty
+                      initialValue:
+                          _tagController.text.isEmpty ||
+                              _tagController.text == "Member"
                           ? null
                           : _tagController.text,
                       decoration: const InputDecoration(
@@ -793,13 +800,16 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                           )
                           .toList(),
                       onChanged: (v) => _tagController.text = v!,
-                      validator: (v) => v == null || v.isEmpty
+                      validator: (v) =>
+                          v == null ||
+                              v.isEmpty ||
+                              _tagController.text ==
+                                  "Member" // to fix a bug that happened , we could add type Member later on
                           ? "Please select a profession"
                           : null,
                     ),
 
-                    const SizedBox(height: 20),
-
+                    // const SizedBox(height: 20),
                     if (_errorMessage != null)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -823,32 +833,30 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                         ),
                       ),
 
-                    // Add this note about Firestore
-                    if (!_useFirestore && !widget.isEditing)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.amber.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info, color: Colors.amber),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Note: Cloud sync is disabled. Set up Firestore to enable data backup.',
-                                style: TextStyle(color: Colors.amber.shade800),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
+                    // // Add this note about Firestore
+                    // // if (!_useFirestore && !widget.isEditing)
+                    // //   Container(
+                    // //     padding: const EdgeInsets.all(12),
+                    // //     margin: const EdgeInsets.only(bottom: 10),
+                    // //     decoration: BoxDecoration(
+                    // //       color: Colors.amber.shade50,
+                    // //       borderRadius: BorderRadius.circular(8),
+                    // //       border: Border.all(color: Colors.amber.shade200),
+                    // //     ),
+                    // //     child: Row(
+                    // //       children: [
+                    // //         const Icon(Icons.info, color: Colors.amber),
+                    // //         const SizedBox(width: 10),
+                    // //         Expanded(
+                    // //           child: Text(
+                    // //             'Note: Cloud sync is disabled. Set up Firestore to enable data backup.',
+                    // //             style: TextStyle(color: Colors.amber.shade800),
+                    // //           ),
+                    // //         ),
+                    // //       ],
+                    // //     ),
+                    // //   ),
                     const SizedBox(height: 20),
-
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -876,7 +884,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                               ),
                       ),
                     ),
-
                     if (!widget.isEditing) ...[
                       const SizedBox(height: 20),
                       Row(
@@ -885,7 +892,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                           const Text('Already have an account?'),
                           TextButton(
                             onPressed: () {
-                              Navigator.push(
+                              Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
                                   builder: (_) => LoginScreen(
@@ -899,7 +906,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                         ],
                       ),
                     ],
-
                     if (widget.isEditing) ...[
                       const SizedBox(height: 20),
                       SizedBox(
