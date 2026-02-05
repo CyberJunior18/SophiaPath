@@ -1,23 +1,23 @@
-import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:sophia_path/models/chat/chat_message.dart';
 import 'package:sophia_path/models/user/user.dart';
+import 'package:sophia_path/services/auth_service.dart';
 import 'package:sophia_path/services/chat/firebase_chat_service.dart';
-import 'package:sophia_path/services/profile_state.dart';
 
 class ChatScreen extends StatefulWidget {
   final User? chatUser;
   final String? chatId;
   final String? chatRoomId; // ADD THIS PARAMETER
   final String receiverEmail;
+  final String receiverID;
   const ChatScreen({
     super.key,
     this.chatUser,
     this.chatId,
     this.chatRoomId,
-    required this.receiverEmail, // ADD THIS
+    required this.receiverEmail,
+    required this.receiverID, // ADD THIS
   });
 
   @override
@@ -25,9 +25,201 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _messageController = TextEditingController();
+  final ChatService _chatService = ChatService();
+  final AuthService _authService = AuthService();
+  void _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    try {
+      await _chatService.sendMessage(widget.receiverID, text);
+      _messageController.clear();
+    } catch (e) {
+      print("Error sending message: $e");
+      // Optional: Show error to user
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to send message")));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Text(widget.receiverEmail));
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.receiverEmail)),
+      body: Column(
+        children: [
+          //display all messages
+          Expanded(child: _buildMessageList()),
+          _buildUserInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageList() {
+    String senderID = _authService.currentUserUid!;
+    return StreamBuilder(
+      stream: _chatService.getMessages(senderID, widget.receiverID),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text("Error");
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Text("Loading..");
+        }
+        return ListView(
+          children: snapshot.data!.docs
+              .map((doc) => _buildMessageItem(doc))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    final dateTime = timestamp.toDate();
+    return '${dateTime.hour.toString().padLeft(2, "0")}:${dateTime.minute.toString().padLeft(2, "0")}';
+  }
+
+  Widget _buildMessageItem(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    // return (Text(data["message"]));
+    final isMe = data['senderID'] == _authService.currentUserUid;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      child: GestureDetector(
+        // onLongPress: () => _showReactions(message),
+        // onTap: () => _showMessageOptions(message),
+        child: Row(
+          mainAxisAlignment: isMe
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            if (!isMe)
+              CircleAvatar(
+                radius: 16,
+                backgroundImage:
+                    widget.chatUser?.profileImage.isNotEmpty == true
+                    ? NetworkImage(widget.chatUser!.profileImage)
+                    : const NetworkImage(
+                        'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
+                      ),
+              ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isMe
+                      ? Colors.blue
+                      : const Color.fromARGB(255, 13, 80, 47),
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(20),
+                    topRight: const Radius.circular(20),
+                    bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+                    bottomRight: isMe ? Radius.zero : const Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!isMe)
+                      Text(
+                        data['senderID'],
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          // color: theme.textTheme.bodySmall!.color,
+                        ),
+                      ),
+                    Text(
+                      data["message"],
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        // color: isMe
+                        //     ? Colors.white
+                        //     : theme.textTheme.bodyMedium!.color,
+                      ),
+                    ),
+
+                    // if (message.reactions.isNotEmpty)
+                    //   Container(
+                    //     margin: const EdgeInsets.only(top: 4),
+                    //     child: Wrap(
+                    //       spacing: 4,
+                    //       children: message.reactions.entries.map((entry) {
+                    //         return Container(
+                    //           padding: const EdgeInsets.symmetric(
+                    //             horizontal: 8,
+                    //             vertical: 4,
+                    //           ),
+                    //           decoration: BoxDecoration(
+                    //             color: isMe
+                    //                 ? Colors.blue[100]
+                    //                 : Colors.green[100],
+                    //             borderRadius: BorderRadius.circular(16),
+                    //           ),
+                    //           child: Row(
+                    //             mainAxisSize: MainAxisSize.min,
+                    //             children: [
+                    //               Text(
+                    //                 '${entry.value}',
+                    //                 style: const TextStyle(fontSize: 14),
+                    //               ),
+                    //               const SizedBox(width: 4),
+                    //               Text(
+                    //                 '1',
+                    //                 style: TextStyle(
+                    //                   fontSize: 10,
+                    //                   color: Colors.grey[700],
+                    //                 ),
+                    //               ),
+                    //             ],
+                    //           ),
+                    //         );
+                    //       }).toList(),
+                    //     ),
+                    //   ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatTimestamp(data["timestamp"]),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: isMe ? Colors.white70 : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserInput() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: "Type a message",
+              border: OutlineInputBorder(),
+            ),
+            controller: _messageController,
+            obscureText: false,
+          ),
+        ),
+        IconButton(onPressed: _sendMessage, icon: Icon(Icons.arrow_upward)),
+      ],
+    );
   }
 }
 // class _ChatScreenState extends State<ChatScreen> {
@@ -358,7 +550,8 @@ class _ChatScreenState extends State<ChatScreen> {
 //                       final message = _messages[_messages.length - 1 - index];
 //                       final isMe = message.senderId == _currentUser.firebaseUid;
 
-//                       return Padding(
+//                       return
+// Padding(
 //                         padding: const EdgeInsets.symmetric(
 //                           vertical: 4,
 //                           horizontal: 16,

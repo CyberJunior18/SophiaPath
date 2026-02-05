@@ -448,7 +448,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             context,
             MaterialPageRoute(
               builder: (ctx) {
-                return ChatScreen(receiverEmail: userData["email"]);
+                return ChatScreen(
+                  receiverEmail: userData["email"],
+                  receiverID: userData['uid'],
+                );
               },
             ),
           );
