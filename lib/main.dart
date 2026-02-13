@@ -20,43 +20,66 @@ import 'widgets/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    await ScoresRepository.initializeScores(coursesInfo.length, 10);
+  // ✅ Run these in background to not block UI
+  Future.microtask(() async {
+    try {
+      await ScoresRepository.initializeScores(coursesInfo.length, 10);
+    } catch (e) {
+      print('Scores init error: $e');
+    }
   });
 
-  final statsService = UserStatsService();
-  await statsService.updateLoginStreak();
+  Future.microtask(() async {
+    try {
+      final statsService = UserStatsService();
+      await statsService.updateLoginStreak();
+    } catch (e) {
+      print('Stats update error: $e');
+    }
+  });
 
- if (kIsWeb) {
-    // Web: Use sqflite_ffi_web
-    databaseFactory = databaseFactoryFfiWeb;
-  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    // Desktop: Use sqflite_common_ffi
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+  // Database initialization
+  try {
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+  } catch (e) {
+    print('Database init error: $e');
   }
 
-  // Initialize Firebase only on supported platforms
-  if (kIsWeb) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.web, // Use web options
-    );
-  } else if (!Platform.isLinux && !Platform.isWindows) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+  // Firebase initialization with timeout
+  try {
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.web,
+      ).timeout(const Duration(seconds: 5));
+      print('✅ Firebase Web initialized');
+    } else if (!Platform.isLinux && !Platform.isWindows) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      ).timeout(const Duration(seconds: 5));
+      print('✅ Firebase Mobile initialized');
+    }
+  } catch (e) {
+    print('⚠️ Firebase init error (continuing anyway): $e');
   }
 
-    // Initialize SharedPreferences for chat
-  await SharedPreferences.getInstance();
+  // SharedPreferences
+  try {
+    await SharedPreferences.getInstance();
+    print('✅ SharedPreferences initialized');
+  } catch (e) {
+    print('SharedPreferences error: $e');
+  }
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ProfileState()),
-if (!kIsWeb && !Platform.isLinux && !Platform.isWindows)
-        Provider(create: (context) => ()),
-
+        // ✅ Remove the broken provider
       ],
       child: const MyApp(),
     ),

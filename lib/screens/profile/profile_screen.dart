@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sophia_path/widgets/profileImage.dart';
 import '../../models/data.dart';
 import 'achievements_screen.dart';
 import '../../services/course/user_stats_service.dart';
@@ -252,14 +253,10 @@ Keep learning with me! 💪
                     width: 3,
                   ),
                 ),
-                child: CircleAvatar(
-                  radius: isSmallScreen
-                      ? screenWidth * 0.18
-                      : screenWidth * 0.15,
-                  backgroundImage: displayUser.profileImage.startsWith('http')
-                      ? NetworkImage(displayUser.profileImage)
-                      : FileImage(File(displayUser.profileImage))
-                            as ImageProvider,
+                child: ProfileImage(
+                  imageUrl: displayUser.profileImage,
+                  radius: 100,
+                  name: displayUser.fullName,
                 ),
               ),
               SizedBox(height: screenHeight * 0.02),
@@ -507,7 +504,9 @@ Keep learning with me! 💪
           borderRadius: BorderRadius.circular(12),
           color: isCompleted
               ? achievement.color.withValues(alpha: 0.15)
-              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
           border: Border.all(
             color: isCompleted
                 ? achievement.color.withValues(alpha: 0.3)

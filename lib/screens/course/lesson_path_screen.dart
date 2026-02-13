@@ -1,9 +1,11 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/data.dart';
-import '../../models/course/question.dart';
+import 'package:sophia_path/models/data.dart';
+import 'package:sophia_path/models/course/question.dart';
 
 import '../../models/course/lesson.dart';
 import '../../services/course/database_helper.dart';
@@ -36,7 +38,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   int _completedLessons = 0;
   bool _isLoading = true;
   final UserStatsService _statsService = UserStatsService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // ✅ Get current user ID
+  String? get _userId => _auth.currentUser?.uid;
   Future<void> _loadScores() async {
     final int currentCourseIndex = coursesInfo.indexOf(widget.course);
     courseIndex = currentCourseIndex;
@@ -63,6 +69,99 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     });
   }
 
+  // ✅ NEW: Sync lesson progress to Firebase
+  Future<void> _syncProgressToFirebase(
+    int courseIndex,
+    int completedLessons,
+    List<int> scores,
+  ) async {
+    String? uid = _userId;
+    if (uid == null) return;
+
+    try {
+      // Convert scores list to a map for Firebase
+      Map<String, int> scoresMap = {};
+      for (int i = 0; i < scores.length; i++) {
+        scoresMap[i.toString()] = scores[i];
+      }
+
+      await _firestore.collection('Users').doc(uid).update({
+        'coursesProgress.$courseIndex': completedLessons,
+        'lessonScores.$courseIndex': scoresMap,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print(
+        '✅ Synced progress to Firebase: Course $courseIndex, Lessons: $completedLessons',
+      );
+    } catch (e) {
+      print('❌ Error syncing to Firebase: $e');
+    }
+  }
+
+  // ✅ NEW: Load progress from Firebase
+  Future<void> _loadProgressFromFirebase() async {
+    String? uid = _userId;
+    if (uid == null) return;
+
+    try {
+      DocumentSnapshot userDoc = await _firestore
+          .collection('Users')
+          .doc(uid)
+          .get();
+
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+
+        // Load course progress
+        if (data['coursesProgress'] != null) {
+          Map<String, dynamic> progress = data['coursesProgress'];
+          int firebaseCompleted = progress[courseIndex.toString()] ?? 0;
+
+          // If Firebase has more progress, update local
+          if (firebaseCompleted > _completedLessons) {
+            setState(() {
+              _completedLessons = firebaseCompleted;
+            });
+
+            // Update unlocked lessons
+            for (int i = 0; i < lessons.length; i++) {
+              if (i < _completedLessons) {
+                unlocked[i] = true;
+              }
+            }
+          }
+        }
+
+        // Load lesson scores
+        if (data['lessonScores'] != null &&
+            data['lessonScores'][courseIndex.toString()] != null) {
+          Map<String, dynamic> scoresMap =
+              data['lessonScores'][courseIndex.toString()];
+          List<int> firebaseScores = List.filled(lessons.length, 0);
+
+          scoresMap.forEach((key, value) {
+            int index = int.tryParse(key) ?? -1;
+            if (index >= 0 && index < lessons.length) {
+              firebaseScores[index] = value as int;
+            }
+          });
+
+          // Update local scores if Firebase has higher scores
+          setState(() {
+            for (int i = 0; i < lessons.length; i++) {
+              if (firebaseScores[i] > courseScores[i]) {
+                courseScores[i] = firebaseScores[i];
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading from Firebase: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +180,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     await _findDatabaseCourse();
 
     await _loadScores();
+
+    // ✅ NEW: Load progress from Firebase
+    await _loadProgressFromFirebase();
+
     unlocked = List.generate(lessons.length, (index) {
       return index == 0 || index <= _completedLessons;
     });
@@ -220,6 +323,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           if (newCompletedCount >= lessons.length) {}
 
           await _updateCourseProgress(_completedLessons);
+          await _syncProgressToFirebase(
+            currentCourseIndex,
+            _completedLessons,
+            updatedScores,
+          );
         }
       } else {
         if (!mounted) return;
@@ -306,6 +414,20 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         backgroundColor: const Color(0xFF3D5CFF),
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            onPressed: () async {
+              final currentCourseIndex = coursesInfo.indexOf(widget.course);
+              await _syncProgressToFirebase(
+                currentCourseIndex,
+                _completedLessons,
+                courseScores,
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Progress synced to cloud!')),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: Center(

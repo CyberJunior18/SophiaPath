@@ -193,11 +193,13 @@
 // }
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:sophia_path/models/chat/message.dart';
+
+import '../../models/chat/chat_contact.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
   // Map of users (email , id)
   Stream<List<Map<String, dynamic>>> getUsersStream() {
     return _firestore.collection("Users").snapshots().map((snapshot) {
@@ -208,33 +210,172 @@ class ChatService {
     });
   }
 
-  Future<void> sendMessage(String receiverID, message) async {
-    //get current users info
-    final String currentUserID = _auth.currentUser!.uid;
-    final String currentUserEmail = _auth.currentUser!.email!;
-    final Timestamp timestamp = Timestamp.now();
+  // ✅ NEW: Helper method to get current user's name from Firestore
+  Future<String> _getCurrentUserName() async {
+    try {
+      final String currentUserID = _auth.currentUser!.uid;
+      DocumentSnapshot userDoc = await _firestore
+          .collection("Users")
+          .doc(currentUserID)
+          .get();
 
-    //new message
-    Message newMessage = Message(
-      senderID: currentUserID,
-      senderEmail: currentUserEmail,
-      receiverID: receiverID,
-      message: message,
-      timestamp: timestamp,
-    );
-    //chat room id for the two users
-    List<String> ids = [currentUserID, receiverID];
-    ids.sort();
-    String chatRoomID = ids.join('_');
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        // Try different field names that might contain the name
+        return data['fullName'] ??
+            data['FullName'] ??
+            data['username'] ??
+            data['Username'] ??
+            data['name'] ??
+            'User';
+      }
+      return 'User';
+    } catch (e) {
+      print('Error getting user name: $e');
+      return 'User';
+    }
+  }
 
-    //add new message to db
-    await _firestore
+  // ✅ FIXED: Now gets actual username instead of hardcoded "tester"
+  Future<void> sendMessage(String receiverID, String message) async {
+    try {
+      // Get current users info
+      final String currentUserID = _auth.currentUser!.uid;
+      final String currentUserEmail = _auth.currentUser!.email!;
+      final String currentUserName =
+          await _getCurrentUserName(); // ✅ Get actual name
+      final Timestamp timestamp = Timestamp.now();
+
+      // Create message with real senderName
+
+      // Create chat room ID
+      List<String> ids = [currentUserID, receiverID];
+      ids.sort();
+      String chatRoomID = ids.join('_');
+
+      // Add new message to db
+      await _firestore
+          .collection("chat_rooms")
+          .doc(chatRoomID)
+          .collection("messages")
+          .add({
+            'senderID': currentUserID,
+            'senderName': currentUserName,
+            'receiverID': receiverID,
+            'message': message,
+            'timestamp': timestamp,
+            'read': false,
+          });
+      final chatRoomDoc = await _firestore
+          .collection("chat_rooms")
+          .doc(chatRoomID)
+          .get();
+      int currentUnread = 0;
+
+      if (chatRoomDoc.exists) {
+        final data = chatRoomDoc.data();
+        currentUnread = data?['unreadCount'] ?? 0;
+      }
+
+      // Update chat room metadata
+      await _firestore.collection("chat_rooms").doc(chatRoomID).set({
+        'lastMessage': message,
+        'lastMessageTime': timestamp,
+        'lastSenderId': currentUserID,
+        'participants': [currentUserID, receiverID],
+        'unreadCount': currentUnread + 1, // Increment total unread
+        'lastMessageSender': currentUserName,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error sending message: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
+    try {
+      // Reset unread count for this chat room
+      await _firestore.collection("chat_rooms").doc(chatRoomId).update({
+        'unreadCount': 0,
+      });
+
+      // Mark individual messages as read
+      final messages = await _firestore
+          .collection("chat_rooms")
+          .doc(chatRoomId)
+          .collection("messages")
+          .where('read', isEqualTo: false)
+          .where('receiverID', isEqualTo: userId)
+          .get();
+
+      for (var doc in messages.docs) {
+        await doc.reference.update({'read': true});
+      }
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
+  }
+
+  Stream<List<ChatContact>> getChatContacts() {
+    final String currentUserId = _auth.currentUser!.uid;
+
+    return _firestore
         .collection("chat_rooms")
-        .doc(chatRoomID)
-        .collection("messages")
-        .add(newMessage.toMap());
+        .where('participants', arrayContains: currentUserId)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          List<ChatContact> contacts = [];
 
-    //get the messages
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            final participants = List<String>.from(data['participants'] ?? []);
+            final otherParticipantId = participants.firstWhere(
+              (id) => id != currentUserId,
+              orElse: () => '',
+            );
+
+            if (otherParticipantId.isEmpty) continue;
+
+            // Get other user's info for display name
+            final userDoc = await _firestore
+                .collection('Users')
+                .doc(otherParticipantId)
+                .get();
+            final userData = userDoc.data() ?? {};
+
+            contacts.add(
+              ChatContact(
+                userId: otherParticipantId,
+                chatId: doc.id,
+                lastMessageTime: (data['lastMessageTime'] as Timestamp)
+                    .toDate(),
+                lastMessage: data['lastMessage'] ?? '',
+                unreadCount: data['unreadCount'] ?? 0,
+              ),
+            );
+          }
+
+          return contacts;
+        });
+  }
+
+  // Get unread count stream for a specific user
+  Stream<int> getUnreadCount(String userId) {
+    final String currentUserId = _auth.currentUser!.uid;
+
+    return _firestore
+        .collection("chat_rooms")
+        .where('participants', arrayContains: currentUserId)
+        .snapshots()
+        .map((snapshot) {
+          int totalUnread = 0;
+          for (var doc in snapshot.docs) {
+            final data = doc.data();
+            totalUnread += (data['unreadCount'] as int);
+          }
+          return totalUnread;
+        });
   }
 
   Stream<QuerySnapshot> getMessages(String userID, otherUserID) {
@@ -245,7 +386,7 @@ class ChatService {
         .collection("chat_rooms")
         .doc(chatRoomID)
         .collection("messages")
-        .orderBy("timestamp", descending: false)
+        .orderBy("timestamp", descending: true)
         .snapshots();
   }
 }

@@ -4,10 +4,11 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../screens/register_screen.dart';
-import 'tobeimplementedAlert.dart';
+import 'package:sophia_path/screens/register_screen.dart';
+import 'package:sophia_path/widgets/profileImage.dart';
+import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
 import 'package:provider/provider.dart';
-import '../services/profile_state.dart';
+import 'package:sophia_path/services/profile_state.dart';
 
 import '../models/user/user.dart';
 import '../screens/profile/achievements_screen.dart';
@@ -138,49 +139,60 @@ AppBar screenAppBar(
             const PopupMenuDivider(),
             PopupMenuItem(
               onTap: () async {
-                // showDialog(
-                //   context: context,
-                //   builder: (ctx) {
-                //     return toBeImplemented(context);
-                //   },
-                // );
-                // In UserPreferencesService or a separate AuthService
-
                 try {
                   // 1. Update Firestore status (if using)
                   final currentUser = FirebaseAuth.instance.currentUser;
                   if (currentUser != null) {
                     try {
+                      // ✅ FIXED: Use 'Users' (capital U) to match your collection
                       await FirebaseFirestore.instance
-                          .collection('users')
+                          .collection(
+                            'Users',
+                          ) // Changed from 'users' to 'Users'
                           .doc(currentUser.uid)
                           .update({
                             'isOnline': false,
                             'lastSeen': FieldValue.serverTimestamp(),
                           });
+                      print('✅ User status updated to offline');
                     } catch (e) {
-                      print('Error updating Firestore status: $e');
+                      print('⚠️ Error updating Firestore status: $e');
+                      // Continue with logout even if this fails
                     }
                   }
 
                   // 2. Sign out from Firebase Auth
                   await FirebaseAuth.instance.signOut();
+                  print('✅ Firebase Auth sign out successful');
 
                   // 3. Clear local user data
                   await UserPreferencesService.instance.clearAllData();
+                  print('✅ Local data cleared');
 
-                  print('Logout successful');
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) {
-                        return MyAuthScreen(onToggleTheme: onToggleTheme);
-                      },
-                    ),
-                  );
+                  // 4. Navigate to login screen
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) {
+                          return MyAuthScreen(onToggleTheme: onToggleTheme);
+                        },
+                      ),
+                      (route) => false, // Remove all previous routes
+                    );
+                  }
                 } catch (e) {
-                  print('Error during logout: $e');
-                  rethrow;
+                  print('❌ Error during logout: $e');
+
+                  // Show error message to user
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logout failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
               value: 'logout',
@@ -193,24 +205,13 @@ AppBar screenAppBar(
               ),
             ),
           ],
-          child: CircleAvatar(
+          child: ProfileImage(
+            imageUrl: user.profileImage,
             radius: 25,
-            backgroundImage: _getProfileImage(user.profileImage),
+            name: user.fullName,
           ),
         ),
       ),
     ],
   );
-}
-
-ImageProvider _getProfileImage(String imagePath) {
-  if (imagePath.startsWith('http')) {
-    return NetworkImage(imagePath);
-  } else if (imagePath.isNotEmpty) {
-    return FileImage(File(imagePath));
-  } else {
-    return const NetworkImage(
-      'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg',
-    );
-  }
 }

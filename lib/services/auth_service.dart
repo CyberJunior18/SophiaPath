@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:flutter/material.dart';
 
@@ -75,13 +76,11 @@ ValueNotifier<AuthService> authService = ValueNotifier(AuthService());
 //     await _auth.currentUser!.updatePassword(newPassword);
 //   }
 // }
-
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final UserService _userService = UserService();
-  String? get currentUserUid => _auth.currentUser?.uid;
 
-  // Get current user's email
+  String? get currentUserUid => _auth.currentUser?.uid;
   String? get currentUserEmail => _auth.currentUser?.email;
 
   Future<User?> signUpWithEmail(
@@ -105,6 +104,10 @@ class AuthService {
       await _userService.saveUser(userWithUid);
 
       return userWithUid;
+    } on FirebaseAuthException catch (e) {
+      // Handle specific Firebase Auth errors
+      print('Firebase Auth error: ${e.code} - ${e.message}');
+      throw _handleAuthError(e);
     } catch (e) {
       print('Sign up error: $e');
       rethrow;
@@ -119,10 +122,25 @@ class AuthService {
       );
 
       // Update user presence
-      await _userService.updateUserPresence(userCredential.user!.uid, true);
+      try {
+        await _userService.updateUserPresence(userCredential.user!.uid, true);
+      } catch (e) {
+        print('⚠️ Presence update error: $e');
+        // Continue even if presence update fails
+      }
 
       // Get user data from Firestore
-      return await _userService.getUser(userCredential.user!.uid);
+      final user = await _userService.getUser(userCredential.user!.uid);
+
+      if (user == null) {
+        print('⚠️ User exists in Auth but not in Firestore');
+        // You might want to create a basic profile here
+      }
+
+      return user;
+    } on FirebaseAuthException catch (e) {
+      print('Firebase Auth error: ${e.code} - ${e.message}');
+      throw _handleAuthError(e);
     } catch (e) {
       print('Sign in error: $e');
       rethrow;
@@ -130,9 +148,67 @@ class AuthService {
   }
 
   Future<void> signOut(String? firebaseUid) async {
-    if (firebaseUid != null) {
-      await _userService.updateUserPresence(firebaseUid, false);
+    try {
+      if (firebaseUid != null) {
+        try {
+          await _userService.updateUserPresence(firebaseUid, false);
+        } catch (e) {
+          print('⚠️ Presence update on signout error: $e');
+        }
+      }
+      await _auth.signOut();
+    } catch (e) {
+      print('Sign out error: $e');
+      rethrow;
     }
-    await _auth.signOut();
+  }
+
+  // ✅ NEW: Helper to handle auth errors
+  String _handleAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'This email is already registered. Please login instead.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'user-not-found':
+        return 'No account found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'invalid-credential':
+        return 'Invalid email or password.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection.';
+      default:
+        return 'Authentication failed: ${e.message}';
+    }
+  }
+
+  // ✅ NEW: Check if user exists in Firestore
+  Future<bool> userExistsInFirestore(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Users') // Make sure this matches your collection name
+          .doc(uid)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      print('Error checking user existence: $e');
+      return false;
+    }
+  }
+
+  // ✅ NEW: Get current user with error handling
+  Future<User?> getCurrentUser() async {
+    try {
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser == null) return null;
+
+      return await _userService.getUser(firebaseUser.uid);
+    } catch (e) {
+      print('Error getting current user: $e');
+      return null;
+    }
   }
 }

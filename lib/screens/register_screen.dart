@@ -377,10 +377,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
 
         final firebaseUser = credential.user!;
         _firebaseUid = firebaseUser.uid;
-        _firestore.collection("Users").doc(_firebaseUid).set({
-          'uid': _firebaseUid,
-          'email': email,
-        });
+        await _storeUserInFirestore(firebaseUser.uid);
+        // _firestore.collection("Users").doc(_firebaseUid).set({
+        //   'uid': _firebaseUid,
+        //   'email': email,
+        // });
 
         // Reserve username (skip if Firestore not enabled)
         if (_useFirestore) {
@@ -489,7 +490,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
             : _profileImage,
         'achievementsProgress': List.filled(13, 0.0),
         'registeredCourses': [],
-        'registedCoursesIndexes': [],
+        'registedCoursesIndexes': {},
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
@@ -497,11 +498,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       };
 
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection('Users')
           .doc(uid)
-          .set(userData);
+          .set(userData); // stores data in firebase database called Users
 
-      print('User saved to Firestore successfully');
+      print('✅ User saved to Firestore successfully with all data');
     } catch (e) {
       print('Error saving to Firestore: $e');
       rethrow;

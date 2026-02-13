@@ -8,7 +8,6 @@ import 'user_tile.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat/firebase_chat_service.dart';
 
-
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
 
@@ -437,26 +436,26 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     Map<String, dynamic> userData,
     BuildContext context,
   ) {
-    if (userData["email"] != _authService.currentUserEmail) {
-      return UserTile(
-        text: userData["email"],
-
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (ctx) {
-                return ChatScreen(
-                  receiverEmail: userData["email"],
-                  receiverID: userData['uid'],
-                );
-              },
-            ),
-          );
-        },
-      );
+    if (userData["email"] == _authService.currentUserEmail) {
+      return Container();
     }
-    return Container();
+    return UserTile(
+      text: userData["email"],
+
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) {
+              return ChatScreen(
+                receiverEmail: userData["email"],
+                receiverID: userData['uid'],
+              );
+            },
+          ),
+        );
+      },
+    );
   }
   // Widget _buildChatItem(ChatContact contact) {
   //   final theme = Theme.of(context);

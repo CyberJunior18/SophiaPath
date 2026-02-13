@@ -18,6 +18,10 @@ class User {
   String? status;
   String? bio;
 
+  // ✅ FIXED: Use the constant consistently
+  static const String defaultProfileImage =
+      'https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256';
+
   User({
     this.uid,
     this.firebaseUid,
@@ -25,8 +29,8 @@ class User {
     required this.tag,
     required this.age,
     required this.sex,
-    this.profileImage =
-        "https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg", // Default image
+    // ✅ FIXED: Use defaultProfileImage constant instead of hardcoded URL
+    this.profileImage = defaultProfileImage,
     required this.achievementsProgress,
     required this.registeredCourses,
     required this.fullName,
@@ -54,7 +58,7 @@ class User {
     return {
       'firebaseUid': firebaseUid,
       'username': username,
-      'fullName': fullName, // Changed from 'firstName' to 'fullName'
+      'fullName': fullName,
       'tag': tag,
       'age': age,
       'gender': sex,
@@ -89,13 +93,17 @@ class User {
 
     return User(
         uid: map['uid']?.toString(),
-        firebaseUid: map['firebaseUid']?.toString(),
-        username: map['username'] ?? '',
-        fullName: map['fullName'] ?? '', // Read only from 'fullName'
-        tag: map['tag'] ?? '',
-        age: (map['age'] as num?)?.toInt() ?? 0,
-        sex: map['gender'] ?? map['sex'] ?? '',
-        profileImage: map['profilePicture'] ?? map['profileImage'] ?? '',
+        firebaseUid: map['firebaseUid']?.toString() ?? map['uid']?.toString(),
+        username: map['username'] ?? map['Username'] ?? '',
+        fullName: map['fullName'] ?? map['FullName'] ?? '',
+        tag: map['tag'] ?? map['Tag'] ?? 'Student',
+        age: (map['age'] as num?)?.toInt() ?? map['Age'] ?? 20,
+        sex: map['gender'] ?? map['sex'] ?? map['Sex'] ?? 'Rather not say',
+        profileImage:
+            map['profilePicture'] ??
+            map['profileImage'] ??
+            map['ProfileImage'] ??
+            defaultProfileImage,
         achievementsProgress: achievementsProgress,
         registeredCourses: registeredCourses,
         registedCoursesIndexes: registedCoursesIndexes,
@@ -111,7 +119,7 @@ class User {
   User copyWith({
     String? firebaseUid,
     String? username,
-    String? fullName, // Changed parameter name from 'firstname' to 'fullName'
+    String? fullName,
     String? tag,
     int? age,
     String? gender,
@@ -127,7 +135,7 @@ class User {
     return User(
         firebaseUid: firebaseUid ?? this.firebaseUid,
         username: username ?? this.username,
-        fullName: fullName ?? this.fullName, // Use the new parameter name
+        fullName: fullName ?? this.fullName,
         tag: tag ?? this.tag,
         age: age ?? this.age,
         sex: gender ?? sex,
@@ -143,21 +151,50 @@ class User {
       ..bio = bio ?? this.bio;
   }
 
-  // Add these methods to your existing User class
   factory User.fromFirestore(Map<String, dynamic> data) {
     return User(
-      uid: data['uid'] ?? '',
-      firebaseUid: data['firebaseUid'] ?? data['uid'] ?? '',
-      username: data['username'] ?? '',
-      fullName: data['fullName'] ?? '',
-      tag: data['tag'] ?? '',
-      age: data['age'] ?? 0,
-      sex: data['sex'] ?? '',
-      profileImage: data['profileImage'] ?? '',
-      achievementsProgress: List<double>.from(data['achievementsProgress'] ?? []),
-      registeredCourses: [],
-      registedCoursesIndexes: List<int>.from(data['registedCoursesIndexes'] ?? []),
-    )..isOnline = data['isOnline'] ?? false;
+      uid: data['uid']?.toString() ?? '',
+      firebaseUid:
+          data['firebaseUid']?.toString() ?? data['uid']?.toString() ?? '',
+      username:
+          data['username']?.toString() ?? data['Username']?.toString() ?? '',
+      fullName:
+          data['fullName']?.toString() ?? data['FullName']?.toString() ?? '',
+      tag: data['tag']?.toString() ?? data['Tag']?.toString() ?? 'Student',
+      age: (data['age'] is num)
+          ? (data['age'] as num).toInt()
+          : (data['Age'] is num)
+          ? (data['Age'] as num).toInt()
+          : 20,
+      sex:
+          data['sex']?.toString() ??
+          data['Sex']?.toString() ??
+          'Rather not say',
+      profileImage:
+          data['profileImage']?.toString() ??
+          data['ProfileImage']?.toString() ??
+          User.defaultProfileImage,
+      achievementsProgress: _safeListDouble(data['achievementsProgress']),
+      registeredCourses: [], // Handle separately if needed
+      registedCoursesIndexes: _safeListInt(data['registedCoursesIndexes']),
+    )..isOnline = data['isOnline'] == true;
+  }
+
+  // ✅ Helper methods for safe list conversion
+  static List<double> _safeListDouble(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => (e as num).toDouble()).toList();
+    }
+    return [];
+  }
+
+  static List<int> _safeListInt(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => (e as num).toInt()).toList();
+    }
+    return [];
   }
 
   Map<String, dynamic> toFirestore() {
@@ -178,14 +215,14 @@ class User {
   }
 }
 
-//In case of error in user input this is the default user info
+// ✅ FIXED: Use defaultProfileImage constant here too
 final User sampleUser = User(
   username: "Mohammad Hammadi",
   fullName: "Mohammad",
   tag: "Software Engineer",
   age: 21,
   sex: "Male",
-  profileImage: "https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg",
+  profileImage: User.defaultProfileImage, // Use constant
   achievementsProgress: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   registeredCourses: [],
   registedCoursesIndexes: [],
