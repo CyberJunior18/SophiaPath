@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:sophia_path/screens/authentication/login_screen.dart';
+import 'authentication/login_screen.dart';
 import 'dart:io';
 import '../models/user/user.dart';
 import '../services/course/scores_repo.dart';

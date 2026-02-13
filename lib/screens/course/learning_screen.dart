@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/screens/course/course_info_screen.dart';
-import 'package:sophia_path/models/data.dart';
+import 'course_info_screen.dart';
+import '../../models/data.dart';
 import '../../services/course/database_helper.dart';
 
 class LearningScreen extends StatefulWidget {

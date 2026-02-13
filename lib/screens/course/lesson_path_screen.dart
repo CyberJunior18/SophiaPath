@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/models/course/question.dart';
+import '../../models/data.dart';
+import '../../models/course/question.dart';
 
 import '../../models/course/lesson.dart';
 import '../../services/course/database_helper.dart';

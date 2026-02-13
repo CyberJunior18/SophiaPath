@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/screens/course/lesson_path_screen.dart';
+import '../../models/data.dart';
+import 'lesson_path_screen.dart';
 import '../../services/course/database_helper.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';

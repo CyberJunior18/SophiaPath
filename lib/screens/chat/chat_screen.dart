@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/user/user.dart';
-import 'package:sophia_path/services/auth_service.dart';
-import 'package:sophia_path/services/chat/firebase_chat_service.dart';
+import '../../models/user/user.dart';
+import '../../services/auth_service.dart';
+import '../../services/chat/firebase_chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final User? chatUser;

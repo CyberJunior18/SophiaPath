@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sophia_path/models/user/user.dart';
+import '../models/user/user.dart';
 
 class ChatSearchDelegate extends SearchDelegate<String> {
   final List<User> users;

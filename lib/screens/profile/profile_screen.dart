@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/screens/profile/achievements_screen.dart';
-import 'package:sophia_path/services/course/user_stats_service.dart';
+import '../../models/data.dart';
+import 'achievements_screen.dart';
+import '../../services/course/user_stats_service.dart';
 
 import '../../models/user/achievements.dart';
 import '../../models/user/user.dart';

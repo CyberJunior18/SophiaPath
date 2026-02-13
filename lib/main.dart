@@ -1,21 +1,21 @@
 import 'dart:io';
-
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sophia_path/navigation_screen.dart';
-import 'package:sophia_path/services/profile_state.dart';
-import 'package:sophia_path/services/course/user_stats_service.dart';
-import 'package:sophia_path/widgets/theme.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'firebase_options.dart';
 import 'models/data.dart';
+import 'navigation_screen.dart';
 import 'screens/register_screen.dart';
 import 'services/course/scores_repo.dart';
+import 'services/course/user_stats_service.dart';
+import 'services/profile_state.dart';
 import 'services/user_preferences_services.dart';
-import 'package:sophia_path/services/chat/firebase_chat_service.dart';
+import 'widgets/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,20 +26,37 @@ void main() async {
 
   final statsService = UserStatsService();
   await statsService.updateLoginStreak();
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+
+ if (kIsWeb) {
+    // Web: Use sqflite_ffi_web
+    databaseFactory = databaseFactoryFfiWeb;
+  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    // Desktop: Use sqflite_common_ffi
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
 
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Initialize SharedPreferences for chat
+  // Initialize Firebase only on supported platforms
+  if (kIsWeb) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.web, // Use web options
+    );
+  } else if (!Platform.isLinux && !Platform.isWindows) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
+    // Initialize SharedPreferences for chat
   await SharedPreferences.getInstance();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ProfileState()),
-        // Provider(create: (context) => FirebaseChatService()),
+if (!kIsWeb && !Platform.isLinux && !Platform.isWindows)
+        Provider(create: (context) => ()),
+
       ],
       child: const MyApp(),
     ),

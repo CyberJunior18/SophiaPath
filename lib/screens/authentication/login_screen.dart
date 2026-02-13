@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sophia_path/models/user/user.dart';
-import 'package:sophia_path/navigation_screen.dart';
-import 'package:sophia_path/screens/register_screen.dart';
-import 'package:sophia_path/services/user_preferences_services.dart';
+import '../../models/user/user.dart';
+import '../../navigation_screen.dart';
+import '../register_screen.dart';
+import '../../services/user_preferences_services.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;

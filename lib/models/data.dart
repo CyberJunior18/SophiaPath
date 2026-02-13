@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sophia_path/models/course/question.dart';
+import 'course/question.dart';
 
 import 'course/course_info.dart';
 import 'user/achievements.dart';

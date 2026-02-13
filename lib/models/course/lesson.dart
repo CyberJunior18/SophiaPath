@@ -1,4 +1,4 @@
-import 'package:sophia_path/models/course/question.dart';
+import 'question.dart';
 
 class Lesson {
   final String title;

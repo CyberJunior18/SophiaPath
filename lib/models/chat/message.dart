@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_im_list/models/message_model.dart';
 
 // class ChatMessageModel extends MessageModel {
 //   ChatMessageModel({

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sophia_path/services/user_preferences_services.dart';
+import 'user_preferences_services.dart';
 
 import '../models/user/user.dart';
 
