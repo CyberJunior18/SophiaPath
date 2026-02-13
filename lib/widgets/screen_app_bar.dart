@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:sophia_path/screens/register_screen.dart';
-import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
+import '../screens/register_screen.dart';
+import 'tobeimplementedAlert.dart';
 import 'package:provider/provider.dart';
-import 'package:sophia_path/services/profile_state.dart';
+import '../services/profile_state.dart';
 
 import '../models/user/user.dart';
 import '../screens/profile/achievements_screen.dart';
