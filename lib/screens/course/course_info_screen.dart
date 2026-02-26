@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/data.dart';
 import 'lesson_path_screen.dart';
-import '../../services/course/database_helper.dart';
+import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
 
@@ -20,7 +20,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
   bool _isLoading = false;
   bool _isCourseRegistered = false;
   List<Course> _registeredCourses = [];
-  final DatabaseService _databaseService = DatabaseService();
+  final FirestoreCourseService _courseService = FirestoreCourseService();
   late int courseIndex = 0;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -65,7 +65,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final courses = await _databaseService.getCourses();
+      final courses = await _courseService.getCourses();
       setState(() {
         _registeredCourses = courses;
         _isCourseRegistered = courses.any(
@@ -91,9 +91,9 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         title: widget.course.title,
         courseIndex: _registeredCourses.length,
       );
-      await _databaseService.insertCourse(newCourse);
+      await _courseService.insertCourse(newCourse);
 
-      // Sync to Firebase
+      // Also update the user's registedCoursesIndexes in Firestore
       await _syncCourseToFirestore(true);
 
       setState(() {
@@ -102,7 +102,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Course registered successfully!'),
           backgroundColor: Colors.green,
         ),
@@ -130,10 +130,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
       );
 
       if (courseToDelete.id != null) {
-        // Delete from local SQLite
-        await _databaseService.deleteCourse(courseToDelete.id!);
+        // Delete from Firestore
+        await _courseService.deleteCourse(courseToDelete.id!);
 
-        // Sync to Firebase
+        // Also update the user's registedCoursesIndexes in Firestore
         await _syncCourseToFirestore(false);
       }
 
@@ -143,7 +143,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Course unregistered!'),
           backgroundColor: Colors.orange,
         ),

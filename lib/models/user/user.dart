@@ -172,6 +172,7 @@ class User {
           'Rather not say',
       profileImage:
           data['profileImage']?.toString() ??
+          data['profilePicture']?.toString() ??
           data['ProfileImage']?.toString() ??
           User.defaultProfileImage,
       achievementsProgress: _safeListDouble(data['achievementsProgress']),

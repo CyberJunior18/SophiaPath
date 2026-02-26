@@ -8,7 +8,7 @@ import 'package:sophia_path/models/data.dart';
 import 'package:sophia_path/models/course/question.dart';
 
 import '../../models/course/lesson.dart';
-import '../../services/course/database_helper.dart';
+import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
 import 'test_screen.dart';
@@ -33,8 +33,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   int courseIndex = 0;
   late List<bool> unlocked;
   late List<Lesson> lessons;
-  final DatabaseService _dbService = DatabaseService();
-  int? _databaseCourseId;
+  final FirestoreCourseService _courseService = FirestoreCourseService();
+  String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
   final UserStatsService _statsService = UserStatsService();
@@ -220,9 +220,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
   Future<void> _findDatabaseCourse() async {
     try {
-      final allCourses = await _dbService.getCourses();
+      final allCourses = await _courseService.getCourses();
 
-      final databaseCourse = allCourses.firstWhere(
+      final firestoreCourse = allCourses.firstWhere(
         (course) => course.title == widget.course.title,
         orElse: () {
           return Course(
@@ -233,8 +233,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         },
       );
 
-      _databaseCourseId = databaseCourse.id;
-      _completedLessons = databaseCourse.lessonsFinished;
+      _firestoreCourseId = firestoreCourse.id;
+      _completedLessons = firestoreCourse.lessonsFinished;
     } catch (e) {
       _completedLessons = 0;
     }
@@ -258,7 +258,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         builder: (_) => TestScreen(
           section: lesson.title,
           questions: lesson.questions,
-          courseId: _databaseCourseId ?? 0,
+          courseId: courseIndex,
           totalLessons: lessons.length,
           onTestCompleted: () {},
         ),
@@ -343,25 +343,24 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
   Future<void> _updateCourseProgress(int completedLessons) async {
     try {
-      if (_databaseCourseId != null) {
-        final course = await _dbService.getCourseById(_databaseCourseId!);
-        if (course != null) {
-          final updatedCourse = Course(
-            id: course.id,
-            title: course.title,
-            courseIndex: course.courseIndex,
-            lessonsFinished: completedLessons,
-          );
-          await _dbService.updateCourse(updatedCourse);
-        }
-      } else {
-        final newCourse = Course(
+      if (_firestoreCourseId != null) {
+        // Update existing course
+        final updatedCourse = Course(
+          id: _firestoreCourseId,
           title: widget.course.title,
-          courseIndex: 0,
+          courseIndex: courseIndex,
           lessonsFinished: completedLessons,
         );
-        final newId = await _dbService.insertCourse(newCourse);
-        _databaseCourseId = newId;
+        await _courseService.updateCourse(updatedCourse);
+      } else {
+        // Create new course entry
+        final newCourse = Course(
+          title: widget.course.title,
+          courseIndex: courseIndex,
+          lessonsFinished: completedLessons,
+        );
+        final newId = await _courseService.insertCourse(newCourse);
+        _firestoreCourseId = newId;
       }
 
       if (mounted) {

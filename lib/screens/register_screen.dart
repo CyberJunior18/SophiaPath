@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'authentication/login_screen.dart';
@@ -412,7 +413,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         age: int.tryParse(_ageController.text) ?? 0,
         sex: _selectedGender!,
         profileImage: _profileImage.isEmpty
-            ? 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg'
+            ? User.defaultProfileImage
             : _profileImage,
         achievementsProgress: List.filled(13, 0.0),
         registeredCourses: [],
@@ -486,11 +487,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
         'sex': _selectedGender,
         'email': _emailController.text.trim(),
         'profileImage': _profileImage.isEmpty
-            ? 'https://cdn.wallpapersafari.com/95/19/uFaSYI.jpg'
+            ? User.defaultProfileImage
             : _profileImage,
         'achievementsProgress': List.filled(13, 0.0),
         'registeredCourses': [],
-        'registedCoursesIndexes': {},
+        'registedCoursesIndexes': [],
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'lastSeen': FieldValue.serverTimestamp(),
@@ -552,13 +553,14 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
             },
             child: const Text('Gallery'),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.camera);
-            },
-            child: const Text('Camera'),
-          ),
+          if (!kIsWeb)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+              child: const Text('Camera'),
+            ),
         ],
       ),
     );
@@ -577,6 +579,11 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                   ? const Icon(Icons.person, size: 60)
                   : _profileImage.startsWith('http')
                   ? Image.network(_profileImage, fit: BoxFit.cover)
+                  : kIsWeb
+                  ? const Icon(
+                      Icons.person,
+                      size: 60,
+                    ) // Web doesn't support Image.file
                   : Image.file(File(_profileImage), fit: BoxFit.cover),
             ),
           ),

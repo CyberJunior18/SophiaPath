@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -11,8 +12,25 @@ class DatabaseService {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initializeDatabase();
-    return _database!;
+
+    if (kIsWeb) {
+      throw Exception(
+        '❌ SQLite database is not supported on Web. Use mobile or desktop platforms.',
+      );
+    }
+
+    try {
+      _database = await _initializeDatabase().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Database initialization timeout');
+        },
+      );
+      return _database!;
+    } catch (e) {
+      print('❌ Database initialization error: $e');
+      rethrow;
+    }
   }
 
   Future<Database> _initializeDatabase() async {
@@ -56,13 +74,18 @@ class DatabaseService {
   }
 
   Future<List<Course>> getCourses() async {
-    Database db = await database;
-    List<Map<String, dynamic>> results = await db.query(
-      'registeredcourses',
-      orderBy: 'course_index ASC',
-    );
+    try {
+      Database db = await database;
+      List<Map<String, dynamic>> results = await db.query(
+        'registeredcourses',
+        orderBy: 'course_index ASC',
+      );
 
-    return results.map((map) => Course.fromMap(map)).toList();
+      return results.map((map) => Course.fromMap(map)).toList();
+    } catch (e) {
+      print('❌ Error fetching courses: $e');
+      return [];
+    }
   }
 
   Future<int> updateCourse(Course course) async {
@@ -194,8 +217,7 @@ class Course {
       id: map['id'],
       title: map['title'],
       courseIndex: map['course_index'],
-      lessonsFinished:
-          map['lessons_finished'] ?? 0,
+      lessonsFinished: map['lessons_finished'] ?? 0,
     );
   }
 

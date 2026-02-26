@@ -1,12 +1,12 @@
 import '../models/user/achievements.dart';
 import '../models/data.dart';
-import 'course/database_helper.dart';
+import 'course/firestore_course_service.dart';
 import 'course/user_stats_service.dart';
 
 class AchievementsHelper {
   static Future<List<Achievement>> calculateAchievementsProgress() async {
-    final DatabaseService dbService = DatabaseService();
-    final courses = await dbService.getCourses();
+    final FirestoreCourseService courseService = FirestoreCourseService();
+    final courses = await courseService.getCourses();
     final achievements = List<Achievement>.from(achievementsInfo);
     final statsService = UserStatsService();
 

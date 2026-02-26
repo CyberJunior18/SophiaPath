@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import '../../models/data.dart';
@@ -10,7 +11,7 @@ import '../../services/course/user_stats_service.dart';
 import '../../models/user/achievements.dart';
 import '../../models/user/user.dart';
 import '../../services/user_preferences_services.dart';
-import '../../services/course/database_helper.dart';
+import '../../services/course/firestore_course_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserPreferencesService _userService = UserPreferencesService.instance;
-  final DatabaseService _dbService = DatabaseService();
+  final FirestoreCourseService _courseService = FirestoreCourseService();
   final UserStatsService _statsService = UserStatsService();
   User? _currentUser;
   bool _isLoading = true;
@@ -47,14 +48,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    _currentUser = await _userService.getUser();
-    _achievements = await _calculateAchievementsProgress();
-    setState(() => _isLoading = false);
+    try {
+      _currentUser = await _userService.getUser();
+      _achievements = await _calculateAchievementsProgress();
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      print('❌ Error loading user data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<List<Achievement>> _calculateAchievementsProgress() async {
-    final courses = await _dbService.getCourses();
+    List<Course> courses = [];
+    try {
+      courses = await _courseService.getCourses().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('❌ Firestore load timeout in profile');
+          return [];
+        },
+      );
+    } catch (e) {
+      print('❌ Error fetching courses in profile: $e');
+    }
+
     final achievements = List<Achievement>.from(achievementsInfo);
     final statsService = UserStatsService();
 
@@ -158,7 +181,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _shareProgress() async {
     try {
-      final courses = await _dbService.getCourses();
+      if (kIsWeb) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Share feature not available on Web'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      List<Course> courses = [];
+      try {
+        courses = await _courseService.getCourses().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print('❌ Firestore timeout in share');
+            return [];
+          },
+        );
+      } catch (e) {
+        print('❌ Error fetching courses for share: $e');
+      }
+
       int totalLessonsCompleted = 0;
       int totalCourses = courses.length;
 
@@ -255,7 +300,7 @@ Keep learning with me! 💪
                 ),
                 child: ProfileImage(
                   imageUrl: displayUser.profileImage,
-                  radius: 100,
+                  radius: 70,
                   name: displayUser.fullName,
                 ),
               ),

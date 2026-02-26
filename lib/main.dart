@@ -20,7 +20,6 @@ import 'widgets/theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Run these in background to not block UI
   Future.microtask(() async {
     try {
       await ScoresRepository.initializeScores(coursesInfo.length, 10);
@@ -40,14 +39,21 @@ void main() async {
 
   // Database initialization
   try {
+    print('🔄 Initializing database factory...');
     if (kIsWeb) {
-      databaseFactory = databaseFactoryFfiWeb;
+      print(
+        '⚠️  Running on Web - sqflite not supported. Using in-memory storage.',
+      );
+      // Web doesn't support sqflite - skip initialization
     } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
+      print('✅ Database: Desktop FFI initialized');
+    } else {
+      print('✅ Database: Using default SQLite (Mobile)');
     }
   } catch (e) {
-    print('Database init error: $e');
+    print('❌ Database init error: $e');
   }
 
   // Firebase initialization with timeout
