@@ -6,7 +6,6 @@ import '../../models/user/user.dart'; // Use your existing User model
 import 'chat_screen.dart';
 import 'user_tile.dart';
 import '../../services/auth_service.dart';
-import '../../services/chat/firebase_chat_service.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -16,8 +15,7 @@ class ChatsListScreen extends StatefulWidget {
 }
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
-  final ChatService _chatService = ChatService();
-  final AuthService _authService = AuthService();
+  // final AuthService _authService = AuthService();
   final List<ChatContact> _contacts = [];
   final List<User> _chatUsers = []; // Using your User model
   bool _isLoading = true;
@@ -322,9 +320,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildUserList(),
+      // body: _isLoading
+      //     ? const Center(child: CircularProgressIndicator())
+      //     : _buildUserList(),
 
       // : Column(
       //     children: [
@@ -413,51 +411,52 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     );
   }
 
-  Widget _buildUserList() {
-    return StreamBuilder(
-      stream: _chatService.getUsersStream(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Text("Error");
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Text("Loading");
-        }
-        return ListView(
-          children: snapshot.data!
-              .map<Widget>((userData) => _buildUserListItem(userData, context))
-              .toList(),
-        );
-      },
-    );
-  }
+  // Widget _buildUserList() {
+  //   return StreamBuilder(
+  //     stream: _chatService.getUsersStream(),
+  //     builder: (context, snapshot) {
+  //       if (snapshot.hasError) {
+  //         return const Text("Error");
+  //       }
+  //       if (snapshot.connectionState == ConnectionState.waiting) {
+  //         return const Text("Loading");
+  //       }
+  //       return ListView(
+  //         children: snapshot.data!
+  //             .map<Widget>((userData) => _buildUserListItem(userData, context))
+  //             .toList(),
+  //       );
+  //     },
+  //   );
+  // }
 
-  Widget _buildUserListItem(
-    Map<String, dynamic> userData,
-    BuildContext context,
-  ) {
-    if (userData["email"] == _authService.currentUserEmail) {
-      return Container();
-    }
-    return UserTile(
-      text: userData["email"],
+  // Widget _buildUserListItem(
+  //   Map<String, dynamic> userData,
+  //   BuildContext context,
+  // ) {
+  //   return Container();
+  //   // if (userData["email"] == _authService.currentUserEmail) {
+  //   //   return Container();
+  //   // }
+  //   // return UserTile(
+  //   //   text: userData["email"],
 
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) {
-              return ChatScreen(
-                receiverEmail: userData["email"],
-                receiverID: userData['uid'],
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-  // Widget _buildChatItem(ChatContact contact) {
+  //   //   onTap: () {
+  //   //     Navigator.push(
+  //   //       context,
+  //   //       MaterialPageRoute(
+  //   //         builder: (ctx) {
+  //   //           return ChatScreen(
+  //   //             receiverEmail: userData["email"],
+  //   //             receiverID: userData['uid'],
+  //   //           );
+  //   //         },
+  //   //       ),
+  //   //     );
+  //   //   },
+  //   // );
+  // }
+  // // Widget _buildChatItem(ChatContact contact) {
   //   final theme = Theme.of(context);
   //   final user = _chatUsers.firstWhere(
   //     (u) => u.username == contact.userId,

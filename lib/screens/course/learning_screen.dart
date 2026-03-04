@@ -16,7 +16,7 @@ class _LearningScreenState extends State<LearningScreen> {
   List<Course> _registeredCourses = [];
   bool _isLoading = true;
   String? _errorMessage;
-  final FirestoreCourseService _courseService = FirestoreCourseService();
+  // final FirestoreCourseService _courseService = FirestoreCourseService();
   final Map<String, int> _courseProgress = {};
   int totalAvaialableCourses = coursesInfo.length;
   @override
@@ -41,34 +41,34 @@ class _LearningScreenState extends State<LearningScreen> {
       _errorMessage = null;
     });
 
-    try {
-      final courses = await _courseService.getCourses().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('❌ Firestore load timeout after 10 seconds');
-          return [];
-        },
-      );
+    // try {
+    //   // final courses = await _courseService.getCourses().timeout(
+    //   //   const Duration(seconds: 10),
+    //   //   onTimeout: () {
+    //   //     print('❌ Firestore load timeout after 10 seconds');
+    //   //     return [];
+    //   //   },
+    //   // );
 
-      for (var course in courses) {
-        _courseProgress[course.title] = course.lessonsFinished;
-      }
+    //   for (var course in courses) {
+    //     _courseProgress[course.title] = course.lessonsFinished;
+    //   }
 
-      if (mounted) {
-        setState(() {
-          _registeredCourses = courses;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('❌ Error loading courses: $e');
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = '❌ Error loading courses: $e';
-        });
-      }
-    }
+    //   if (mounted) {
+    //     setState(() {
+    //       _registeredCourses = courses;
+    //       _isLoading = false;
+    //     });
+    //   }
+    // } catch (e) {
+    //   print('❌ Error loading courses: $e');
+    //   if (mounted) {
+    //     setState(() {
+    //       _isLoading = false;
+    //       _errorMessage = '❌ Error loading courses: $e';
+    //     });
+    //   }
+    // }
   }
 
   bool _isCourseRegistered(String courseTitle) {

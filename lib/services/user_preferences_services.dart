@@ -41,7 +41,6 @@ class UserPreferencesService {
       final userMap = jsonDecode(userJson) as Map<String, dynamic>;
 
       return User(
-        uid: userMap['uid']?.toString(),
         firebaseUid: userMap['firebaseUid']?.toString(),
         username: userMap['username'] ?? '',
         fullName:

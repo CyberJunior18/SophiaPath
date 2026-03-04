@@ -1,12 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Message {
   final String senderID;
   final String senderEmail;
   final String? senderName; // Make it nullable for backward compatibility
   final String receiverID;
   final String message;
-  final Timestamp timestamp;
+  final DateTime timestamp;
 
   Message({
     required this.senderID,
@@ -35,7 +33,7 @@ class Message {
       senderName: map['senderName'], // Can be null
       receiverID: map['receiverID'] ?? '',
       message: map['message'] ?? '',
-      timestamp: map['timestamp'] ?? Timestamp.now(),
+      timestamp: map['timestamp'] ?? DateTime.now(),
     );
   }
 }

@@ -1,11 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/user/user.dart';
-import 'package:sophia_path/services/auth_service.dart';
-import 'package:sophia_path/services/chat/firebase_chat_service.dart';
-
-import '../../widgets/profileImage.dart';
 
 class ChatScreen extends StatefulWidget {
   final User? chatUser;
@@ -28,14 +22,14 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final ChatService _chatService = ChatService();
-  final AuthService _authService = AuthService();
+  // final ChatService _chatService = ChatService();
+  // final AuthService _authService = AuthService();
   void _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
     try {
-      await _chatService.sendMessage(widget.receiverID, text);
+      // await _chatService.sendMessage(widget.receiverID, text);
       _messageController.clear();
     } catch (e) {
       print("Error sending message: $e");
@@ -52,266 +46,274 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(title: Text(widget.receiverEmail)),
       body: Column(
         children: [
+          Text("bread"),
           //display all messages
-          Expanded(child: _buildMessageList()),
-          _buildUserInput(),
+          // Expanded(child: _buildMessageList()),
+          // _buildUserInput(),
         ],
       ),
-    );
-  }
-
-  Widget _buildMessageList() {
-    String senderID = _authService.currentUserUid!;
-    return StreamBuilder<QuerySnapshot>(
-      stream: _chatService.getMessages(senderID, widget.receiverID),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          print('🔥 Stream error: ${snapshot.error}');
-          print('🔥 Stack trace: ${snapshot.stackTrace}');
-          return Center(
-            child: Text("Error loading messages: ${snapshot.error}"),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData) {
-          return const Center(child: Text("No data"));
-        }
-
-        try {
-          // Log the first document to see its structure
-          if (snapshot.data!.docs.isNotEmpty) {
-            final firstDoc = snapshot.data!.docs.first;
-            print('📄 First document type: ${firstDoc.runtimeType}');
-
-            // Try to access data in different ways
-            try {
-              final data1 = firstDoc.data();
-              print('📊 data(): $data1');
-              print('📊 data() type: ${data1.runtimeType}');
-            } catch (e) {
-              print('❌ Error getting data(): $e');
-            }
-
-            try {
-              final data2 = firstDoc.data() as Map<String, dynamic>;
-              print('✅ Cast successful: $data2');
-            } catch (e) {
-              print('❌ Cast failed: $e');
-            }
-          }
-
-          return ListView(
-            reverse: true,
-            children: snapshot.data!.docs.map((doc) {
-              try {
-                // Try to get and cast the data
-                final data = doc.data();
-                print('📨 Message data type: ${data.runtimeType}');
-
-                if (data is Map<String, dynamic>) {
-                  return _buildMessageItemFromData(data);
-                } else {
-                  print(
-                    '❌ Data is not Map<String, dynamic>: ${data.runtimeType}',
-                  );
-                  return const SizedBox.shrink();
-                }
-              } catch (e, stack) {
-                print('❌ Error processing message: $e');
-                print('📚 Stack: $stack');
-                return const SizedBox.shrink();
-              }
-            }).toList(),
-          );
-        } catch (e, stack) {
-          print('❌ Fatal error in ListView building: $e');
-          print('📚 Stack: $stack');
-          return Center(child: Text('Error: $e'));
-        }
-      },
-    );
-  }
-
-  // Use this version that works with any Map type
-  Widget _buildMessageItemFromData(Map<String, dynamic> data) {
-    try {
-      final senderId = data['senderID']?.toString() ?? '';
-      final isMe = senderId == _authService.currentUserUid;
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        child: Row(
-          mainAxisAlignment: isMe
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
-          children: [
-            if (!isMe)
-              ProfileImage(
-                imageUrl:
-                    "https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256",
-                radius: 16,
-              ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: isMe
-                      ? Colors.blue
-                      : const Color.fromARGB(255, 13, 80, 47),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(20),
-                    topRight: const Radius.circular(20),
-                    bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-                    bottomRight: isMe ? Radius.zero : const Radius.circular(20),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!isMe)
-                      Text(
-                        data['senderName']?.toString() ?? 'Unknown User',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    Text(
-                      data["message"]?.toString() ?? '',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      data["timestamp"] != null
-                          ? _formatTimestamp(data["timestamp"])
-                          : '',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      print('❌ Error building message item: $e');
-      return const SizedBox.shrink();
-    }
-  }
-
-  String _formatTimestamp(Timestamp timestamp) {
-    final dateTime = timestamp.toDate();
-    return '${dateTime.hour.toString().padLeft(2, "0")}:${dateTime.minute.toString().padLeft(2, "0")}';
-  }
-
-  Widget _buildMessageItem(DocumentSnapshot doc) {
-    // ✅ Safely cast the data
-    final data = doc.data() as Map<String, dynamic>;
-
-    // Check if senderID exists
-    final senderId = data['senderID'] ?? '';
-    final isMe = senderId == _authService.currentUserUid;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          if (!isMe)
-            ProfileImage(
-              imageUrl:
-                  "https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256",
-              radius: 16,
-            ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isMe
-                    ? Colors.blue
-                    : const Color.fromARGB(255, 13, 80, 47),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
-                  bottomRight: isMe ? Radius.zero : const Radius.circular(20),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isMe)
-                    Text(
-                      data['senderName'] ?? 'Unknown User',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  Text(
-                    data["message"] ?? '',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    data["timestamp"] != null
-                        ? _formatTimestamp(data["timestamp"])
-                        : '',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserInput() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: "Type a message",
-              border: OutlineInputBorder(),
-            ),
-            controller: _messageController,
-            obscureText: false,
-          ),
-        ),
-        IconButton(onPressed: _sendMessage, icon: Icon(Icons.arrow_upward)),
-      ],
     );
   }
 }
+  // Widget _buildMessageList() {
+  //   String senderID = _authService.currentUserUid!;
+  //   return StreamBuilder<QuerySnapshot>(
+  //     stream: _chatService.getMessages(senderID, widget.receiverID),
+  //     builder: (context, snapshot) {
+  //       if (snapshot.hasError) {
+  //         print('🔥 Stream error: ${snapshot.error}');
+  //         print('🔥 Stack trace: ${snapshot.stackTrace}');
+  //         return Center(
+  //           child: Text("Error loading messages: ${snapshot.error}"),
+  //         );
+  //       }
+
+  //       if (snapshot.connectionState == ConnectionState.waiting) {
+  //         return const Center(child: CircularProgressIndicator());
+  //       }
+
+  //       if (!snapshot.hasData) {
+  //         return const Center(child: Text("No data"));
+  //       }
+
+  //       try {
+  //         // Log the first document to see its structure
+  //         if (snapshot.data!.docs.isNotEmpty) {
+  //           final firstDoc = snapshot.data!.docs.first;
+  //           print('📄 First document type: ${firstDoc.runtimeType}');
+
+  //           // Try to access data in different ways
+  //           try {
+  //             final data1 = firstDoc.data();
+  //             print('📊 data(): $data1');
+  //             print('📊 data() type: ${data1.runtimeType}');
+  //           } catch (e) {
+  //             print('❌ Error getting data(): $e');
+  //           }
+
+  //           try {
+  //             final data2 = firstDoc.data() as Map<String, dynamic>;
+  //             print('✅ Cast successful: $data2');
+  //           } catch (e) {
+  //             print('❌ Cast failed: $e');
+  //           }
+  //         }
+
+  //         return ListView(
+  //           reverse: true,
+  //           children: snapshot.data!.docs.map((doc) {
+  //             try {
+  //               // Try to get and cast the data
+  //               final data = doc.data();
+  //               print('📨 Message data type: ${data.runtimeType}');
+
+  //               if (data is Map<String, dynamic>) {
+  //                 return _buildMessageItemFromData(data);
+  //               } else {
+  //                 print(
+  //                   '❌ Data is not Map<String, dynamic>: ${data.runtimeType}',
+  //                 );
+  //                 return const SizedBox.shrink();
+  //               }
+  //             } catch (e, stack) {
+  //               print('❌ Error processing message: $e');
+  //               print('📚 Stack: $stack');
+  //               return const SizedBox.shrink();
+  //             }
+  //           }).toList(),
+  //         );
+  //       } catch (e, stack) {
+  //         print('❌ Fatal error in ListView building: $e');
+  //         print('📚 Stack: $stack');
+  //         return Center(child: Text('Error: $e'));
+  //       }
+  //     },
+  //   );
+  // }
+
+  // Use this version that works with any Map type
+  // Widget _buildMessageItemFromData(Map<String, dynamic> data) {
+  //   try {
+  //     final senderId = data['senderID']?.toString() ?? '';
+  //     final isMe = senderId == _authService.currentUserUid;
+
+  //     return Padding(
+  //       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+  //       child: Row(
+  //         mainAxisAlignment: isMe
+  //             ? MainAxisAlignment.end
+  //             : MainAxisAlignment.start,
+  //         children: [
+  //           if (!isMe)
+  //             ProfileImage(
+  //               imageUrl:
+  //                   "https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256",
+  //               radius: 16,
+  //             ),
+  //           const SizedBox(width: 8),
+  //           Flexible(
+  //             child: Container(
+  //               padding: const EdgeInsets.symmetric(
+  //                 horizontal: 16,
+  //                 vertical: 12,
+  //               ),
+  //               decoration: BoxDecoration(
+  //                 color: isMe
+  //                     ? Colors.blue
+  //                     : const Color.fromARGB(255, 13, 80, 47),
+  //                 borderRadius: BorderRadius.only(
+  //                   topLeft: const Radius.circular(20),
+  //                   topRight: const Radius.circular(20),
+  //                   bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+  //                   bottomRight: isMe ? Radius.zero : const Radius.circular(20),
+  //                 ),
+  //               ),
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   if (!isMe)
+  //                     Text(
+  //                       data['senderName']?.toString() ?? 'Unknown User',
+  //                       style: GoogleFonts.poppins(
+  //                         fontSize: 12,
+  //                         fontWeight: FontWeight.bold,
+  //                         color: Colors.white,
+  //                       ),
+  //                     ),
+  //                   Text(
+  //                     data["message"]?.toString() ?? '',
+  //                     style: GoogleFonts.poppins(
+  //                       fontSize: 14,
+  //                       color: Colors.white,
+  //                     ),
+  //                   ),
+  //                   const SizedBox(height: 4),
+  //                   Text(
+  //                     data["timestamp"] != null
+  //                         ? _formatTimestamp(data["timestamp"])
+  //                         : '',
+  //                     style: GoogleFonts.poppins(
+  //                       fontSize: 10,
+  //                       color: Colors.white70,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     print('❌ Error building message item: $e');
+  //     return const SizedBox.shrink();
+  //   }
+  // }
+
+  // String _formatTimestamp(Timestamp timestamp) {
+  //   final dateTime = timestamp.toDate();
+  //   return '${dateTime.hour.toString().padLeft(2, "0")}:${dateTime.minute.toString().padLeft(2, "0")}';
+  // }
+
+  // Widget _buildMessageItem(DocumentSnapshot doc) {
+  //   // ✅ Safely cast the data
+  //   final data = doc.data() as Map<String, dynamic>;
+
+  //   // Check if senderID exists
+  //   final senderId = data['senderID'] ?? '';
+  //   final isMe = senderId == _authService.currentUserUid;
+
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+  //     child: Row(
+  //       mainAxisAlignment: isMe
+  //           ? MainAxisAlignment.end
+  //           : MainAxisAlignment.start,
+  //       children: [
+  //         if (!isMe)
+  //           ProfileImage(
+  //             imageUrl:
+  //                 "https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256",
+  //             radius: 16,
+  //           ),
+  //         const SizedBox(width: 8),
+  //         Flexible(
+  //           child: Container(
+  //             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  //             decoration: BoxDecoration(
+  //               color: isMe
+  //                   ? Colors.blue
+  //                   : const Color.fromARGB(255, 13, 80, 47),
+  //               borderRadius: BorderRadius.only(
+  //                 topLeft: const Radius.circular(20),
+  //                 topRight: const Radius.circular(20),
+  //                 bottomLeft: isMe ? const Radius.circular(20) : Radius.zero,
+  //                 bottomRight: isMe ? Radius.zero : const Radius.circular(20),
+  //               ),
+  //             ),
+  //             child: Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 if (!isMe)
+  //                   Text(
+  //                     data['senderName'] ?? 'Unknown User',
+  //                     style: GoogleFonts.poppins(
+  //                       fontSize: 12,
+  //                       fontWeight: FontWeight.bold,
+  //                       color: Colors.white,
+  //                     ),
+  //                   ),
+  //                 Text(
+  //                   data["message"] ?? '',
+  //                   style: GoogleFonts.poppins(
+  //                     fontSize: 14,
+  //                     color: Colors.white,
+  //                   ),
+  //                 ),
+  //                 const SizedBox(height: 4),
+  //                 Text(
+  //                   data["timestamp"] != null
+  //                       ? _formatTimestamp(data["timestamp"])
+  //                       : '',
+  //                   style: GoogleFonts.poppins(
+  //                     fontSize: 10,
+  //                     color: Colors.white70,
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+//   // Widget _buildUserInput() {
+//     return Row(
+//       children: [
+//         Expanded(
+//           child: TextField(
+//             decoration: InputDecoration(
+//               hintText: "Type a message",
+//               border: OutlineInputBorder(),
+//             ),
+//             controller: _messageController,
+//             obscureText: false,
+//           ),
+//         ),
+//         IconButton(onPressed: _sendMessage, icon: Icon(Icons.arrow_upward)),
+//       ],
+//     );
+//   }
+// // }
+
+
+
+
+
+
+// this is old af, idk if worth checking :)
 // class _ChatScreenState extends State<ChatScreen> {
 //   final TextEditingController _messageController = TextEditingController();
 //   List<ChatMessage> _messages = [];

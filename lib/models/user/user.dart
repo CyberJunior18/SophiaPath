@@ -1,14 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../course/course_info.dart';
 
 class User {
-  final String? uid; // Local database ID
-  final String? firebaseUid;
+  final String? firebaseUid; // to remove
   final String username;
   final String fullName;
-  final String tag;
+  final String tag; // enum tag
   final int age;
-  final String sex;
+  final String sex; // enum type gender
   final String profileImage;
   final List<double> achievementsProgress;
   final List<CourseInfo> registeredCourses;
@@ -18,12 +16,10 @@ class User {
   String? status;
   String? bio;
 
-  // ✅ FIXED: Use the constant consistently
   static const String defaultProfileImage =
       'https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256';
 
   User({
-    this.uid,
     this.firebaseUid,
     required this.username,
     required this.tag,
@@ -92,7 +88,6 @@ class User {
         [];
 
     return User(
-        uid: map['uid']?.toString(),
         firebaseUid: map['firebaseUid']?.toString() ?? map['uid']?.toString(),
         username: map['username'] ?? map['Username'] ?? '',
         fullName: map['fullName'] ?? map['FullName'] ?? '',
@@ -117,7 +112,6 @@ class User {
   }
 
   User copyWith({
-    String? firebaseUid,
     String? username,
     String? fullName,
     String? tag,
@@ -133,7 +127,6 @@ class User {
     String? bio,
   }) {
     return User(
-        firebaseUid: firebaseUid ?? this.firebaseUid,
         username: username ?? this.username,
         fullName: fullName ?? this.fullName,
         tag: tag ?? this.tag,
@@ -153,7 +146,6 @@ class User {
 
   factory User.fromFirestore(Map<String, dynamic> data) {
     return User(
-      uid: data['uid']?.toString() ?? '',
       firebaseUid:
           data['firebaseUid']?.toString() ?? data['uid']?.toString() ?? '',
       username:
@@ -196,23 +188,6 @@ class User {
       return value.map((e) => (e as num).toInt()).toList();
     }
     return [];
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'uid': uid,
-      'firebaseUid': firebaseUid,
-      'username': username,
-      'fullName': fullName,
-      'tag': tag,
-      'age': age,
-      'sex': sex,
-      'profileImage': profileImage,
-      'achievementsProgress': achievementsProgress,
-      'registedCoursesIndexes': registedCoursesIndexes,
-      'isOnline': isOnline,
-      'lastSeen': FieldValue.serverTimestamp(),
-    };
   }
 }
 

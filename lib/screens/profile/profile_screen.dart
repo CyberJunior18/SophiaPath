@@ -25,7 +25,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final UserPreferencesService _userService = UserPreferencesService.instance;
-  final FirestoreCourseService _courseService = FirestoreCourseService();
+  // final FirestoreCourseService _courseService = FirestoreCourseService();
   final UserStatsService _statsService = UserStatsService();
   User? _currentUser;
   bool _isLoading = true;
@@ -67,13 +67,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<List<Achievement>> _calculateAchievementsProgress() async {
     List<Course> courses = [];
     try {
-      courses = await _courseService.getCourses().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          print('❌ Firestore load timeout in profile');
-          return [];
-        },
-      );
+      // courses = await _courseService.getCourses().timeout(
+      //   const Duration(seconds: 10),
+      //   onTimeout: () {
+      //     print('❌ Firestore load timeout in profile');
+      //     return [];
+      //   },
+      // );
     } catch (e) {
       print('❌ Error fetching courses in profile: $e');
     }
@@ -193,13 +193,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       List<Course> courses = [];
       try {
-        courses = await _courseService.getCourses().timeout(
-          const Duration(seconds: 10),
-          onTimeout: () {
-            print('❌ Firestore timeout in share');
-            return [];
-          },
-        );
+        // courses = await _courseService.getCourses().timeout(
+        //   const Duration(seconds: 10),
+        //   onTimeout: () {
+        //     print('❌ Firestore timeout in share');
+        //     return [];
+        //   },
+        // );
       } catch (e) {
         print('❌ Error fetching courses for share: $e');
       }

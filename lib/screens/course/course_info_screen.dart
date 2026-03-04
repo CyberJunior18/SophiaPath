@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/data.dart';
@@ -20,10 +18,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
   bool _isLoading = false;
   bool _isCourseRegistered = false;
   List<Course> _registeredCourses = [];
-  final FirestoreCourseService _courseService = FirestoreCourseService();
+  // final FirestoreCourseService _courseService = FirestoreCourseService();
   late int courseIndex = 0;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // final FirebaseAuth _auth = FirebaseAuth.instance;
   @override
   void initState() {
     super.initState();
@@ -33,48 +31,20 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     });
   }
 
-  String? get _userId => _auth.currentUser?.uid;
-  Future<void> _syncCourseToFirestore(bool registered) async {
-    String? uid = _userId;
-    if (uid == null) return;
-
-    try {
-      if (registered) {
-        // Add course to user's registered courses in Firestore
-        await _firestore.collection('Users').doc(uid).update({
-          'registedCoursesIndexes': FieldValue.arrayUnion([courseIndex]),
-          'coursesProgress.$courseIndex': 0, // Initialize progress
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        // Remove course from user's registered courses
-        await _firestore.collection('Users').doc(uid).update({
-          'registedCoursesIndexes': FieldValue.arrayRemove([courseIndex]),
-          'coursesProgress.$courseIndex':
-              FieldValue.delete(), // Remove progress
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      }
-      print('✅ Synced course registration to Firebase');
-    } catch (e) {
-      print('❌ Error syncing to Firebase: $e');
-    }
-  }
-
   Future<void> _checkIfCourseRegistered() async {
     setState(() => _isLoading = true);
 
     try {
-      final courses = await _courseService.getCourses();
+      // final courses = await _courseService.getCourses();
       setState(() {
-        _registeredCourses = courses;
-        _isCourseRegistered = courses.any(
-          (course) => course.title == widget.course.title,
-        );
+        // _registeredCourses = courses;
+        // _isCourseRegistered = courses.any(
+        //   (course) => course.title == widget.course.title,
+        // );
         _isLoading = false;
       });
       if (_isCourseRegistered) {
-        await _loadCourseProgressFromFirebase();
+        // await _loadCourseProgressFromFirebase();
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -87,14 +57,14 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final newCourse = Course(
-        title: widget.course.title,
-        courseIndex: _registeredCourses.length,
-      );
-      await _courseService.insertCourse(newCourse);
+      // final newCourse = Course(
+      //   title: widget.course.title,
+      //   courseIndex: _registeredCourses.length,
+      // );
+      // await _courseService.insertCourse(newCourse);
 
       // Also update the user's registedCoursesIndexes in Firestore
-      await _syncCourseToFirestore(true);
+      // await _syncCourseToFirestore(true);
 
       setState(() {
         _isCourseRegistered = true;
@@ -131,10 +101,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
 
       if (courseToDelete.id != null) {
         // Delete from Firestore
-        await _courseService.deleteCourse(courseToDelete.id!);
+        // await _courseService.deleteCourse(courseToDelete.id!);
 
         // Also update the user's registedCoursesIndexes in Firestore
-        await _syncCourseToFirestore(false);
+        // await _syncCourseToFirestore(false);
       }
 
       setState(() {
@@ -153,34 +123,6 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     }
   }
 
-  Future<void> _loadCourseProgressFromFirebase() async {
-    String? uid = _userId;
-    if (uid == null || !_isCourseRegistered) return;
-
-    try {
-      DocumentSnapshot userDoc = await _firestore
-          .collection('Users')
-          .doc(uid)
-          .get();
-
-      if (userDoc.exists) {
-        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
-
-        // Get progress for this course
-        if (data['coursesProgress'] != null) {
-          Map<String, dynamic> progress = data['coursesProgress'];
-          int finishedLessons = progress[courseIndex.toString()] ?? 0;
-
-          // Update local database with progress from Firebase
-          // You might want to update your Course model or ScoresRepository
-          print('📊 Course $courseIndex progress: $finishedLessons lessons');
-        }
-      }
-    } catch (e) {
-      print('❌ Error loading progress: $e');
-    }
-  }
-
   void _navigateToLessonPath() {
     if (!_isCourseRegistered) {
       _registerCourse().then((_) {
@@ -195,8 +137,6 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         }
       });
     } else {
-      _loadCourseProgressFromFirebase();
-      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(

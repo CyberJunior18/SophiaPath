@@ -1,16 +1,13 @@
 import 'dart:io';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sophia_path/realauth/register.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-
-import 'firebase_options.dart';
 import 'models/data.dart';
 import 'navigation_screen.dart';
-import 'screens/register_screen.dart';
+// import 'screens/register_screen.dart';
 import 'services/course/scores_repo.dart';
 import 'services/course/user_stats_service.dart';
 import 'services/profile_state.dart';
@@ -54,23 +51,6 @@ void main() async {
     }
   } catch (e) {
     print('❌ Database init error: $e');
-  }
-
-  // Firebase initialization with timeout
-  try {
-    if (kIsWeb) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.web,
-      ).timeout(const Duration(seconds: 5));
-      print('✅ Firebase Web initialized');
-    } else if (!Platform.isLinux && !Platform.isWindows) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(const Duration(seconds: 5));
-      print('✅ Firebase Mobile initialized');
-    }
-  } catch (e) {
-    print('⚠️ Firebase init error (continuing anyway): $e');
   }
 
   // SharedPreferences
@@ -158,7 +138,7 @@ class _MyAppState extends State<MyApp> {
 
     // For new users or first launch
     if (!_hasUser || _isFirstLaunch) {
-      return MyAuthScreen(onToggleTheme: toggleTheme, isEditing: false);
+      return RegisterScreen(onToggleTheme: toggleTheme, isEditing: false);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);
