@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:sophia_path/realauth/outputtest.dart';
 import 'package:sophia_path/realauth/register.dart';
 
-class LoginScreen extends StatefulWidget {
-  final VoidCallback onToggleTheme;
+import 'authService.dart';
+import 'home.dart';
 
-  const LoginScreen({super.key, required this.onToggleTheme});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -19,19 +14,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-
-  // Base URL for API calls (same as in RegisterScreen)
-  final String baseUrl = kIsWeb
-      ? 'http://localhost:5000/api'
-      : Platform.isAndroid
-      ? 'http://10.0.2.2:5000/api'
-      : 'http://localhost:5000/api';
 
   @override
   void dispose() {
@@ -40,56 +29,32 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': _emailController.text.trim(),
-          'password': _passwordController.text,
-        }),
-      );
+    final result = await _authService.login(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
 
-      final responseData = json.decode(response.body);
+    setState(() => _isLoading = false);
 
-      if (response.statusCode == 200) {
-        // Save token and user data
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', responseData['token']);
-        await prefs.setString('user', json.encode(responseData['user']));
-
-        if (mounted) {
-          // Navigate to OutputTestScreen
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) =>
-                  OutputTestScreen(onToggleTheme: widget.onToggleTheme),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = responseData['message'] ?? 'Login failed';
-        });
+    if (result['success'] == true) {
+      // Navigate to Home and remove all previous routes
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+          (route) => false,
+        );
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Connection error: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    } else {
+      setState(() => _errorMessage = result['message']);
     }
   }
 
@@ -112,17 +77,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RegisterScreen(
-                            onToggleTheme: widget.onToggleTheme,
-                          ),
+                          builder: (context) => RegisterScreen(),
                         ),
                       );
                     },
                     icon: const Icon(Icons.arrow_back),
-                  ),
-                  IconButton(
-                    onPressed: widget.onToggleTheme,
-                    icon: const Icon(Icons.brightness_6),
                   ),
                 ],
               ),
@@ -330,7 +289,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       height: 55,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
@@ -376,9 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RegisterScreen(
-                            onToggleTheme: widget.onToggleTheme,
-                          ),
+                          builder: (context) => RegisterScreen(),
                         ),
                       );
                     },

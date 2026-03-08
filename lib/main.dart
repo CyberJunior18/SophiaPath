@@ -138,7 +138,7 @@ class _MyAppState extends State<MyApp> {
 
     // For new users or first launch
     if (!_hasUser || _isFirstLaunch) {
-      return RegisterScreen(onToggleTheme: toggleTheme, isEditing: false);
+      return RegisterScreen(isEditing: false);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);

@@ -1,51 +1,56 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/realauth/login.dart';
-import 'package:sophia_path/realauth/outputtest.dart';
 import 'dart:io';
-import '../services/user_preferences_services.dart';
 import '../navigation_screen.dart';
+import 'authService.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final VoidCallback onToggleTheme;
   final bool isEditing;
-  const RegisterScreen({
-    super.key,
-    required this.onToggleTheme,
-    this.isEditing = false,
-  });
+  const RegisterScreen({super.key, this.isEditing = false});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _userService = UserPreferencesService.instance;
   final _formKey = GlobalKey<FormState>();
+
   // Add this line
   final String baseUrl = kIsWeb
-      ? 'http://localhost:5000/api' // For web
+      ? 'http://localhost:3000' // For web
       : Platform.isAndroid
-      ? 'http://10.0.2.2:5000/api' // For Android emulator
-      : 'http://localhost:5000/api'; // For Linux desktop or iOS simulator
+      ? 'http://localhost:3000' // For Android emulator
+      : 'http://localhost:3000'; // For Linux desktop or iOS simulator
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _authService = AuthService();
   final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _errorMessage;
+  String? _successMessage;
   String? _selectedGender;
   String _profileImage = '';
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _usernameController.dispose();
+    _fullNameController.dispose();
+    _tagController.dispose();
+    _ageController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   final List<String> _availableTags = [
     'Student',
@@ -59,72 +64,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Manager',
     'Other',
   ];
-  Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _successMessage = null;
     });
+    final result = await _authService.register(
+      email: _emailController.text.trim(),
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+    );
 
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/auth/register'),
-      );
-
-      // Add text fields
-      request.fields.addAll({
-        'username': _usernameController.text,
-        'fullName': _fullNameController.text,
-        'email': _emailController.text,
-        'password': _passwordController.text,
-        'age': _ageController.text,
-        'gender': _selectedGender!,
-        'profession': _tagController.text,
+    setState(() {
+      _isLoading = true;
+    });
+    if (result['success'] == true) {
+      setState(() {
+        _successMessage = 'Account created! Please Login.';
       });
-
-      // Add profile image if selected (only for mobile, not web)
-      if (_profileImage.isNotEmpty && !kIsWeb) {
-        request.files.add(
-          await http.MultipartFile.fromPath('profileImage', _profileImage),
+      await Future.delayed(const Duration(seconds: 2));
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) {
+              return const LoginScreen();
+            },
+          ),
         );
       }
-
-      // Send request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-      var responseData = json.decode(response.body);
-
-      if (response.statusCode == 201) {
-        // Save token and user data
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', responseData['token']);
-        await prefs.setString('user', json.encode(responseData['user']));
-
-        if (mounted) {
-          // Navigate to OutputTestScreen instead of NavigationScreen
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) =>
-                  OutputTestScreen(onToggleTheme: widget.onToggleTheme),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = responseData['message'] ?? 'Registration failed';
-        });
-      }
-    } catch (e) {
+    } else {
       setState(() {
-        _errorMessage = 'Connection error: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
+        _errorMessage = result['message'];
       });
     }
   }
@@ -213,43 +187,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  void _navigateToHomeScreen() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) =>
-            NavigationScreen(onToggleTheme: widget.onToggleTheme),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: widget.isEditing
-          ? AppBar(
-              title: Text(
-                widget.isEditing ? 'Edit Profile' : 'Create Your Account',
-                style: GoogleFonts.poppins(),
-              ),
-              centerTitle: true,
-              leading: widget.isEditing
-                  ? IconButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (ctx) => NavigationScreen(
-                              onToggleTheme: widget.onToggleTheme,
-                              selectedIndex: 1,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.arrow_back),
-                    )
-                  : null,
-            )
-          : null,
+      appBar: AppBar(
+        title: Text(
+          widget.isEditing ? 'Edit Profile' : 'Create Your Account',
+          style: GoogleFonts.poppins(),
+        ),
+        centerTitle: true,
+      ),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -481,7 +429,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
+                        onPressed: _isLoading ? null : _handleSignup,
                         style: ElevatedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -516,9 +464,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => LoginScreen(
-                                    onToggleTheme: widget.onToggleTheme,
-                                  ),
+                                  builder: (_) => LoginScreen(),
                                 ),
                               );
                             },
