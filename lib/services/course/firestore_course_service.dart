@@ -160,23 +160,6 @@ class Course {
     this.lessonsFinished = 0,
   });
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'title': title,
-      'courseIndex': courseIndex,
-      'lessonsFinished': lessonsFinished,
-    };
-  }
-
-  factory Course.fromMap(Map<String, dynamic> map, String docId) {
-    return Course(
-      id: docId,
-      title: map['title'] ?? '',
-      courseIndex: map['courseIndex'] ?? 0,
-      lessonsFinished: map['lessonsFinished'] ?? 0,
-    );
-  }
-
   Course copyWith({
     String? id,
     String? title,

@@ -1,10 +1,7 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/realauth/register.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'models/data.dart';
 import 'navigation_screen.dart';
 // import 'screens/register_screen.dart';
@@ -28,6 +25,7 @@ void main() async {
   Future.microtask(() async {
     try {
       final statsService = UserStatsService();
+
       await statsService.updateLoginStreak();
     } catch (e) {
       print('Stats update error: $e');
@@ -35,23 +33,23 @@ void main() async {
   });
 
   // Database initialization
-  try {
-    print('🔄 Initializing database factory...');
-    if (kIsWeb) {
-      print(
-        '⚠️  Running on Web - sqflite not supported. Using in-memory storage.',
-      );
-      // Web doesn't support sqflite - skip initialization
-    } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-      print('✅ Database: Desktop FFI initialized');
-    } else {
-      print('✅ Database: Using default SQLite (Mobile)');
-    }
-  } catch (e) {
-    print('❌ Database init error: $e');
-  }
+  // try {
+  //   print('🔄 Initializing database factory...');
+  //   if (kIsWeb) {
+  //     print(
+  //       '⚠️  Running on Web - sqflite not supported. Using in-memory storage.',
+  //     );
+  //     // Web doesn't support sqflite - skip initialization
+  //   } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+  //     sqfliteFfiInit();
+  //     databaseFactory = databaseFactoryFfi;
+  //     print('✅ Database: Desktop FFI initialized');
+  //   } else {
+  //     print('✅ Database: Using default SQLite (Mobile)');
+  //   }
+  // } catch (e) {
+  //   print('❌ Database init error: $e');
+  // }
 
   // SharedPreferences
   try {
@@ -138,7 +136,7 @@ class _MyAppState extends State<MyApp> {
 
     // For new users or first launch
     if (!_hasUser || _isFirstLaunch) {
-      return RegisterScreen(isEditing: false);
+      return RegisterScreen(isEditing: false, onToggleTheme: toggleTheme);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);

@@ -29,6 +29,40 @@ class UserPreferencesService {
     }
   }
 
+  Future<bool> saveUserFromAuthProfile(Map<String, dynamic> profile) async {
+    try {
+      final source =
+          profile['user'] is Map<String, dynamic>
+          ? profile['user'] as Map<String, dynamic>
+          : profile;
+
+      final user = User(
+        firebaseUid:
+            source['firebaseUid']?.toString() ??
+            source['uid']?.toString() ??
+            source['id']?.toString(),
+        username: (source['username'] ?? '').toString(),
+        fullName: (source['fullName'] ?? source['fullname'] ?? '').toString(),
+        tag: (source['tag'] ?? 'Student').toString(),
+        age: (source['age'] as num?)?.toInt() ?? 20,
+        sex: (source['gender'] ?? source['sex'] ?? 'Rather not say').toString(),
+        profileImage:
+            (source['profilePicture'] ??
+                    source['profileImage'] ??
+                    source['avatar'] ??
+                    User.defaultProfileImage)
+                .toString(),
+        achievementsProgress: const [],
+        registeredCourses: const [],
+        registedCoursesIndexes: const [],
+      );
+
+      return await saveUser(user);
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<User?> getUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();

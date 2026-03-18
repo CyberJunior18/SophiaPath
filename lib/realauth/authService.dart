@@ -1,16 +1,25 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AuthService {
   // Use 10.0.2.2 for Android emulator to reach localhost on your PC
   // If using a real device, replace with your PC's local IP e.g. http://192.168.1.x:3000
-  static const String baseUrl = 'http://localhost:3000';
+  static String get baseUrl {
+    if (kIsWeb) return 'http://localhost:3000';
+
+    return defaultTargetPlatform == TargetPlatform.android
+        ? 'http://10.0.2.2:3000'
+        : 'http://localhost:3000';
+  }
 
   // ─── REGISTER ───────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> register({
     required String email,
     required String username,
+    required String fullname,
     required String password,
+    required String tag,
   }) async {
     final url = Uri.parse('$baseUrl/auth/register');
 
@@ -21,7 +30,9 @@ class AuthService {
         body: jsonEncode({
           'email': email,
           'username': username,
+          'fullname': fullname,
           'password': password,
+          'tag': tag,
         }),
       );
 

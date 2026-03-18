@@ -4,26 +4,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sophia_path/realauth/login.dart';
 import 'dart:io';
-import '../navigation_screen.dart';
 import 'authService.dart';
 
 class RegisterScreen extends StatefulWidget {
   final bool isEditing;
-  const RegisterScreen({super.key, this.isEditing = false});
+  const RegisterScreen({
+    super.key,
+    this.isEditing = false,
+    required this.onToggleTheme,
+  });
 
+  final void Function() onToggleTheme;
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Add this line
-  final String baseUrl = kIsWeb
-      ? 'http://localhost:3000' // For web
-      : Platform.isAndroid
-      ? 'http://localhost:3000' // For Android emulator
-      : 'http://localhost:3000'; // For Linux desktop or iOS simulator
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _tagController = TextEditingController();
@@ -75,11 +72,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final result = await _authService.register(
       email: _emailController.text.trim(),
       username: _usernameController.text.trim(),
+      fullname: _fullNameController.text.trim(),
       password: _passwordController.text,
+      tag: _tagController.text,
     );
 
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
+      _isLoading = false;
     });
     if (result['success'] == true) {
       setState(() {
@@ -91,7 +91,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context,
           MaterialPageRoute(
             builder: (_) {
-              return const LoginScreen();
+              return LoginScreen(onToggleTheme: widget.onToggleTheme);
             },
           ),
         );
@@ -190,14 +190,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isEditing ? 'Edit Profile' : 'Create Your Account',
-          style: GoogleFonts.poppins(),
-        ),
-        centerTitle: true,
-      ),
-
+      // appBar: AppBar(
+      //   title: Text(
+      //     widget.isEditing ? 'Edit Profile' : 'Create Your Account',
+      //     style: GoogleFonts.poppins(),
+      //   ),
+      //   centerTitle: true,
+      // ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -464,7 +463,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => LoginScreen(),
+                                  builder: (_) => LoginScreen(
+                                    onToggleTheme: widget.onToggleTheme,
+                                  ),
                                 ),
                               );
                             },

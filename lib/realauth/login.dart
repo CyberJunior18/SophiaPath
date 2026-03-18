@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sophia_path/navigation_screen.dart';
 import 'package:sophia_path/realauth/register.dart';
+import 'package:sophia_path/services/user_preferences_services.dart';
 
 import 'authService.dart';
-import 'home.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, required this.onToggleTheme});
 
+  final void Function() onToggleTheme;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -17,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+  final _userPreferences = UserPreferencesService.instance;
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -45,11 +48,38 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result['success'] == true) {
+      final profileResult = await _authService.getProfile();
+
+      if (profileResult['success'] != true || profileResult['data'] is! Map) {
+        setState(() {
+          _errorMessage =
+              profileResult['message'] ??
+              'Login succeeded but failed to load profile data.';
+        });
+        return;
+      }
+
+      final saved = await _userPreferences.saveUserFromAuthProfile(
+        Map<String, dynamic>.from(profileResult['data']),
+      );
+
+      if (!saved) {
+        setState(() {
+          _errorMessage = 'Login succeeded but failed to save user data.';
+        });
+        return;
+      }
+
+      await _userPreferences.setFirstLaunchCompleted();
+
       // Navigate to Home and remove all previous routes
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+          MaterialPageRoute(
+            builder: (_) =>
+                NavigationScreen(onToggleTheme: widget.onToggleTheme),
+          ),
           (route) => false,
         );
       }
@@ -63,30 +93,30 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Header with back button and theme toggle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RegisterScreen(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     IconButton(
+              //       onPressed: () {
+              //         Navigator.pushReplacement(
+              //           context,
+              //           MaterialPageRoute(
+              //             builder: (context) => RegisterScreen(
+              //               onToggleTheme: widget.onToggleTheme,
+              //             ),
+              //           ),
+              //         );
+              //       },
+              //       icon: const Icon(Icons.arrow_back),
+              //     ),
+              //   ],
+              // ),
 
               // Logo or Icon
               Container(
@@ -335,7 +365,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => RegisterScreen(),
+                          builder: (context) => RegisterScreen(
+                            onToggleTheme: widget.onToggleTheme,
+                          ),
                         ),
                       );
                     },
