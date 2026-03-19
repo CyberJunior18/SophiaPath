@@ -1,7 +1,6 @@
 import '../course/course_info.dart';
 
 class User {
-  final String? firebaseUid; // to remove
   final String username;
   final String fullName;
   final String tag; // enum tag
@@ -20,7 +19,6 @@ class User {
       'https://ui-avatars.com/api/?name=User&background=3D5CFF&color=fff&size=256';
 
   User({
-    this.firebaseUid,
     required this.username,
     required this.tag,
     required this.age,
@@ -52,7 +50,6 @@ class User {
   // Convert to Map for SQL insert
   Map<String, dynamic> toMap() {
     return {
-      'firebaseUid': firebaseUid,
       'username': username,
       'fullName': fullName,
       'tag': tag,
@@ -88,7 +85,6 @@ class User {
         [];
 
     return User(
-        firebaseUid: map['firebaseUid']?.toString() ?? map['uid']?.toString(),
         username: map['username'] ?? map['Username'] ?? '',
         fullName: map['fullName'] ?? map['FullName'] ?? '',
         tag: map['tag'] ?? map['Tag'] ?? 'Student',
@@ -146,8 +142,6 @@ class User {
 
   factory User.fromFirestore(Map<String, dynamic> data) {
     return User(
-      firebaseUid:
-          data['firebaseUid']?.toString() ?? data['uid']?.toString() ?? '',
       username:
           data['username']?.toString() ?? data['Username']?.toString() ?? '',
       fullName:

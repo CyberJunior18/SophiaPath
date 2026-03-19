@@ -31,16 +31,11 @@ class UserPreferencesService {
 
   Future<bool> saveUserFromAuthProfile(Map<String, dynamic> profile) async {
     try {
-      final source =
-          profile['user'] is Map<String, dynamic>
+      final source = profile['user'] is Map<String, dynamic>
           ? profile['user'] as Map<String, dynamic>
           : profile;
 
       final user = User(
-        firebaseUid:
-            source['firebaseUid']?.toString() ??
-            source['uid']?.toString() ??
-            source['id']?.toString(),
         username: (source['username'] ?? '').toString(),
         fullName: (source['fullName'] ?? source['fullname'] ?? '').toString(),
         tag: (source['tag'] ?? 'Student').toString(),
@@ -75,7 +70,6 @@ class UserPreferencesService {
       final userMap = jsonDecode(userJson) as Map<String, dynamic>;
 
       return User(
-        firebaseUid: userMap['firebaseUid']?.toString(),
         username: userMap['username'] ?? '',
         fullName:
             userMap['fullName'] ?? '', // Changed from 'firstName' to 'fullName'

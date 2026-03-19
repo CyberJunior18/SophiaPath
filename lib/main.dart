@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sophia_path/realauth/register.dart';
+import 'package:sophia_path/screens/authentication/register.dart';
 import 'models/data.dart';
 import 'navigation_screen.dart';
 // import 'screens/register_screen.dart';
@@ -136,7 +136,7 @@ class _MyAppState extends State<MyApp> {
 
     // For new users or first launch
     if (!_hasUser || _isFirstLaunch) {
-      return RegisterScreen(isEditing: false, onToggleTheme: toggleTheme);
+      return RegisterScreen(onToggleTheme: toggleTheme);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);

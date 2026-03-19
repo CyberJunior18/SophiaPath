@@ -2,28 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'authentication/login_screen.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
 import 'dart:io';
-import '../models/user/user.dart';
-import '../services/course/scores_repo.dart';
-import '../services/course/user_stats_service.dart';
-import '../services/user_preferences_services.dart';
-import '../navigation_screen.dart';
+import '../../models/user/user.dart';
+import '../../services/course/scores_repo.dart';
+import '../../services/course/user_stats_service.dart';
+import '../../services/user_preferences_services.dart';
+import '../../navigation_screen.dart';
 
-class MyAuthScreen extends StatefulWidget {
+class EditProfile extends StatefulWidget {
   final VoidCallback onToggleTheme;
-  final bool isEditing;
-  const MyAuthScreen({
-    super.key,
-    required this.onToggleTheme,
-    this.isEditing = false,
-  });
+  const EditProfile({super.key, required this.onToggleTheme});
 
   @override
-  State<MyAuthScreen> createState() => _MyAuthScreenState();
+  State<EditProfile> createState() => _EditProfileState();
 }
 
-class _MyAuthScreenState extends State<MyAuthScreen> {
+class _EditProfileState extends State<EditProfile> {
   final _userService = UserPreferencesService.instance;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
@@ -61,11 +56,7 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.isEditing) {
-      _loadUserDataForEditing();
-    } else {
-      _checkExistingUser();
-    }
+    _loadUserDataForEditing();
   }
 
   Future<void> _loadUserDataForEditing() async {
@@ -79,7 +70,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       _ageController.text = user.age.toString();
       _selectedGender = user.sex;
       _profileImage = user.profileImage;
-      _firebaseUid = user.firebaseUid;
     }
 
     setState(() => _isLoading = false);
@@ -360,81 +350,29 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       _errorMessage = null;
     });
 
-    // try {
-    if (!widget.isEditing) {
-      // 🔐 EMAIL + PASSWORD ONLY (No anonymous)
-      final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
+    final localUser = User(
+      username: _usernameController.text.trim(),
+      fullName: _fullNameController.text.trim(),
+      tag: _tagController.text.trim(),
+      age: int.tryParse(_ageController.text) ?? 0,
+      sex: _selectedGender!,
+      profileImage: _profileImage.isEmpty
+          ? User.defaultProfileImage
+          : _profileImage,
+      achievementsProgress: List.filled(13, 0.0),
+      registeredCourses: [],
+      registedCoursesIndexes: [],
+    );
 
-      // Validate email and password for new users
-      if (email.isEmpty || password.isEmpty) {
-        throw Exception('Email and password are required');
-      }
-      // Create user with email/password
-      // final credential = await firebase_auth.FirebaseAuth.instance
-      //     .createUserWithEmailAndPassword(email: email, password: password);
-
-      // final firebaseUser = credential.user!;
-      // _firebaseUid = firebaseUser.uid;
-      // await _storeUserInFirestore(firebaseUser.uid);
-      // // _firestore.collection("Users").doc(_firebaseUid).set({
-      // //   'uid': _firebaseUid,
-      // //   'email': email,
-      // // });
-
-      // // Reserve username (skip if Firestore not enabled)
-      // if (_useFirestore) {
-      //   await _reserveUsername(
-      //     normalizeUsername(_usernameController.text),
-      //     firebaseUser.uid,
-      //   );
-      // }
-
-      // Store user in Firestore (skip if not enabled)
-      // if (_useFirestore) {
-      //   await _storeUserInFirestore(firebaseUser.uid);
-      // }
-    } else if (widget.isEditing && _firebaseUid != null) {
-      // Update existing user (skip if Firestore not enabled)
-      // if (_useFirestore) {
-      //   await _updateUserInFirestore(_firebaseUid!);
-      // }
-      // }
-
-      // Create/Update local user profile
-      final localUser = User(
-        firebaseUid: _firebaseUid,
-        username: _usernameController.text.trim(),
-        fullName: _fullNameController.text.trim(),
-        tag: _tagController.text.trim(),
-        age: int.tryParse(_ageController.text) ?? 0,
-        sex: _selectedGender!,
-        profileImage: _profileImage.isEmpty
-            ? User.defaultProfileImage
-            : _profileImage,
-        achievementsProgress: List.filled(13, 0.0),
-        registeredCourses: [],
-        registedCoursesIndexes: [],
-      );
-
-      // Save user to local database
-      final saved = await _userService.saveUser(localUser);
-      if (!saved) {
-        throw Exception("Failed to save user locally");
-      }
-
-      // Set first launch completed (only for new users)
-      if (!widget.isEditing) {
-        await _userService.setFirstLaunchCompleted();
-      }
-
-      print(
-        "Profile ${widget.isEditing ? 'updated' : 'created'} successfully for UID: $_firebaseUid",
-      );
-
-      // Navigate to main app
-      _navigateToHomeScreen();
+    // Save user to local database
+    final saved = await _userService.saveUser(localUser);
+    if (!saved) {
+      throw Exception("Failed to save user locally");
     }
+
+    // Navigate to main app
+    _navigateToHomeScreen();
+
     //  on firebase_auth.FirebaseAuthException catch (e) {
     //   setState(() {
     //     _errorMessage = _getAuthErrorMessage(e.code);
@@ -470,23 +408,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
       // await ref.set({'uid': uid, 'createdAt': FieldValue.serverTimestamp()});
     } catch (e) {
       print('Error reserving username: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> _updateUserInFirestore(String uid) async {
-    try {
-      // await FirebaseFirestore.instance.collection('users').doc(uid).update({
-      //   'username': _usernameController.text.trim(),
-      //   'fullName': _fullNameController.text.trim(),
-      //   'tag': _tagController.text.trim(),
-      //   'age': int.tryParse(_ageController.text) ?? 0,
-      //   'sex': _selectedGender,
-      //   'updatedAt': FieldValue.serverTimestamp(),
-      // });
-      print("User data updated in Firestore for UID: $uid");
-    } catch (e) {
-      print("Firestore update error: $e");
       rethrow;
     }
   }
@@ -577,31 +498,24 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: widget.isEditing
-          ? AppBar(
-              title: Text(
-                widget.isEditing ? 'Edit Profile' : 'Create Your Account',
-                style: GoogleFonts.poppins(),
+      appBar: AppBar(
+        title: Text('Edit Profile', style: GoogleFonts.poppins()),
+        centerTitle: true,
+        leading: IconButton(
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) => NavigationScreen(
+                  onToggleTheme: widget.onToggleTheme,
+                  selectedIndex: 1,
+                ),
               ),
-              centerTitle: true,
-              leading: widget.isEditing
-                  ? IconButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (ctx) => NavigationScreen(
-                              onToggleTheme: widget.onToggleTheme,
-                              selectedIndex: 1,
-                            ),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.arrow_back),
-                    )
-                  : null,
-            )
-          : null,
+            );
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -610,81 +524,9 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    if (!widget.isEditing) ...[
-                      const SizedBox(height: 40),
-                      const Text(
-                        'Welcome! Create your account',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    if (widget.isEditing) _buildAvatar(),
+                    _buildAvatar(),
                     const SizedBox(height: 30),
 
-                    // 🔐 EMAIL FIELD (Always visible for new users)
-                    if (!widget.isEditing)
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Enter a valid email address';
-                          }
-                          return null;
-                        },
-                      ),
-
-                    if (!widget.isEditing) const SizedBox(height: 16),
-
-                    // 🔐 PASSWORD FIELD (Always visible for new users)
-                    if (!widget.isEditing)
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true, // make password points (hidden)
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Password is required';
-                          }
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                      ),
-
-                    if (!widget.isEditing) const SizedBox(height: 16),
-                    // if (widget.isEditing) ...[
-                    //   const Divider(),
-                    //   const SizedBox(height: 10),
-
-                    //   const Text(
-                    //     'Profile Information',
-                    //     style: TextStyle(
-                    //       fontSize: 18,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    //   const SizedBox(height: 20),
-                    // ],
-
-                    // Username field
                     TextFormField(
                       controller: _usernameController,
                       decoration: const InputDecoration(
@@ -804,30 +646,6 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                           ],
                         ),
                       ),
-
-                    // // Add this note about Firestore
-                    // // if (!_useFirestore && !widget.isEditing)
-                    // //   Container(
-                    // //     padding: const EdgeInsets.all(12),
-                    // //     margin: const EdgeInsets.only(bottom: 10),
-                    // //     decoration: BoxDecoration(
-                    // //       color: Colors.amber.shade50,
-                    // //       borderRadius: BorderRadius.circular(8),
-                    // //       border: Border.all(color: Colors.amber.shade200),
-                    // //     ),
-                    // //     child: Row(
-                    // //       children: [
-                    // //         const Icon(Icons.info, color: Colors.amber),
-                    // //         const SizedBox(width: 10),
-                    // //         Expanded(
-                    // //           child: Text(
-                    // //             'Note: Cloud sync is disabled. Set up Firestore to enable data backup.',
-                    // //             style: TextStyle(color: Colors.amber.shade800),
-                    // //           ),
-                    // //         ),
-                    // //       ],
-                    // //     ),
-                    // //   ),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
@@ -849,55 +667,29 @@ class _MyAuthScreenState extends State<MyAuthScreen> {
                                 ),
                               )
                             : Text(
-                                widget.isEditing
-                                    ? 'Update Profile'
-                                    : 'Create Account',
+                                'Update Profile',
                                 style: const TextStyle(fontSize: 16),
                               ),
                       ),
                     ),
-                    if (!widget.isEditing) ...[
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Already have an account?'),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginScreen(
-                                    onToggleTheme: widget.onToggleTheme,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Login'),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (widget.isEditing) ...[
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: OutlinedButton(
-                          onPressed: _showDeleteConfirmation,
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Delete Account',
-                            style: TextStyle(color: Colors.red, fontSize: 16),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: OutlinedButton(
+                        onPressed: _showDeleteConfirmation,
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        child: const Text(
+                          'Delete Account',
+                          style: TextStyle(color: Colors.red, fontSize: 16),
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),

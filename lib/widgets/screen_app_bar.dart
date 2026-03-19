@@ -2,7 +2,9 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:sophia_path/screens/register_screen.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
+import 'package:sophia_path/screens/authentication/register.dart';
+import 'package:sophia_path/screens/authentication/edit_profile.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
 import 'package:provider/provider.dart';
@@ -39,10 +41,7 @@ AppBar screenAppBar(
               context,
               MaterialPageRoute(
                 builder: (ctx) {
-                  return MyAuthScreen(
-                    isEditing: true,
-                    onToggleTheme: onToggleTheme,
-                  );
+                  return EditProfile(onToggleTheme: onToggleTheme);
                 },
               ),
             );
@@ -161,7 +160,7 @@ AppBar screenAppBar(
 
                   // 2. Sign out from Firebase Auth
                   // await FirebaseAuth.instance.signOut();
-                  print('✅ Firebase Auth sign out successful');
+                  // print('✅ Firebase Auth sign out successful');
 
                   // 3. Clear local user data
                   await UserPreferencesService.instance.clearAllData();
@@ -173,7 +172,7 @@ AppBar screenAppBar(
                       context,
                       MaterialPageRoute(
                         builder: (ctx) {
-                          return MyAuthScreen(onToggleTheme: onToggleTheme);
+                          return LoginScreen(onToggleTheme: onToggleTheme);
                         },
                       ),
                       (route) => false, // Remove all previous routes

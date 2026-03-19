@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/navigation_screen.dart';
-import 'package:sophia_path/realauth/register.dart';
+import 'package:sophia_path/screens/authentication/register.dart';
 import 'package:sophia_path/services/user_preferences_services.dart';
 
 import 'authService.dart';

@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:sophia_path/realauth/login.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
 import 'dart:io';
 import 'authService.dart';
 
 class RegisterScreen extends StatefulWidget {
-  final bool isEditing;
-  const RegisterScreen({
-    super.key,
-    this.isEditing = false,
-    required this.onToggleTheme,
-  });
+  const RegisterScreen({super.key, required this.onToggleTheme});
 
   final void Function() onToggleTheme;
   @override
@@ -31,9 +26,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  // bool _obscurePassword = true;
   String? _errorMessage;
-  String? _successMessage;
+  // String? _successMessage;
   String? _selectedGender;
   String _profileImage = '';
 
@@ -67,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _successMessage = null;
+      // _successMessage = null;
     });
     final result = await _authService.register(
       email: _emailController.text.trim(),
@@ -82,9 +77,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = false;
     });
     if (result['success'] == true) {
-      setState(() {
-        _successMessage = 'Account created! Please Login.';
-      });
+      // setState(() {
+      //   _successMessage = 'Account created! Please Login.';
+      // });
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         Navigator.pushReplacement(
@@ -106,11 +101,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.isEditing) {
-      // _loadUserDataForEditing();
-    } else {
-      // _checkExistingUser();
-    }
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -205,79 +195,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    if (!widget.isEditing) ...[
-                      const SizedBox(height: 40),
-                      const Text(
-                        'Welcome! Create your account',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                    if (widget.isEditing) _buildAvatar(),
+                    _buildAvatar(),
                     const SizedBox(height: 30),
-
-                    // 🔐 EMAIL FIELD (Always visible for new users)
-                    if (!widget.isEditing)
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.email),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                            return 'Enter a valid email address';
-                          }
-                          return null;
-                        },
-                      ),
-
-                    if (!widget.isEditing) const SizedBox(height: 16),
-
-                    // 🔐 PASSWORD FIELD (Always visible for new users)
-                    if (!widget.isEditing)
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: true, // make password points (hidden)
-                        decoration: const InputDecoration(
-                          labelText: 'Password',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Password is required';
-                          }
-                          if (value.length < 6) {
-                            return 'Password must be at least 6 characters';
-                          }
-                          return null;
-                        },
-                      ),
-
-                    if (!widget.isEditing) const SizedBox(height: 16),
-                    // if (widget.isEditing) ...[
-                    //   const Divider(),
-                    //   const SizedBox(height: 10),
-
-                    //   const Text(
-                    //     'Profile Information',
-                    //     style: TextStyle(
-                    //       fontSize: 18,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    //   const SizedBox(height: 20),
-                    // ],
 
                     // Username field
                     TextFormField(
@@ -444,56 +363,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               )
                             : Text(
-                                widget.isEditing
-                                    ? 'Update Profile'
-                                    : 'Create Account',
+                                'Update Profile',
                                 style: const TextStyle(fontSize: 16),
                               ),
                       ),
                     ),
-                    if (!widget.isEditing) ...[
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Already have an account?'),
-                          // Around line where you have the login TextButton
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginScreen(
-                                    onToggleTheme: widget.onToggleTheme,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: const Text('Login'),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (widget.isEditing) ...[
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 45,
-                        child: OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Colors.red),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'Delete Account',
-                            style: TextStyle(color: Colors.red, fontSize: 16),
+
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 45,
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        child: const Text(
+                          'Delete Account',
+                          style: TextStyle(color: Colors.red, fontSize: 16),
+                        ),
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
