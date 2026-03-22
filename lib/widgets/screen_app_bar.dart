@@ -37,14 +37,14 @@ AppBar screenAppBar(
       actions: [
         TextButton(
           onPressed: () async {
-            await Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (ctx) {
-                  return EditProfile(onToggleTheme: onToggleTheme);
-                },
-              ),
-            );
+            // await Navigator.pushReplacement(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (ctx) {
+            //       return EditProfile(onToggleTheme: onToggleTheme);
+            //     },
+            //   ),
+            // );
             profileState.refreshUser();
           },
           child: Text("Edit", style: theme.textTheme.titleMedium!),

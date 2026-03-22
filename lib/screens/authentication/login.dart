@@ -32,6 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _clearSensitiveFields() {
+    _passwordController.clear();
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -56,6 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
               profileResult['message'] ??
               'Login succeeded but failed to load profile data.';
         });
+        _clearSensitiveFields();
         return;
       }
 
@@ -67,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _errorMessage = 'Login succeeded but failed to save user data.';
         });
+        _clearSensitiveFields();
         return;
       }
 
@@ -85,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } else {
       setState(() => _errorMessage = result['message']);
+      _clearSensitiveFields();
     }
   }
 
@@ -194,10 +201,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         fillColor: Colors.grey.shade50,
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Email is required';
                         }
-                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value.trim())) {
                           return 'Enter a valid email address';
                         }
                         return null;
@@ -248,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         fillColor: Colors.grey.shade50,
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) {
+                        if (value == null || value.trim().isEmpty) {
                           return 'Password is required';
                         }
                         if (value.length < 6) {

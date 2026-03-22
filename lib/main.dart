@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
 import 'package:sophia_path/screens/authentication/register.dart';
 import 'models/data.dart';
 import 'navigation_screen.dart';
@@ -10,6 +11,7 @@ import 'services/course/user_stats_service.dart';
 import 'services/profile_state.dart';
 import 'services/user_preferences_services.dart';
 import 'widgets/theme.dart';
+import 'screens/authentication/authService.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -83,6 +85,7 @@ class _MyAppState extends State<MyApp> {
   bool _isChecking = true;
   bool _hasUser = false;
   bool _isFirstLaunch = true;
+  bool _hasToken = false;
 
   @override
   void initState() {
@@ -94,6 +97,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkUserStatus() async {
     _hasUser = await _userService.hasUser();
     _isFirstLaunch = await _userService.isFirstLaunch();
+    _hasToken = (await AuthStorage.getToken()) != null;
 
     setState(() => _isChecking = false);
   }
@@ -135,8 +139,12 @@ class _MyAppState extends State<MyApp> {
     }
 
     // For new users or first launch
-    if (!_hasUser || _isFirstLaunch) {
+    if (_isFirstLaunch || !_hasUser) {
       return RegisterScreen(onToggleTheme: toggleTheme);
+    }
+
+    if (!_hasToken) {
+      return LoginScreen(onToggleTheme: toggleTheme);
     }
 
     return NavigationScreen(onToggleTheme: toggleTheme);

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-// import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/screens/authentication/login.dart';
-import 'dart:io';
 import 'authService.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -23,14 +20,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _authService = AuthService();
-  final ImagePicker _picker = ImagePicker();
 
   bool _isLoading = false;
-  // bool _obscurePassword = true;
+  bool _obscurePassword = true;
   String? _errorMessage;
-  // String? _successMessage;
-  String? _selectedGender;
-  String _profileImage = '';
+  String? _successMessage;
+  String _selectedGender = 'Male';
 
   @override
   void dispose() {
@@ -39,7 +34,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _fullNameController.dispose();
     _tagController.dispose();
     _ageController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -56,20 +50,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Manager',
     'Other',
   ];
+
+  void _clearSensitiveFields() {
+    _passwordController.clear();
+    _emailController.clear();
+  }
+
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // _successMessage = null;
+      _successMessage = null;
     });
+
+    final age = int.tryParse(_ageController.text.trim());
+    if (age == null) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Age must be a valid number';
+      });
+      return;
+    }
+
     final result = await _authService.register(
       email: _emailController.text.trim(),
       username: _usernameController.text.trim(),
       fullname: _fullNameController.text.trim(),
       password: _passwordController.text,
       tag: _tagController.text,
+      gender: _selectedGender,
+      age: age,
     );
 
     if (!mounted) return;
@@ -77,9 +89,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = false;
     });
     if (result['success'] == true) {
-      // setState(() {
-      //   _successMessage = 'Account created! Please Login.';
-      // });
+      setState(() {
+        _successMessage = 'Account created! Please Login.';
+      });
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) {
         Navigator.pushReplacement(
@@ -95,6 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _errorMessage = result['message'];
       });
+      _clearSensitiveFields();
     }
   }
 
@@ -103,289 +116,526 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.initState();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final picked = await _picker.pickImage(
-      source: source,
-      imageQuality: 85,
-      maxWidth: 800,
-      maxHeight: 800,
-    );
-
-    if (picked != null) {
-      setState(() => _profileImage = picked.path);
-    }
-  }
-
-  void _showImageSourceDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Choose Image Source'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _pickImage(ImageSource.gallery);
-            },
-            child: const Text('Gallery'),
-          ),
-          if (!kIsWeb)
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.camera);
-              },
-              child: const Text('Camera'),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    return GestureDetector(
-      onTap: () => _showImageSourceDialog(),
-      child: Stack(
-        children: [
-          CircleAvatar(
-            radius: 60,
-            backgroundColor: Colors.blue,
-            child: ClipOval(
-              child: _profileImage.isEmpty
-                  ? const Icon(Icons.person, size: 60)
-                  : _profileImage.startsWith('http')
-                  ? Image.network(_profileImage, fit: BoxFit.cover)
-                  : kIsWeb
-                  ? const Icon(
-                      Icons.person,
-                      size: 60,
-                    ) // Web doesn't support Image.file
-                  : Image.file(File(_profileImage), fit: BoxFit.cover),
-            ),
-          ),
-          const Positioned(
-            bottom: 0,
-            right: 0,
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue,
-              child: Icon(Icons.camera_alt, size: 18, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(
-      //   title: Text(
-      //     widget.isEditing ? 'Edit Profile' : 'Create Your Account',
-      //     style: GoogleFonts.poppins(),
-      //   ),
-      //   centerTitle: true,
-      // ),
+      backgroundColor: Colors.white,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                  vertical: 30,
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildAvatar(),
-                    const SizedBox(height: 30),
-
-                    // Username field
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                    // Logo or Icon
+                    Container(
+                      height: 100,
+                      width: 100,
+                      margin: const EdgeInsets.only(bottom: 30),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        shape: BoxShape.circle,
                       ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Username is required';
-                        }
-                        if (value.length < 3) {
-                          return 'Username must be at least 3 characters';
-                        }
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-                          return 'Only letters, numbers, and underscores allowed';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
+                      child: const Icon(
+                        Icons.person_add_outlined,
+                        size: 50,
+                        color: Colors.blue,
                       ),
-                      validator: (v) => v == null || v.isEmpty
-                          ? "Please enter a valid Name"
-                          : v.length < 3
-                          ? 'Name must be at least 3 characters'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _ageController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Age',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_today),
-                      ),
-                      validator: (v) => v == null || v.isEmpty
-                          ? 'Please enter your age'
-                          : int.tryParse(v) == null
-                          ? 'Please enter a valid number'
-                          : int.parse(v) < 5 || int.parse(v) > 120
-                          ? 'Please enter a valid age (5-120)'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedGender,
-                      decoration: const InputDecoration(
-                        labelText: 'Gender',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      items: ['Male', 'Female', 'Rather not say']
-                          .map(
-                            (g) => DropdownMenuItem(value: g, child: Text(g)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _selectedGender = v!),
-                      validator: (v) =>
-                          v == null ? "Please select a gender" : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    DropdownButtonFormField<String>(
-                      initialValue:
-                          _tagController.text.isEmpty ||
-                              _tagController.text == "Member"
-                          ? null
-                          : _tagController.text,
-                      decoration: const InputDecoration(
-                        labelText: 'Profession',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.work),
-                      ),
-                      items: _availableTags
-                          .map(
-                            (t) => DropdownMenuItem(value: t, child: Text(t)),
-                          )
-                          .toList(),
-                      onChanged: (v) => _tagController.text = v!,
-                      validator: (v) =>
-                          v == null ||
-                              v.isEmpty ||
-                              _tagController.text ==
-                                  "Member" // to fix a bug that happened , we could add type Member later on
-                          ? "Please select a profession"
-                          : null,
                     ),
 
-                    // const SizedBox(height: 20),
-                    if (_errorMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error, color: Colors.red),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(color: Colors.red.shade800),
+                    // Welcome Text
+                    Text(
+                      'Create Account',
+                      style: GoogleFonts.poppins(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    // const SizedBox(height: 8),
+
+                    // Text(
+                    //   'Join our community today',
+                    //   style: GoogleFonts.poppins(
+                    //     fontSize: 16,
+                    //     color: Colors.grey.shade600,
+                    //   ),
+                    //   textAlign: TextAlign.center,
+                    // ),
+                    const SizedBox(height: 40),
+
+                    // Register Form
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          // Email Field
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                              labelText: 'Email',
+                              hintText: 'Enter your email',
+                              prefixIcon: const Icon(Icons.email_outlined),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Email is required';
+                              }
+                              if (!RegExp(
+                                r'^[^@]+@[^@]+\.[^@]+',
+                              ).hasMatch(value.trim())) {
+                                return 'Enter a valid email address';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Password Field with toggle
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            decoration: InputDecoration(
+                              labelText: 'Password',
+                              hintText: 'Enter your password',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Password is required';
+                              }
+                              if (value.length < 6) {
+                                return 'Password must be at least 6 characters';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Username Field
+                          TextFormField(
+                            controller: _usernameController,
+                            decoration: InputDecoration(
+                              labelText: 'Username',
+                              hintText: 'Enter your username',
+                              prefixIcon: const Icon(Icons.person_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Username is required';
+                              }
+                              if (value.trim().length < 3) {
+                                return 'Username must be at least 3 characters';
+                              }
+                              if (!RegExp(
+                                r'^[a-zA-Z0-9_]+$',
+                              ).hasMatch(value.trim())) {
+                                return 'Only letters, numbers, and underscores allowed';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Full Name Field
+                          TextFormField(
+                            controller: _fullNameController,
+                            decoration: InputDecoration(
+                              labelText: 'Full Name',
+                              hintText: 'Enter your full name',
+                              prefixIcon: const Icon(Icons.person),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Full name is required';
+                              }
+                              if (value.trim().length < 3) {
+                                return 'Name must be at least 3 characters';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Age Field
+                          TextFormField(
+                            controller: _ageController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Age',
+                              hintText: 'Enter your age',
+                              prefixIcon: const Icon(Icons.calendar_today),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) {
+                                return 'Age is required';
+                              }
+                              final age = int.tryParse(v);
+                              if (age == null) {
+                                return 'Enter a valid number';
+                              }
+                              if (age < 5 || age > 120) {
+                                return 'Age must be between 5 and 120';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Gender Dropdown
+                          DropdownButtonFormField<String>(
+                            value: _selectedGender,
+                            decoration: InputDecoration(
+                              labelText: 'Gender',
+                              prefixIcon: const Icon(Icons.wc_outlined),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            items: ['Male', 'Female', 'Rather not say']
+                                .map(
+                                  (g) => DropdownMenuItem(
+                                    value: g,
+                                    child: Text(g),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _selectedGender = v);
+                              }
+                            },
+                            validator: (v) =>
+                                v == null ? 'Please select a gender' : null,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Profession Dropdown
+                          DropdownButtonFormField<String>(
+                            value: _tagController.text.isEmpty
+                                ? null
+                                : _tagController.text,
+                            decoration: InputDecoration(
+                              labelText: 'Profession',
+                              prefixIcon: const Icon(Icons.work_outline),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.blue.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            items: _availableTags
+                                .map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) {
+                                _tagController.text = v;
+                              }
+                            },
+                            validator: (v) => v == null || v.isEmpty
+                                ? 'Please select a profession'
+                                : null,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Error Message
+                          if (_errorMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red.shade700,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _errorMessage!,
+                                      style: TextStyle(
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
 
-                    // // Add this note about Firestore
-                    // // if (!_useFirestore && !widget.isEditing)
-                    // //   Container(
-                    // //     padding: const EdgeInsets.all(12),
-                    // //     margin: const EdgeInsets.only(bottom: 10),
-                    // //     decoration: BoxDecoration(
-                    // //       color: Colors.amber.shade50,
-                    // //       borderRadius: BorderRadius.circular(8),
-                    // //       border: Border.all(color: Colors.amber.shade200),
-                    // //     ),
-                    // //     child: Row(
-                    // //       children: [
-                    // //         const Icon(Icons.info, color: Colors.amber),
-                    // //         const SizedBox(width: 10),
-                    // //         Expanded(
-                    // //           child: Text(
-                    // //             'Note: Cloud sync is disabled. Set up Firestore to enable data backup.',
-                    // //             style: TextStyle(color: Colors.amber.shade800),
-                    // //           ),
-                    // //         ),
-                    // //       ],
-                    // //     ),
-                    // //   ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleSignup,
-                        style: ElevatedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                          // Success Message
+                          if (_successMessage != null)
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              margin: const EdgeInsets.only(bottom: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
                                 ),
-                              )
-                            : Text(
-                                'Update Profile',
-                                style: const TextStyle(fontSize: 16),
                               ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green.shade700,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      _successMessage!,
+                                      style: TextStyle(
+                                        color: Colors.green.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          const SizedBox(height: 20),
+
+                          // Sign Up Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _handleSignup,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      'Create Account',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
                     const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 45,
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+
+                    // Already have an account?
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Already have an account? ',
+                          style: GoogleFonts.poppins(
+                            color: Colors.grey.shade600,
                           ),
                         ),
-                        child: const Text(
-                          'Delete Account',
-                          style: TextStyle(color: Colors.red, fontSize: 16),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => LoginScreen(
+                                  onToggleTheme: widget.onToggleTheme,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Login',
+                            style: GoogleFonts.poppins(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
