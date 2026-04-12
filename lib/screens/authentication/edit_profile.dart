@@ -1,733 +1,471 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter/foundation.dart';
-// import 'package:google_fonts/google_fonts.dart';
-// import 'package:image_picker/image_picker.dart';
-// import 'package:sophia_path/screens/authentication/login.dart';
-// import 'dart:io';
-// import '../../models/user/user.dart';
-// import '../../services/course/scores_repo.dart';
-// import '../../services/course/user_stats_service.dart';
-// import '../../services/user_preferences_services.dart';
-// import '../../navigation_screen.dart';
-// import 'authService.dart';
+import 'dart:io';
 
-// class EditProfile extends StatefulWidget {
-//   final VoidCallback onToggleTheme;
-//   const EditProfile({super.key, required this.onToggleTheme});
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
-//   @override
-//   State<EditProfile> createState() => _EditProfileState();
-// }
+import '../../models/user/user.dart';
+import '../../services/profile_state.dart';
+import '../../services/user_preferences_services.dart';
+import 'authService.dart';
 
-// class _EditProfileState extends State<EditProfile> {
-//   final _userService = UserPreferencesService.instance;
-//   final _authService = AuthService();
-//   final _formKey = GlobalKey<FormState>();
-//   final TextEditingController _usernameController = TextEditingController();
-//   final TextEditingController _fullNameController = TextEditingController();
-//   final TextEditingController _tagController = TextEditingController();
-//   final TextEditingController _ageController = TextEditingController();
-//   final TextEditingController _emailController = TextEditingController();
-//   final TextEditingController _passwordController = TextEditingController();
-//   // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-//   final ImagePicker _picker = ImagePicker();
+class EditProfile extends StatefulWidget {
+  const EditProfile({super.key, required this.onToggleTheme});
 
-//   bool _isLoading = false;
-//   bool _isSigningIn = false;
-//   String? _errorMessage;
-//   String? _selectedGender;
-//   String _profileImage = '';
-//   String? _firebaseUid;
+  final VoidCallback onToggleTheme;
 
-//   // Add this flag
-//   // final bool _useFirestore = false; // Set to true after you set up Firestore
+  @override
+  State<EditProfile> createState() => _EditProfileState();
+}
 
-//   final List<String> _availableTags = [
-//     'Student',
-//     'Software Engineer',
-//     'Teacher',
-//     'Developer',
-//     'Designer',
-//     'Researcher',
-//     'Entrepreneur',
-//     'Freelancer',
-//     'Manager',
-//     'Other',
-//   ];
+class _EditProfileState extends State<EditProfile> {
+  final _formKey = GlobalKey<FormState>();
+  final _userService = UserPreferencesService.instance;
+  final _authService = AuthService();
+  final _picker = ImagePicker();
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     _loadUserDataForEditing();
-//   }
+  final _usernameController = TextEditingController();
+  final _fullNameController = TextEditingController();
+  final _tagController = TextEditingController();
+  final _ageController = TextEditingController();
 
-//   Future<void> _loadUserDataForEditing() async {
-//     setState(() => _isLoading = true);
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String? _errorMessage;
+  String _profileImage = '';
+  String _selectedGender = 'Rather Not Say';
 
-//     final user = await _userService.getUser();
-//     if (user != null) {
-//       _usernameController.text = user.username;
-//       _fullNameController.text = user.fullName;
-//       _tagController.text = user.tag;
-//       _ageController.text = user.age.toString();
-//       _selectedGender = user.sex;
-//       _profileImage = user.profileImage;
-//     }
+  final List<String> _availableTags = const [
+    'Student',
+    'Software Engineer',
+    'Teacher',
+    'Developer',
+    'Designer',
+    'Researcher',
+    'Entrepreneur',
+    'Freelancer',
+    'Manager',
+    'Other',
+  ];
 
-//     setState(() => _isLoading = false);
-//   }
+  static const String _genderMale = 'Male';
+  static const String _genderFemale = 'Female';
+  static const String _genderRatherNotSay = 'Rather Not Say';
 
-//   Future<void> _checkExistingUser() async {
-//     // final user = firebase_auth.FirebaseAuth.instance.currentUser;
+  String _normalizeGender(String? value) {
+    final normalized = value?.trim().toLowerCase();
+    switch (normalized) {
+      case 'male':
+        return _genderMale;
+      case 'female':
+        return _genderFemale;
+      case 'rather not say':
+        return _genderRatherNotSay;
+      default:
+        return _genderRatherNotSay;
+    }
+  }
 
-//     // if (user != null) {
-//     //   _firebaseUid = user.uid;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
 
-//     //   // Try to get email from auth
-//     //   if (user.email != null) {
-//     //     _emailController.text = user.email!;
-//     //   }
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _fullNameController.dispose();
+    _tagController.dispose();
+    _ageController.dispose();
+    super.dispose();
+  }
 
-//     //   final existingUser = await _userService.getUser();
-//     //   if (existingUser != null && mounted) {
-//     //     _navigateToHomeScreen();
-//     //   }
-//     // }
-//   }
+  Future<void> _loadUserData() async {
+    final user = await _userService.getUser();
 
-//   // DELETE ACCOUNT METHODS
-//   Future<void> _deleteAccount() async {
-//     setState(() => _isLoading = true);
+    if (!mounted) return;
 
-//     // try {
-//     // final currentUser = firebase_auth.FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _usernameController.text = user.username;
+      _fullNameController.text = user.fullName;
+      _tagController.text = user.tag;
+      _ageController.text = user.age.toString();
+      _selectedGender = _normalizeGender(user.sex);
+      _profileImage = user.profileImage;
+    } else {
+      _tagController.text = 'Student';
+      _ageController.text = '20';
+      _selectedGender = _genderRatherNotSay;
+      _profileImage = User.defaultProfileImage;
+    }
 
-//     // if (currentUser != null) {
-//     //   // Only delete from Firestore if enabled
-//     //   if (_useFirestore) {
-//     //     try {
-//     //       await FirebaseFirestore.instance
-//     //           .collection('users')
-//     //           .doc(currentUser.uid)
-//     //           .delete();
+    setState(() => _isLoading = false);
+  }
 
-//     //       // Delete username reservation
-//     //       final username = await _userService.getUser();
-//     //       if (username != null) {
-//     //         await FirebaseFirestore.instance
-//     //             .collection('usernames')
-//     //             .doc(normalizeUsername(username.username))
-//     //             .delete();
-//     //       }
-//     //     } catch (e) {
-//     //       print('Firestore delete error (ignored): $e');
-//     //     }
-//     //   }
+  Future<void> _pickImage(ImageSource source) async {
+    final picked = await _picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
 
-//     //   // Delete Firebase Auth account
-//     //   await currentUser.delete();
-//     // }
+    if (picked == null) return;
 
-//     // Clear local data
-//     await _userService.clearAllData();
+    var finalPath = picked.path;
 
-//     // Reset stats
-//     try {
-//       final service = UserStatsService();
-//       await service.resetAllProgress();
-//       await ScoresRepository.clearScores();
-//     } catch (e) {
-//       debugPrint("Stats reset error: $e");
-//     }
+    if (!kIsWeb) {
+      finalPath = await _persistPickedImage(picked.path);
+    }
 
-//     setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _profileImage = finalPath);
+    }
+  }
 
-//     if (!mounted) return;
+  Future<String> _persistPickedImage(String sourcePath) async {
+    final sourceFile = File(sourcePath);
+    if (!await sourceFile.exists()) return sourcePath;
 
-//     // Navigate to registration screen
-//     //   Navigator.pushAndRemoveUntil(
-//     //     context,
-//     //     MaterialPageRoute(
-//     //       builder: (_) => MyAuthScreen(
-//     //         onToggleTheme: widget.onToggleTheme,
-//     //         isEditing: false,
-//     //       ),
-//     //     ),
-//     //     (route) => false,
-//     //   );
-//     // } on firebase_auth.FirebaseAuthException catch (e) {
-//     //   setState(() => _isLoading = false);
+    final appDir = await getApplicationDocumentsDirectory();
+    final profileDir = Directory(p.join(appDir.path, 'profile_images'));
+    if (!await profileDir.exists()) {
+      await profileDir.create(recursive: true);
+    }
 
-//     //   if (e.code == 'requires-recent-login') {
-//     //     // Re-authenticate needed
-//     //     if (!mounted) return;
+    final extension = p.extension(sourcePath).isEmpty
+        ? '.jpg'
+        : p.extension(sourcePath);
+    final fileName =
+        'profile_${DateTime.now().millisecondsSinceEpoch}$extension';
+    final targetPath = p.join(profileDir.path, fileName);
 
-//     //     await _showReauthenticateDialog();
-//     //   } else {
-//     //     if (!mounted) return;
+    final copiedFile = await sourceFile.copy(targetPath);
+    return copiedFile.path;
+  }
 
-//     //     ScaffoldMessenger.of(context).showSnackBar(
-//     //       SnackBar(
-//     //         content: Text('Failed to delete account: ${e.message}'),
-//     //         backgroundColor: Colors.red,
-//     //       ),
-//     //     );
-//     //   }
-//     // } catch (e) {
-//     //   setState(() => _isLoading = false);
+  void _showImageSourceDialog() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Choose image source'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _pickImage(ImageSource.gallery);
+            },
+            child: const Text('Gallery'),
+          ),
+          if (!kIsWeb)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _pickImage(ImageSource.camera);
+              },
+              child: const Text('Camera'),
+            ),
+        ],
+      ),
+    );
+  }
 
-//     //   if (!mounted) return;
+  Widget _buildAvatar() {
+    final image = _profileImage.trim();
 
-//     //   ScaffoldMessenger.of(context).showSnackBar(
-//     //     SnackBar(
-//     //       content: Text('Failed to delete account: $e'),
-//     //       backgroundColor: Colors.red,
-//     //     ),
-//     //   );
-//     // }
-//   }
+    return GestureDetector(
+      onTap: _showImageSourceDialog,
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: Colors.blue.shade50,
+            child: ClipOval(
+              child: image.isEmpty
+                  ? const Icon(Icons.person, size: 60, color: Colors.blue)
+                  : image.startsWith('http')
+                  ? Image.network(
+                      image,
+                      fit: BoxFit.cover,
+                      width: 120,
+                      height: 120,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person,
+                        size: 60,
+                        color: Colors.blue,
+                      ),
+                    )
+                  : kIsWeb
+                  ? const Icon(Icons.person, size: 60, color: Colors.blue)
+                  : Image.file(
+                      File(image),
+                      fit: BoxFit.cover,
+                      width: 120,
+                      height: 120,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person,
+                        size: 60,
+                        color: Colors.blue,
+                      ),
+                    ),
+            ),
+          ),
+          const Positioned(
+            bottom: 0,
+            right: 0,
+            child: CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.blue,
+              child: Icon(Icons.camera_alt, size: 18, color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-//   Future<void> _showReauthenticateDialog() async {
-//     final emailController = TextEditingController();
-//     final passwordController = TextEditingController();
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
 
-//     await showDialog(
-//       context: context,
-//       builder: (_) => AlertDialog(
-//         title: const Text('Re-authentication Required'),
-//         content: Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             const Text('Please enter your credentials to delete your account.'),
-//             const SizedBox(height: 20),
-//             TextField(
-//               controller: emailController,
-//               decoration: const InputDecoration(
-//                 labelText: 'Email',
-//                 border: OutlineInputBorder(),
-//               ),
-//             ),
-//             const SizedBox(height: 10),
-//             TextField(
-//               controller: passwordController,
-//               obscureText: true,
-//               decoration: const InputDecoration(
-//                 labelText: 'Password',
-//                 border: OutlineInputBorder(),
-//               ),
-//             ),
-//           ],
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.pop(context),
-//             child: const Text('Cancel'),
-//           ),
-//           ElevatedButton(
-//             onPressed: () async {
-//               // try {
-//               //   final user = firebase_auth.FirebaseAuth.instance.currentUser;
-//               //   if (user != null) {
-//               //     final credential = firebase_auth.EmailAuthProvider.credential(
-//               //       email: emailController.text,
-//               //       password: passwordController.text,
-//               //     );
-//               //     await user.reauthenticateWithCredential(credential);
-//               //     Navigator.pop(context);
-//               //     await _deleteAccount();
-//               //   }
-//               // } catch (e) {
-//               //   ScaffoldMessenger.of(context).showSnackBar(
-//               //     SnackBar(
-//               //       content: Text('Authentication failed: $e'),
-//               //       backgroundColor: Colors.red,
-//               //     ),
-//               //   );
-//               // }
-//             },
-//             child: const Text('Confirm'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
 
-//   void _showDeleteConfirmation() {
-//     showDialog(
-//       context: context,
-//       builder: (_) => AlertDialog(
-//         title: const Text(
-//           'Delete Account',
-//           textAlign: TextAlign.center,
-//           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-//         ),
-//         content: const Column(
-//           mainAxisSize: MainAxisSize.min,
-//           children: [
-//             Text(
-//               'This will permanently delete:',
-//               style: TextStyle(fontWeight: FontWeight.bold),
-//             ),
-//             SizedBox(height: 8),
-//             Text('• Your profile information'),
-//             Text('• All your progress and scores'),
-//             Text('• Your learning history'),
-//             SizedBox(height: 16),
-//             Text(
-//               'This action cannot be undone!',
-//               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-//             ),
-//           ],
-//         ),
-//         actions: [
-//           Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               Expanded(
-//                 child: OutlinedButton(
-//                   onPressed: () => Navigator.pop(context),
-//                   style: OutlinedButton.styleFrom(
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(8),
-//                     ),
-//                   ),
-//                   child: const Text('Cancel'),
-//                 ),
-//               ),
-//               const SizedBox(width: 10),
-//               Expanded(
-//                 child: ElevatedButton(
-//                   onPressed: () {
-//                     Navigator.pop(context);
-//                     _deleteAccount();
-//                   },
-//                   style: ElevatedButton.styleFrom(
-//                     backgroundColor: Colors.red,
-//                     shape: RoundedRectangleBorder(
-//                       borderRadius: BorderRadius.circular(8),
-//                     ),
-//                   ),
-//                   child: const Text(
-//                     'Delete',
-//                     style: TextStyle(color: Colors.white),
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
+    try {
+      final backendResult = await _authService.updateProfile(
+        username: _usernameController.text.trim(),
+        fullname: _fullNameController.text.trim(),
+        tag: _tagController.text.trim(),
+        gender: _normalizeGender(_selectedGender),
+      );
 
-//   String _getAuthErrorMessage(String errorCode) {
-//     switch (errorCode) {
-//       case 'email-already-in-use':
-//         return 'This email is already registered. Please login instead.';
-//       case 'invalid-email':
-//         return 'Please enter a valid email address.';
-//       case 'operation-not-allowed':
-//         return 'Email/password authentication is not enabled.';
-//       case 'weak-password':
-//         return 'Password is too weak. Use at least 6 characters.';
-//       case 'user-disabled':
-//         return 'This account has been disabled.';
-//       case 'user-not-found':
-//         return 'No account found with this email.';
-//       case 'wrong-password':
-//         return 'Incorrect password. Please try again.';
-//       case 'network-request-failed':
-//         return 'Network error. Please check your connection.';
-//       default:
-//         return 'Authentication failed. Please try again.';
-//     }
-//   }
+      if (backendResult['success'] != true) {
+        final message =
+            backendResult['message']?.toString() ?? 'Failed to update profile.';
 
-//   Future<void> _createOrUpdateProfile() async {
-//     if (!_formKey.currentState!.validate()) return;
+        if (message.contains('No token found') ||
+            message.contains('Session expired')) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session expired. Please login again.'),
+            ),
+          );
+          Navigator.of(context).pop();
+          return;
+        }
 
-//     setState(() {
-//       _isLoading = true;
-//       _isSigningIn = true;
-//       _errorMessage = null;
-//     });
+        if (!mounted) return;
+        setState(() => _errorMessage = message);
+        return;
+      }
 
-//     try {
-//       final profileResult = await _authService.updateProfile(
-//         fullname: _fullNameController.text.trim(),
-//         tag: _tagController.text.trim(),
-//         gender: _selectedGender ?? 'Rather not say',
-//       );
+      final existingUser = await _userService.getUser();
+      final updatedUser = User(
+        username: _usernameController.text.trim(),
+        fullName: _fullNameController.text.trim(),
+        tag: _tagController.text.trim(),
+        age:
+            int.tryParse(_ageController.text.trim()) ?? existingUser?.age ?? 20,
+        sex: _normalizeGender(_selectedGender),
+        profileImage: _profileImage.isEmpty
+            ? existingUser?.profileImage ?? User.defaultProfileImage
+            : _profileImage,
+        achievementsProgress:
+            existingUser?.achievementsProgress ?? List<double>.filled(13, 0),
+        registeredCourses: existingUser?.registeredCourses ?? const [],
+        registedCoursesIndexes:
+            existingUser?.registedCoursesIndexes ?? const [],
+      );
 
-//       if (profileResult['success'] != true) {
-//         final message =
-//             profileResult['message']?.toString() ?? 'Failed to update profile.';
+      final saved = await _userService.saveUser(updatedUser);
+      if (!saved) {
+        throw Exception('Failed to save local profile data.');
+      }
 
-//         if (message.contains('No token found') ||
-//             message.contains('Session expired')) {
-//           if (!mounted) return;
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             const SnackBar(
-//               content: Text('Session expired. Please login again.'),
-//             ),
-//           );
-//           Navigator.pushAndRemoveUntil(
-//             context,
-//             MaterialPageRoute(
-//               builder: (_) => LoginScreen(onToggleTheme: widget.onToggleTheme),
-//             ),
-//             (route) => false,
-//           );
-//           return;
-//         }
+      if (!mounted) return;
+      await context.read<ProfileState>().updateProfile(updatedUser);
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'An unexpected error occurred: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
-//         setState(() {
-//           _errorMessage = message;
-//         });
-//         return;
-//       }
-
-//       final existingUser = await _userService.getUser();
-//       final localUser = User(
-//         username: _usernameController.text.trim(),
-//         fullName: _fullNameController.text.trim(),
-//         tag: _tagController.text.trim(),
-//         age: int.tryParse(_ageController.text) ?? 0,
-//         sex: _selectedGender ?? 'Rather not say',
-//         profileImage: _profileImage.isEmpty
-//             ? User.defaultProfileImage
-//             : _profileImage,
-//         achievementsProgress:
-//             existingUser?.achievementsProgress ?? List.filled(13, 0.0),
-//         registeredCourses: existingUser?.registeredCourses ?? [],
-//         registedCoursesIndexes: existingUser?.registedCoursesIndexes ?? [],
-//       );
-
-//       final saved = await _userService.saveUser(localUser);
-//       if (!saved) {
-//         throw Exception('Failed to save user locally');
-//       }
-
-//       _navigateToHomeScreen();
-//     } catch (e) {
-//       setState(() {
-//         _errorMessage = 'An unexpected error occurred: $e';
-//       });
-//     } finally {
-//       if (mounted) {
-//         setState(() {
-//           _isLoading = false;
-//           _isSigningIn = false;
-//         });
-//       }
-//     }
-//   }
-
-//   String normalizeUsername(String input) {
-//     return input.trim().toLowerCase();
-//   }
-
-//   Future<void> _reserveUsername(String username, String uid) async {
-//     try {
-//       // final ref = FirebaseFirestore.instance
-//       //     .collection('usernames')
-//       //     .doc(username);
-
-//       // final snapshot = await ref.get();
-
-//       // if (snapshot.exists) {
-//       //   throw Exception('Username "$username" is already taken');
-//       // }
-
-//       // await ref.set({'uid': uid, 'createdAt': FieldValue.serverTimestamp()});
-//     } catch (e) {
-//       print('Error reserving username: $e');
-//       rethrow;
-//     }
-//   }
-
-//   Future<void> _pickImage(ImageSource source) async {
-//     final picked = await _picker.pickImage(
-//       source: source,
-//       imageQuality: 85,
-//       maxWidth: 800,
-//       maxHeight: 800,
-//     );
-
-//     if (picked != null) {
-//       setState(() => _profileImage = picked.path);
-//     }
-//   }
-
-//   void _showImageSourceDialog() {
-//     showDialog(
-//       context: context,
-//       builder: (_) => AlertDialog(
-//         title: const Text('Choose Image Source'),
-//         actions: [
-//           TextButton(
-//             onPressed: () {
-//               Navigator.pop(context);
-//               _pickImage(ImageSource.gallery);
-//             },
-//             child: const Text('Gallery'),
-//           ),
-//           if (!kIsWeb)
-//             TextButton(
-//               onPressed: () {
-//                 Navigator.pop(context);
-//                 _pickImage(ImageSource.camera);
-//               },
-//               child: const Text('Camera'),
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildAvatar() {
-//     return GestureDetector(
-//       onTap: () => _showImageSourceDialog(),
-//       child: Stack(
-//         children: [
-//           CircleAvatar(
-//             radius: 60,
-//             backgroundColor: Colors.blue,
-//             child: ClipOval(
-//               child: _profileImage.isEmpty
-//                   ? const Icon(Icons.person, size: 60)
-//                   : _profileImage.startsWith('http')
-//                   ? Image.network(_profileImage, fit: BoxFit.cover)
-//                   : kIsWeb
-//                   ? const Icon(
-//                       Icons.person,
-//                       size: 60,
-//                     ) // Web doesn't support Image.file
-//                   : Image.file(File(_profileImage), fit: BoxFit.cover),
-//             ),
-//           ),
-//           const Positioned(
-//             bottom: 0,
-//             right: 0,
-//             child: CircleAvatar(
-//               radius: 16,
-//               backgroundColor: Colors.blue,
-//               child: Icon(Icons.camera_alt, size: 18, color: Colors.white),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   void _navigateToHomeScreen() {
-//     Navigator.of(context).pushReplacement(
-//       MaterialPageRoute(
-//         builder: (context) =>
-//             NavigationScreen(onToggleTheme: widget.onToggleTheme),
-//       ),
-//     );
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Text('Edit Profile', style: GoogleFonts.poppins()),
-//         centerTitle: true,
-//         leading: IconButton(
-//           onPressed: () {
-//             Navigator.pushReplacement(
-//               context,
-//               MaterialPageRoute(
-//                 builder: (ctx) => NavigationScreen(
-//                   onToggleTheme: widget.onToggleTheme,
-//                   selectedIndex: 1,
-//                 ),
-//               ),
-//             );
-//           },
-//           icon: const Icon(Icons.arrow_back),
-//         ),
-//       ),
-//       body: _isLoading
-//           ? const Center(child: CircularProgressIndicator())
-//           : SingleChildScrollView(
-//               padding: const EdgeInsets.all(20),
-//               child: Form(
-//                 key: _formKey,
-//                 child: Column(
-//                   children: [
-//                     _buildAvatar(),
-//                     const SizedBox(height: 30),
-
-//                     TextFormField(
-//                       controller: _usernameController,
-//                       decoration: const InputDecoration(
-//                         labelText: 'Username',
-//                         border: OutlineInputBorder(),
-//                         prefixIcon: Icon(Icons.person),
-//                       ),
-//                       validator: (value) {
-//                         if (value == null || value.isEmpty) {
-//                           return 'Username is required';
-//                         }
-//                         if (value.length < 3) {
-//                           return 'Username must be at least 3 characters';
-//                         }
-//                         if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
-//                           return 'Only letters, numbers, and underscores allowed';
-//                         }
-//                         return null;
-//                       },
-//                     ),
-//                     const SizedBox(height: 16),
-//                     TextFormField(
-//                       controller: _fullNameController,
-//                       decoration: const InputDecoration(
-//                         labelText: 'Full Name',
-//                         border: OutlineInputBorder(),
-//                         prefixIcon: Icon(Icons.person_outline),
-//                       ),
-//                       validator: (v) => v == null || v.isEmpty
-//                           ? "Please enter a valid Name"
-//                           : v.length < 3
-//                           ? 'Name must be at least 3 characters'
-//                           : null,
-//                     ),
-//                     const SizedBox(height: 16),
-//                     TextFormField(
-//                       controller: _ageController,
-//                       keyboardType: TextInputType.number,
-//                       decoration: const InputDecoration(
-//                         labelText: 'Age',
-//                         border: OutlineInputBorder(),
-//                         prefixIcon: Icon(Icons.calendar_today),
-//                       ),
-//                       validator: (v) => v == null || v.isEmpty
-//                           ? 'Please enter your age'
-//                           : int.tryParse(v) == null
-//                           ? 'Please enter a valid number'
-//                           : int.parse(v) < 5 || int.parse(v) > 120
-//                           ? 'Please enter a valid age (5-120)'
-//                           : null,
-//                     ),
-//                     const SizedBox(height: 16),
-//                     DropdownButtonFormField<String>(
-//                       initialValue: _selectedGender,
-//                       decoration: const InputDecoration(
-//                         labelText: 'Gender',
-//                         border: OutlineInputBorder(),
-//                         prefixIcon: Icon(Icons.person_outline),
-//                       ),
-//                       items: ['Male', 'Female', 'Rather not say']
-//                           .map(
-//                             (g) => DropdownMenuItem(value: g, child: Text(g)),
-//                           )
-//                           .toList(),
-//                       onChanged: (v) => setState(() => _selectedGender = v!),
-//                       validator: (v) =>
-//                           v == null ? "Please select a gender" : null,
-//                     ),
-//                     const SizedBox(height: 16),
-
-//                     DropdownButtonFormField<String>(
-//                       initialValue:
-//                           _tagController.text.isEmpty ||
-//                               _tagController.text == "Member"
-//                           ? null
-//                           : _tagController.text,
-//                       decoration: const InputDecoration(
-//                         labelText: 'Profession',
-//                         border: OutlineInputBorder(),
-//                         prefixIcon: Icon(Icons.work),
-//                       ),
-//                       items: _availableTags
-//                           .map(
-//                             (t) => DropdownMenuItem(value: t, child: Text(t)),
-//                           )
-//                           .toList(),
-//                       onChanged: (v) => _tagController.text = v!,
-//                       validator: (v) =>
-//                           v == null ||
-//                               v.isEmpty ||
-//                               _tagController.text ==
-//                                   "Member" // to fix a bug that happened , we could add type Member later on
-//                           ? "Please select a profession"
-//                           : null,
-//                     ),
-
-//                     // const SizedBox(height: 20),
-//                     if (_errorMessage != null)
-//                       Container(
-//                         padding: const EdgeInsets.all(12),
-//                         margin: const EdgeInsets.symmetric(vertical: 10),
-//                         decoration: BoxDecoration(
-//                           color: Colors.red.shade50,
-//                           borderRadius: BorderRadius.circular(8),
-//                           border: Border.all(color: Colors.red.shade200),
-//                         ),
-//                         child: Row(
-//                           children: [
-//                             const Icon(Icons.error, color: Colors.red),
-//                             const SizedBox(width: 10),
-//                             Expanded(
-//                               child: Text(
-//                                 _errorMessage!,
-//                                 style: TextStyle(color: Colors.red.shade800),
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       ),
-//                     const SizedBox(height: 20),
-//                     SizedBox(
-//                       width: double.infinity,
-//                       height: 50,
-//                       child: ElevatedButton(
-//                         onPressed: _isSigningIn ? null : _createOrUpdateProfile,
-//                         style: ElevatedButton.styleFrom(
-//                           shape: RoundedRectangleBorder(
-//                             borderRadius: BorderRadius.circular(8),
-//                           ),
-//                         ),
-//                         child: _isSigningIn
-//                             ? const SizedBox(
-//                                 width: 20,
-//                                 height: 20,
-//                                 child: CircularProgressIndicator(
-//                                   strokeWidth: 2,
-//                                   color: Colors.white,
-//                                 ),
-//                               )
-//                             : Text(
-//                                 'Update Profile',
-//                                 style: const TextStyle(fontSize: 16),
-//                               ),
-//                       ),
-//                     ),
-//                     const SizedBox(height: 20),
-//                     SizedBox(
-//                       width: double.infinity,
-//                       height: 45,
-//                       child: OutlinedButton(
-//                         onPressed: _showDeleteConfirmation,
-//                         style: OutlinedButton.styleFrom(
-//                           side: const BorderSide(color: Colors.red),
-//                           shape: RoundedRectangleBorder(
-//                             borderRadius: BorderRadius.circular(8),
-//                           ),
-//                         ),
-//                         child: const Text(
-//                           'Delete Account',
-//                           style: TextStyle(color: Colors.red, fontSize: 16),
-//                         ),
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Edit Profile', style: GoogleFonts.poppins()),
+        centerTitle: true,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildAvatar(),
+                    const SizedBox(height: 30),
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Username is required';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Username must be at least 3 characters';
+                        }
+                        if (!RegExp(
+                          r'^[a-zA-Z0-9_]+$',
+                        ).hasMatch(value.trim())) {
+                          return 'Only letters, numbers, and underscores allowed';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _fullNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a valid name';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Name must be at least 3 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _ageController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Age',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
+                      validator: (value) {
+                        final age = int.tryParse(value?.trim() ?? '');
+                        if (age == null) return 'Please enter a valid number';
+                        if (age < 5 || age > 120) {
+                          return 'Please enter a valid age (5-120)';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedGender,
+                      decoration: const InputDecoration(
+                        labelText: 'Gender',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      items:
+                          const [
+                            _genderMale,
+                            _genderFemale,
+                            _genderRatherNotSay,
+                          ].map((gender) {
+                            return DropdownMenuItem(
+                              value: gender,
+                              child: Text(gender),
+                            );
+                          }).toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedGender = value);
+                      },
+                      validator: (value) =>
+                          value == null ? 'Please select a gender' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _availableTags.contains(_tagController.text)
+                          ? _tagController.text
+                          : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Profession',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.work),
+                      ),
+                      items: _availableTags.map((tag) {
+                        return DropdownMenuItem(value: tag, child: Text(tag));
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        _tagController.text = value;
+                      },
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Please select a profession'
+                          : null,
+                    ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.red.shade800),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _saveProfile,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Update Profile'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+}

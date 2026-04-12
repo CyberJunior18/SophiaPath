@@ -97,8 +97,7 @@ class AuthService {
         return {
           'success': false,
           'message':
-              backendMessage ??
-              'Login failed (HTTP ${response.statusCode})',
+              backendMessage ?? 'Login failed (HTTP ${response.statusCode})',
         };
       }
     } catch (e) {
@@ -108,7 +107,6 @@ class AuthService {
 
   // ─── GET PROFILE ─────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> getProfile() async {
-    final url = Uri.parse('$baseUrl/auth/profile');
     final token = await AuthStorage.getToken();
 
     if (token == null) {
@@ -118,31 +116,60 @@ class AuthService {
       };
     }
 
+    final profileEndpoints = <String>[
+      '$baseUrl/auth/profile',
+      '$baseUrl/users/me',
+    ];
+
+    String? lastError;
+
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      for (final endpoint in profileEndpoints) {
+        final response = await http.get(
+          Uri.parse(endpoint),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
 
-      final data = jsonDecode(response.body);
+        final responseBody = response.body.trim();
+        final dynamic data = responseBody.isEmpty
+            ? null
+            : _tryDecodeJson(responseBody);
 
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      } else if (response.statusCode == 401) {
-        await AuthStorage.clearToken();
-        return {
-          'success': false,
-          'message': 'Session expired. Please login again.',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Failed to load profile',
-        };
+        if (response.statusCode == 200) {
+          final normalizedProfile = _normalizeProfileData(data);
+          if (normalizedProfile != null) {
+            return {'success': true, 'data': normalizedProfile};
+          }
+
+          lastError =
+              'Profile response from $endpoint did not include user data';
+          continue;
+        }
+
+        if (response.statusCode == 401) {
+          await AuthStorage.clearToken();
+          return {
+            'success': false,
+            'message': 'Session expired. Please login again.',
+          };
+        }
+
+        final message = data is Map<String, dynamic>
+            ? (data['message']?.toString() ?? 'Failed to load profile')
+            : (responseBody.isNotEmpty
+                  ? responseBody
+                  : 'Failed to load profile');
+
+        lastError = '$endpoint: $message';
       }
+
+      return {
+        'success': false,
+        'message': lastError ?? 'Failed to load profile',
+      };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -242,6 +269,33 @@ class AuthService {
     } catch (_) {
       return {'message': raw};
     }
+  }
+
+  Map<String, dynamic>? _normalizeProfileData(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final candidates = <dynamic>[
+        data['user'],
+        data['data'],
+        data['profile'],
+        data['result'],
+        data,
+      ];
+
+      for (final candidate in candidates) {
+        if (candidate is Map<String, dynamic>) {
+          return candidate;
+        }
+        if (candidate is Map) {
+          return Map<String, dynamic>.from(candidate);
+        }
+      }
+    }
+
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    return null;
   }
 
   // ─── LOGOUT ──────────────────────────────────────────────────────────────────

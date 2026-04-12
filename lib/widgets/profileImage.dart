@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
 
 class ProfileImage extends StatelessWidget {
   final String? imageUrl;
@@ -26,7 +28,16 @@ class ProfileImage extends StatelessWidget {
     }
 
     try {
-      return NetworkImage(imageUrl!);
+      final value = imageUrl!.trim();
+      if (value.startsWith('http://') || value.startsWith('https://')) {
+        return NetworkImage(value);
+      }
+
+      if (!kIsWeb) {
+        return FileImage(File(value));
+      }
+
+      return null;
     } catch (e) {
       return null;
     }

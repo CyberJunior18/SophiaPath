@@ -1,9 +1,7 @@
 // ignore_for_file: file_names
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sophia_path/screens/authentication/login.dart';
-import 'package:sophia_path/screens/authentication/register.dart';
 import 'package:sophia_path/screens/authentication/edit_profile.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
@@ -37,14 +35,14 @@ AppBar screenAppBar(
       actions: [
         TextButton(
           onPressed: () async {
-            // await Navigator.pushReplacement(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (ctx) {
-            //       return EditProfile(onToggleTheme: onToggleTheme);
-            //     },
-            //   ),
-            // );
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (ctx) {
+                  return EditProfile(onToggleTheme: onToggleTheme);
+                },
+              ),
+            );
             profileState.refreshUser();
           },
           child: Text("Edit", style: theme.textTheme.titleMedium!),
