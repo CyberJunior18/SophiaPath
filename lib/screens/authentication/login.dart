@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      // backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 50),
@@ -159,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 'Login to your account',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
-                  color: Colors.grey.shade600,
+                  // color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -178,6 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: InputDecoration(
                         labelText: 'Email',
                         hintText: 'Enter your email',
+
                         prefixIcon: const Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -198,7 +199,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: const BorderSide(color: Colors.red),
                         ),
                         filled: true,
-                        fillColor: Colors.grey.shade50,
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -254,7 +254,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderSide: const BorderSide(color: Colors.red),
                         ),
                         filled: true,
-                        fillColor: Colors.grey.shade50,
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -367,7 +366,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(
                     "Don't have an account? ",
-                    style: GoogleFonts.poppins(color: Colors.grey.shade600),
+                    style: GoogleFonts.poppins(
+                      // color: Colors.grey.shade600
+                    ),
                   ),
                   TextButton(
                     onPressed: () {

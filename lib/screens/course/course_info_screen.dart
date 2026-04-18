@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/data.dart';
+import 'package:sophia_path/models/course/lesson.dart';
 import 'lesson_path_screen.dart';
 import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
@@ -18,6 +18,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
   bool _isLoading = false;
   bool _isCourseRegistered = false;
   List<Course> _registeredCourses = [];
+  List<Lesson> lessonsInfo = [];
   // final FirestoreCourseService _courseService = FirestoreCourseService();
   late int courseIndex = 0;
   // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -27,7 +28,8 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     super.initState();
     _checkIfCourseRegistered();
     setState(() {
-      courseIndex = coursesInfo.indexOf(widget.course);
+      courseIndex = widget.course.id! - 1;
+      lessonsInfo = widget.course.lessons;
     });
   }
 
@@ -235,7 +237,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                       _buildStatItem(
                         icon: Icons.menu_book,
                         label: 'Lessons',
-                        value: lessonsInfo[courseIndex].length.toString(),
+                        value: lessonsInfo.length.toString(),
                       ),
                       _buildStatItem(
                         icon: Icons.schedule,
@@ -260,59 +262,86 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...lessonsInfo[courseIndex].map(
-                    (lesson) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            size: 18,
-                            color: _isCourseRegistered
-                                ? const Color(0xFF3D5CFF)
-                                : Colors.grey,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              lesson.title,
-                              style: GoogleFonts.poppins(
-                                color: theme.textTheme.bodyLarge!.color!,
+                  if (courseIndex >= 0 && courseIndex < lessonsInfo.length)
+                    ...lessonsInfo.map(
+                      (lesson) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle,
+                              size: 18,
+                              color: _isCourseRegistered
+                                  ? const Color(0xFF3D5CFF)
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    lesson.title,
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.textTheme.bodyLarge!.color!,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    lesson.description,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: theme.textTheme.bodyLarge!.color!
+                                          .withOpacity(0.6),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      'No lessons available',
+                      style: GoogleFonts.poppins(
+                        color: theme.textTheme.bodyLarge!.color!.withOpacity(
+                          0.5,
+                        ),
                       ),
                     ),
-                  ),
 
-                  // we need this for later
-                  // ...widget.course.sections.map(
-                  //   (section) => Padding(
-                  //     padding: const EdgeInsets.only(bottom: 10),
-                  //     child: Row(
-                  //       children: [
-                  //         Icon(
-                  //           Icons.check_circle,
-                  //           size: 18,
-                  //           color:
-                  //               _isCourseRegistered
-                  //                   ? const Color(0xFF3D5CFF)
-                  //                   : Colors.grey,
-                  //         ),
-                  //         const SizedBox(width: 10),
-                  //         Expanded(
-                  //           child: Text(
-                  //             section,
-                  //             style: GoogleFonts.poppins(
-                  //               color: theme.textTheme.bodyLarge!.color!,
-                  //             ),
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
+                  //                 // we need this for later
+                  //                 // ...widget.course.sections.map(
+                  //                 //   (section) => Padding(
+                  //                 //     padding: const EdgeInsets.only(bottom: 10),
+                  //                 //     child: Row(
+                  //                 //       children: [
+                  //                 //         Icon(
+                  //                 //           Icons.check_circle,
+                  //                 //           size: 18,
+                  //                 //           color:
+                  //                 //               _isCourseRegistered
+                  //                 //                   ? const Color(0xFF3D5CFF)
+                  //                 //                   : Colors.grey,
+                  //                 //         ),
+                  //                 //         const SizedBox(width: 10),
+                  //                 //         Expanded(
+                  //                 //           child: Text(
+                  //                 //             section,
+                  //                 //             style: GoogleFonts.poppins(
+                  //                 //               color: theme.textTheme.bodyLarge!.color!,
+                  //                 //             ),
+                  //                 //           ),
+                  //                 //         ),
+                  //                 //       ],
+                  //                 //     ),
+                  //                 //   ),
+                  //                 // ),
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,

@@ -1,14 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/data.dart';
-import 'package:sophia_path/models/course/question.dart';
-
+import '../../models/course/lessonContent.dart';
 import '../../models/course/lesson.dart';
-import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
-import 'test_screen.dart';
+import '../Lessons/mcq_test_screen.dart';
 import '../../services/course/user_stats_service.dart';
 
 class LessonPathScreen extends StatefulWidget {
@@ -30,21 +27,18 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   int courseIndex = 0;
   late List<bool> unlocked;
   late List<Lesson> lessons;
-  // final FirestoreCourseService _courseService = FirestoreCourseService();
   String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
   final UserStatsService _statsService = UserStatsService();
-  // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // ✅ Get current user ID
-  // String? get _userId => _auth.currentUser?.uid;
   Future<void> _loadScores() async {
-    final int currentCourseIndex = coursesInfo.indexOf(widget.course);
+    final int currentCourseIndex =
+        widget.course.id != null && widget.course.id! > 0
+        ? widget.course.id! - 1
+        : 0;
     courseIndex = currentCourseIndex;
 
-    await ScoresRepository.initializeScores(coursesInfo.length, lessons.length);
+    await ScoresRepository.initializeScores(0, lessons.length);
 
     final courseScoresList = await ScoresRepository.getCourseScores(
       currentCourseIndex,
@@ -75,10 +69,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   Future<void> _initializeScreen() async {
     setState(() => _isLoading = true);
 
-    if (widget.originalCourse != null) {
-      lessons = _findCourseLessons(widget.originalCourse!.title);
-    } else {
-      lessons = _findCourseLessons(widget.course.title);
+    final sourceCourse = widget.originalCourse ?? widget.course;
+    lessons = _findCourseLessons(sourceCourse);
+    debugPrint('🔍 LessonPathScreen: Found ${lessons.length} lessons');
+    for (var lesson in lessons) {
+      debugPrint('  - ${lesson.title}');
     }
 
     await _findDatabaseCourse();
@@ -92,31 +87,33 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     setState(() => _isLoading = false);
   }
 
-  List<Lesson> _findCourseLessons(String courseTitle) {
-    final courseIndex = coursesInfo.indexWhere(
-      (course) => course.title == courseTitle,
-    );
-
-    if (courseIndex >= 0 && courseIndex < lessonsInfo.length) {
-      return lessonsInfo[courseIndex];
+  List<Lesson> _findCourseLessons(CourseInfo course) {
+    if (course.lessons.isNotEmpty) {
+      return course.lessons;
     }
-    return widget.course.sections.map((section) {
-      return Lesson(
-        title: section,
-        done: false,
-        questions: [
-          Question(
-            question: "What is $section?",
-            answers: [
-              Answer(answer: "Correct Answer"),
-              Answer(answer: "Wrong Answer 1"),
-              Answer(answer: "Wrong Answer 2"),
-              Answer(answer: "Wrong Answer 3"),
-            ],
-          ),
-        ],
-      );
-    }).toList();
+
+    if (course.sections.isNotEmpty) {
+      return course.sections.map((section) {
+        return Lesson(
+          title: section,
+          done: false,
+          description: '', // to remove
+          questions: [
+            MCQ(
+              question: 'What is $section?',
+              options: [
+                Answer(answer: 'Correct Answer'),
+                Answer(answer: 'Wrong Answer 1'),
+                Answer(answer: 'Wrong Answer 2'),
+                Answer(answer: 'Wrong Answer 3'),
+              ],
+            ),
+          ],
+        );
+      }).toList();
+    }
+
+    return const [];
   }
 
   Future<void> _findDatabaseCourse() async {
@@ -142,7 +139,15 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   }
 
   Future<void> startTest(int index) async {
-    if (index >= lessons.length || !unlocked[index]) return;
+    debugPrint(
+      '🔵 startTest called: index=$index, lessons.length=${lessons.length}, unlocked=${unlocked.length}',
+    );
+    if (index >= lessons.length || !unlocked[index]) {
+      debugPrint(
+        '❌ Early return: index=$index, lessonLength=${lessons.length}, locked=${!unlocked[index]}',
+      );
+      return;
+    }
 
     final lesson = lessons[index];
 
@@ -152,11 +157,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     if (isFirstLessonOfFirstCourse) {
       startTime = DateTime.now();
     }
-
+    debugPrint("\n Lessons info : ${lesson.toString()}");
     final score = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => TestScreen(
+        builder: (_) => McqTestScreen(
           section: lesson.title,
           questions: lesson.questions,
           courseId: courseIndex,
@@ -185,7 +190,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         }
       });
 
-      final currentCourseIndex = coursesInfo.indexOf(widget.course);
+      final currentCourseIndex = widget.course.id! - 1;
       await ScoresRepository.addScore(currentCourseIndex, index, score);
 
       if (isPassingScore) {
@@ -241,20 +246,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     try {
       if (_firestoreCourseId != null) {
         // Update existing course
-        final updatedCourse = Course(
-          id: _firestoreCourseId,
-          title: widget.course.title,
-          courseIndex: courseIndex,
-          lessonsFinished: completedLessons,
-        );
         // await _courseService.updateCourse(updatedCourse);
       } else {
         // Create new course entry
-        final newCourse = Course(
-          title: widget.course.title,
-          courseIndex: courseIndex,
-          lessonsFinished: completedLessons,
-        );
         // final newId = await _courseService.insertCourse(newCourse);
         // _firestoreCourseId = newId;
       }
@@ -312,7 +306,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           IconButton(
             icon: const Icon(Icons.sync),
             onPressed: () async {
-              final currentCourseIndex = coursesInfo.indexOf(widget.course);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Progress synced to cloud!')),
               );

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sophia_path/models/course/course_info.dart';
+import 'package:sophia_path/models/course/lesson.dart';
 
 class AuthService {
   // Use 10.0.2.2 for Android emulator to reach localhost on your PC
@@ -14,7 +16,7 @@ class AuthService {
         : 'http://localhost:3000';
   }
 
-  // ─── REGISTER ───────────────────────────────────────────────────────────────
+  // login, register, logout shit
   Future<Map<String, dynamic>> register({
     required String email,
     required String username,
@@ -64,7 +66,6 @@ class AuthService {
     }
   }
 
-  // ─── LOGIN ───────────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -105,7 +106,11 @@ class AuthService {
     }
   }
 
-  // ─── GET PROFILE ─────────────────────────────────────────────────────────────
+  Future<void> logout() async {
+    await AuthStorage.clearToken();
+  }
+
+  // profile shit
   Future<Map<String, dynamic>> getProfile() async {
     final token = await AuthStorage.getToken();
 
@@ -175,7 +180,6 @@ class AuthService {
     }
   }
 
-  // ─── UPDATE PROFILE ──────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> updateProfile({
     required String username,
     required String fullname,
@@ -298,10 +302,137 @@ class AuthService {
     return null;
   }
 
-  // ─── LOGOUT ──────────────────────────────────────────────────────────────────
-  Future<void> logout() async {
-    await AuthStorage.clearToken();
+  Future<List<CourseInfo>> getAllCourses() async {
+    final url = Uri.parse('$baseUrl/courses');
+    final token = await AuthStorage.getToken();
+
+    if (token == null) {
+      throw Exception('No token found. Please login again.');
+    }
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['courses'] ?? data['data'] ?? data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return <CourseInfo>[];
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((item) => CourseInfo.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        throw Exception('Session expired. Please login again.');
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      throw Exception(
+        backendMessage ??
+            'Failed to fetch courses (HTTP ${response.statusCode})',
+      );
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
   }
+
+  Future<Lesson> getLessonById({
+    required int courseId,
+    required int lessonId,
+  }) async {
+    final url = Uri.parse('$baseUrl/courses/$courseId/lessons/$lessonId');
+    final token = await AuthStorage.getToken();
+
+    if (token == null) {
+      throw Exception('No token found. Please login again.');
+    }
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawLesson = data is Map<String, dynamic>
+            ? (data['lesson'] ?? data['data'] ?? data)
+            : data;
+
+        if (rawLesson is! Map) {
+          throw Exception('Invalid lesson payload format.');
+        }
+
+        return Lesson.fromMap(Map<String, dynamic>.from(rawLesson));
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        throw Exception('Session expired. Please login again.');
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+
+      throw Exception(
+        backendMessage ?? 'Failed to fetch lesson (HTTP ${response.statusCode})',
+      );
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  //   Future<Map<String, dynamic>> registerCourse({
+  //     required String  courseID
+  //   }) async {
+  //     final url = Uri.parse('$baseUrl/courses/me/register/$courseID');
+  //     final token = await AuthStorage.getToken();
+  //    try{
+  // final response = await http.patch(
+  //         url,
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           'Authorization': 'Bearer $token',
+  //         },
+  //         body: jsonEncode({
+  //           'username': username,
+  //         }),
+  //       );
+  //    }
+  //    catch(e){
+
+  //    }
+  //   }
 }
 
 class AuthStorage {

@@ -81,10 +81,10 @@ AppBar screenAppBar(
         padding: const EdgeInsets.only(right: 16),
         child: PopupMenuButton<String>(
           offset: const Offset(0, 55),
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              onTap: () {
-                Navigator.push(
+          onSelected: (value) async {
+            switch (value) {
+              case 'achievements':
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (ctx) {
@@ -92,7 +92,52 @@ AppBar screenAppBar(
                     },
                   ),
                 );
-              },
+                await profileState.refreshUser();
+                break;
+              case 'mode':
+                onToggleTheme();
+                break;
+              case 'account':
+                showDialog(
+                  context: context,
+                  builder: (ctx) {
+                    return toBeImplemented(context);
+                  },
+                );
+                break;
+              case 'logout':
+                try {
+                  await UserPreferencesService.instance.clearAllData();
+                  print('✅ Local data cleared');
+
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) {
+                          return LoginScreen(onToggleTheme: onToggleTheme);
+                        },
+                      ),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                  print('❌ Error during logout: $e');
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logout failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+                break;
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
               value: 'achievements',
               child: Row(
                 children: [
@@ -104,7 +149,6 @@ AppBar screenAppBar(
             ),
             PopupMenuItem(
               value: 'mode',
-              onTap: onToggleTheme,
               child: Row(
                 children: [
                   Icon(Icons.brightness_6, color: colors.primary),
@@ -115,14 +159,6 @@ AppBar screenAppBar(
             ),
             PopupMenuItem(
               value: 'account',
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) {
-                    return toBeImplemented(context);
-                  },
-                );
-              },
               child: Row(
                 children: [
                   Icon(Icons.person, color: colors.primary),
@@ -133,63 +169,6 @@ AppBar screenAppBar(
             ),
             const PopupMenuDivider(),
             PopupMenuItem(
-              onTap: () async {
-                try {
-                  // 1. Update Firestore status (if using)
-                  // final currentUser = FirebaseAuth.instance.currentUser;
-                  // if (currentUser != null) {
-                  //   try {
-                  //     // ✅ FIXED: Use 'Users' (capital U) to match your collection
-                  //     await FirebaseFirestore.instance
-                  //         .collection(
-                  //           'Users',
-                  //         ) // Changed from 'users' to 'Users'
-                  //         .doc(currentUser.uid)
-                  //         .update({
-                  //           'isOnline': false,
-                  //           'lastSeen': FieldValue.serverTimestamp(),
-                  //         });
-                  //     print('✅ User status updated to offline');
-                  //   } catch (e) {
-                  //     print('⚠️ Error updating Firestore status: $e');
-                  //     // Continue with logout even if this fails
-                  //   }
-                  // }
-
-                  // 2. Sign out from Firebase Auth
-                  // await FirebaseAuth.instance.signOut();
-                  // print('✅ Firebase Auth sign out successful');
-
-                  // 3. Clear local user data
-                  await UserPreferencesService.instance.clearAllData();
-                  print('✅ Local data cleared');
-
-                  // 4. Navigate to login screen
-                  if (context.mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) {
-                          return LoginScreen(onToggleTheme: onToggleTheme);
-                        },
-                      ),
-                      (route) => false, // Remove all previous routes
-                    );
-                  }
-                } catch (e) {
-                  print('❌ Error during logout: $e');
-
-                  // Show error message to user
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Logout failed: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
               value: 'logout',
               child: Row(
                 children: const [

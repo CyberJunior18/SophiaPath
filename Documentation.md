@@ -130,6 +130,33 @@ lib
                                                     fx   refreshUser() : reload user data
                                                     fx   updateProfile(User user) : save user and notify listeners
 
+                authentication
+                        authService.dart
+                                            AuthService
+                                                    fx   baseUrl (static getter) : returns backend base URL by platform (web localhost, android 10.0.2.2, others localhost)
+
+                                                    fx   register({email, username, fullname, password, tag, gender, age}) : POST /auth/register and returns success/data or backend/network error message
+                                                    fx   login({email, password}) : POST /auth/login, extracts token from multiple response shapes, stores token in AuthStorage, returns success/token
+                                                    P    logout() : clears persisted auth token from AuthStorage
+
+                                                    fx   getProfile() : fetches user profile from /auth/profile then fallback /users/me, normalizes response map, handles 401 by clearing token
+                                                    fx   updateProfile({username, fullname, tag, gender}) : PATCH /users/me and returns success/data or detailed failure message
+
+                                                    fx   getAllCourses() : GET /courses with bearer token, accepts list or wrapped payload (courses/data/items), maps entries to CourseInfo list
+
+                                                    fx   _extractToken(data) : private helper that finds token in direct, nested tokens, or data payload fields and normalizes it
+                                                    fx   _tryDecodeJson(raw) : private safe JSON parse helper; returns parsed JSON or {'message': raw} on invalid JSON
+                                                    fx   _normalizeProfileData(data) : private profile normalizer; resolves user/data/profile/result wrappers into one Map<String, dynamic>
+
+                                            AuthStorage
+                                                    v    static const String _tokenKey : shared_preferences key used to persist auth token
+                                                    v    static String? token : in-memory cached token copy
+
+                                                    fx   normalizeToken(String? rawToken) : trims token, removes Bearer prefix, rejects empty/null-like values
+                                                    fx   setToken(String newToken) : normalizes and saves token to memory + shared_preferences
+                                                    fx   getToken() : returns normalized token from memory first, then shared_preferences fallback
+                                                    fx   clearToken() : removes token from memory and shared_preferences
+
                         
 
 

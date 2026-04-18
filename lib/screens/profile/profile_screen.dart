@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:sophia_path/services/profile_state.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import '../../models/data.dart';
 import 'achievements_screen.dart';
@@ -26,6 +28,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // final FirestoreCourseService _courseService = FirestoreCourseService();
   final UserStatsService _statsService = UserStatsService();
   User? _currentUser;
+
   bool _isLoading = true;
   List<Achievement> _achievements = [];
   bool _showAllAchievements = false;
@@ -274,7 +277,8 @@ Keep learning with me! 💪
     final screenHeight = screenSize.height;
     final isDark = theme.brightness == Brightness.dark;
     final isSmallScreen = screenWidth < 360;
-
+    final profileState = Provider.of<ProfileState>(context);
+    final user = profileState.currentUser ?? sampleUser;
     return Container(
       constraints: BoxConstraints(minHeight: screenHeight),
       child: SingleChildScrollView(
@@ -297,7 +301,7 @@ Keep learning with me! 💪
                   ),
                 ),
                 child: ProfileImage(
-                  imageUrl: displayUser.profileImage,
+                  imageUrl: user.profileImage,
                   radius: 70,
                   name: displayUser.fullName,
                 ),

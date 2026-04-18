@@ -1,17 +1,17 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/course/question.dart';
+import '../../models/course/lessonContent.dart';
 import '../../services/course/user_stats_service.dart';
 
-class TestScreen extends StatefulWidget {
+class McqTestScreen extends StatefulWidget {
   final String section;
-  final List<Question> questions;
+  final List<MCQ> questions;
   final int courseId;
   final int totalLessons;
   final VoidCallback? onTestCompleted;
 
-  const TestScreen({
+  const McqTestScreen({
     super.key,
     required this.section,
     required this.questions,
@@ -21,14 +21,15 @@ class TestScreen extends StatefulWidget {
   });
 
   @override
-  State<TestScreen> createState() => _TestScreenState();
+  State<McqTestScreen> createState() => _McqTestScreenState();
 }
 
-class _TestScreenState extends State<TestScreen> {
+class _McqTestScreenState extends State<McqTestScreen> {
   int currentIndex = 0;
   int correctAnswers = 0;
   bool answered = false;
   int selectedIndex = -1;
+  int currentCorrectIndex = -1;
   late List<Answer> currentAnswers;
   final UserStatsService _statsService = UserStatsService();
 
@@ -40,10 +41,16 @@ class _TestScreenState extends State<TestScreen> {
 
   void _shuffleCurrentAnswers() {
     final question = widget.questions[currentIndex];
-    List<Answer> answers = List.from(question.answers);
-    Answer correct = answers.removeAt(0);
+    List<Answer> answers = List.from(question.options);
+    final int correctIndex =
+        question.correctAnswerIndex >= 0 &&
+            question.correctAnswerIndex < answers.length
+        ? question.correctAnswerIndex
+        : 0;
+    Answer correct = answers.removeAt(correctIndex);
     answers.shuffle();
-    answers.insert(Random().nextInt(answers.length + 1), correct);
+    currentCorrectIndex = Random().nextInt(answers.length + 1);
+    answers.insert(currentCorrectIndex, correct);
     currentAnswers = answers;
   }
 
@@ -287,9 +294,7 @@ class _TestScreenState extends State<TestScreen> {
                     const SizedBox(height: 30),
                     ...List.generate(currentAnswers.length, (i) {
                       bool isSelected = i == selectedIndex;
-                      bool isCorrect =
-                          currentAnswers[i].answer ==
-                          question.answers[0].answer;
+                      bool isCorrect = i == currentCorrectIndex;
 
                       Color? bgColor;
                       IconData? icon;
@@ -355,6 +360,29 @@ class _TestScreenState extends State<TestScreen> {
                         ),
                       );
                     }),
+
+                    if (answered)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.08,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            question.answerComment,
+                            style: GoogleFonts.poppins(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.textTheme.bodyMedium?.color,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

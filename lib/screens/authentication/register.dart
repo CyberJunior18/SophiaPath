@@ -119,7 +119,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -204,7 +203,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderSide: const BorderSide(color: Colors.red),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -262,7 +260,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderSide: const BorderSide(color: Colors.red),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -305,7 +302,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderSide: const BorderSide(color: Colors.red),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -353,7 +349,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderSide: const BorderSide(color: Colors.red),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -397,7 +392,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderSide: const BorderSide(color: Colors.red),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
@@ -439,7 +433,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             items: ['Male', 'Female', 'Rather not say']
                                 .map(
@@ -485,7 +478,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                               filled: true,
-                              fillColor: Colors.grey.shade50,
                             ),
                             items: _availableTags
                                 .map(
@@ -613,7 +605,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Text(
                           'Already have an account? ',
                           style: GoogleFonts.poppins(
-                            color: Colors.grey.shade600,
+                            // color: Colors.grey.shade600,
                           ),
                         ),
                         TextButton(

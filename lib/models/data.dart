@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'course/question.dart';
+import 'course/lessonContent.dart';
 
 import 'course/course_info.dart';
 import 'user/achievements.dart';
@@ -24,25 +24,416 @@ final List<CourseInfo> coursesInfo = [
       "Ethical Hacking Overview",
       "Cybersecurity Best Practices",
     ],
-  ),
-
-  CourseInfo(
-    title: "Mobile Development",
-    description:
-        "Build modern mobile applications using cross-platform technologies.",
-    numberOfFinishedLessons: 0,
-    totalLessons: lessonsInfo[1].length,
-    about:
-        "Learn how to build modern, beautiful mobile applications using cross-platform technologies. Focus on Flutter and best practices for app development.",
-    imageUrl: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png",
-    sections: [
-      "Mobile App Basics",
-      "Flutter & Dart",
-      "State Management",
-      "UI & UX Principles",
+    lessons: [
+      Lesson(
+        title: "Introduction to Cybersecurity",
+        description:
+            "Learn the fundamentals of cybersecurity, including what cyber threats are and why security is critical in today's digital world.",
+        done: true,
+        questions: [
+          MCQ(
+            question: "What is cybersecurity?",
+            options: [
+              Answer(
+                answer: "Protection of systems and data from digital attacks",
+              ),
+              Answer(answer: "Building physical locks"),
+              Answer(answer: "Managing office networks only"),
+            ],
+          ),
+          MCQ(
+            question: "Why is cybersecurity important?",
+            options: [
+              Answer(
+                answer:
+                    "To prevent data breaches and protect sensitive information",
+              ),
+              Answer(answer: "To make computers faster"),
+              Answer(answer: "To reduce electricity costs"),
+            ],
+          ),
+          MCQ(
+            question: "Who can be a target of cyber attacks?",
+            options: [
+              Answer(answer: "Individuals, businesses, and governments"),
+              Answer(answer: "Only large corporations"),
+              Answer(answer: "Only military organizations"),
+            ],
+          ),
+          MCQ(
+            question: "What is a cyber threat?",
+            options: [
+              Answer(answer: "Any action that can compromise digital security"),
+              Answer(answer: "A verbal warning"),
+              Answer(answer: "A type of computer"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Types of Cyber Attacks",
+        description:
+            "Understand common cyber attacks including phishing, DDoS, malware, ransomware, and man-in-the-middle attacks.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a phishing attack?",
+            options: [
+              Answer(
+                answer:
+                    "Tricking users into revealing sensitive information via email",
+              ),
+              Answer(answer: "Catching fish in networks"),
+              Answer(answer: "A network fishing protocol"),
+            ],
+          ),
+          MCQ(
+            question: "What does a DDoS attack do?",
+            options: [
+              Answer(
+                answer:
+                    "Overwhelms a system with traffic to make it unavailable",
+              ),
+              Answer(answer: "Steals login credentials"),
+              Answer(answer: "Encrypts user data"),
+            ],
+          ),
+          MCQ(
+            question: "What is malware?",
+            options: [
+              Answer(answer: "Software designed to harm or exploit systems"),
+              Answer(answer: "A mail delivery system"),
+              Answer(answer: "A backup software"),
+            ],
+          ),
+          MCQ(
+            question: "What is ransomware?",
+            options: [
+              Answer(
+                answer:
+                    "Malware that encrypts data and demands payment for decryption",
+              ),
+              Answer(answer: "A random security update"),
+              Answer(answer: "A type of firewall"),
+            ],
+          ),
+          MCQ(
+            question: "What is a man-in-the-middle attack?",
+            options: [
+              Answer(answer: "Intercepting communication between two parties"),
+              Answer(answer: "Attacking someone in the middle of a room"),
+              Answer(answer: "A middleware security tool"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Network Security Basics",
+        description:
+            "Master network security fundamentals including firewalls, encryption, VPNs, subnets, and intrusion detection systems.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a firewall?",
+            options: [
+              Answer(
+                answer:
+                    "A security system that monitors and controls network traffic",
+              ),
+              Answer(answer: "A physical wall in data centers"),
+              Answer(answer: "A type of antivirus"),
+            ],
+          ),
+          MCQ(
+            question: "What does encryption do?",
+            options: [
+              Answer(
+                answer: "Converts data into code to protect confidentiality",
+              ),
+              Answer(answer: "Deletes sensitive data"),
+              Answer(answer: "Compresses files"),
+            ],
+          ),
+          MCQ(
+            question: "What is a VPN?",
+            options: [
+              Answer(
+                answer:
+                    "A virtual private network that encrypts internet connections",
+              ),
+              Answer(answer: "A very personal network"),
+              Answer(answer: "A video privacy notice"),
+            ],
+          ),
+          MCQ(
+            question: "What is a subnet?",
+            options: [
+              Answer(
+                answer:
+                    "A subdivision of a network for organization and security",
+              ),
+              Answer(answer: "An underwater network"),
+              Answer(answer: "A submarine communication system"),
+            ],
+          ),
+          MCQ(
+            question: "What does SSL/TLS do?",
+            options: [
+              Answer(answer: "Encrypts data transmitted over the internet"),
+              Answer(answer: "Transmits data without encryption"),
+              Answer(answer: "Deletes cached data"),
+            ],
+          ),
+          MCQ(
+            question: "What is an intrusion detection system (IDS)?",
+            options: [
+              Answer(
+                answer: "Monitors network traffic for suspicious activity",
+              ),
+              Answer(answer: "Prevents all network connections"),
+              Answer(answer: "A type of antivirus software"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Authentication & Authorization",
+        description:
+            "Learn to verify user identity, implement authorization controls, and use two-factor authentication and password hashing.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is authentication?",
+            options: [
+              Answer(answer: "Verifying that a user is who they claim to be"),
+              Answer(answer: "Giving users permissions"),
+              Answer(answer: "Encrypting passwords"),
+            ],
+          ),
+          MCQ(
+            question: "What is authorization?",
+            options: [
+              Answer(
+                answer: "Determining what an authenticated user can access",
+              ),
+              Answer(answer: "Creating new user accounts"),
+              Answer(answer: "Verifying user identity"),
+            ],
+          ),
+          MCQ(
+            question: "What is two-factor authentication (2FA)?",
+            options: [
+              Answer(
+                answer: "Using two verification methods to authenticate a user",
+              ),
+              Answer(answer: "Two passwords for one account"),
+              Answer(answer: "Double encryption of passwords"),
+            ],
+          ),
+          MCQ(
+            question: "What is a strong password?",
+            options: [
+              Answer(
+                answer: "Long, complex with letters, numbers, and symbols",
+              ),
+              Answer(answer: "Any password longer than 5 characters"),
+              Answer(answer: "A password that's easy to remember"),
+            ],
+          ),
+          MCQ(
+            question: "What is password hashing?",
+            options: [
+              Answer(
+                answer: "Converting a password into a one-way encrypted value",
+              ),
+              Answer(answer: "Storing passwords in plain text"),
+              Answer(answer: "Sharing passwords securely"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Malware & Threats",
+        description:
+            "Explore various types of malware including viruses, worms, trojans, rootkits, adware, keyloggers, and backdoors.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a virus?",
+            options: [
+              Answer(
+                answer:
+                    "Malware that replicates by attaching to other programs",
+              ),
+              Answer(answer: "A biological infection"),
+              Answer(answer: "An antivirus software"),
+            ],
+          ),
+          MCQ(
+            question: "What is a worm?",
+            options: [
+              Answer(
+                answer:
+                    "Self-replicating malware that spreads without user interaction",
+              ),
+              Answer(answer: "An actual worm that damages computers"),
+              Answer(answer: "A type of antivirus tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is a trojan horse?",
+            options: [
+              Answer(answer: "Malware disguised as legitimate software"),
+              Answer(answer: "An ancient siege weapon"),
+              Answer(answer: "A security software"),
+            ],
+          ),
+          MCQ(
+            question: "What is a rootkit?",
+            options: [
+              Answer(answer: "Malware that provides unauthorized admin access"),
+              Answer(answer: "A kit for growing plant roots"),
+              Answer(answer: "A security monitoring tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is adware?",
+            options: [
+              Answer(answer: "Software that displays unwanted advertisements"),
+              Answer(answer: "Legitimate advertising software"),
+              Answer(answer: "A web browser tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is a keylogger?",
+            options: [
+              Answer(answer: "Malware that records keyboard inputs"),
+              Answer(answer: "A logging file for servers"),
+              Answer(answer: "A keyboard security feature"),
+            ],
+          ),
+          MCQ(
+            question: "What is a backdoor in malware?",
+            options: [
+              Answer(answer: "A hidden entry point for unauthorized access"),
+              Answer(answer: "The back of a computer case"),
+              Answer(answer: "A security checkpoint"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Cybersecurity Best Practices",
+        description:
+            "Implement essential security practices including backups, patch management, device disposal, and security awareness training.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is the importance of regular backups?",
+            options: [
+              Answer(
+                answer: "To recover data in case of loss or ransomware attacks",
+              ),
+              Answer(answer: "To speed up computers"),
+              Answer(answer: "To reduce storage costs"),
+            ],
+          ),
+          MCQ(
+            question: "What is patch management?",
+            options: [
+              Answer(
+                answer:
+                    "Regularly updating software to fix security vulnerabilities",
+              ),
+              Answer(answer: "Sewing clothes with patches"),
+              Answer(answer: "Creating temporary fixes"),
+            ],
+          ),
+          MCQ(
+            question: "What should you do with old devices?",
+            options: [
+              Answer(answer: "Securely wipe data before disposal or recycling"),
+              Answer(answer: "Throw them in the trash"),
+              Answer(answer: "Leave them in a storage closet"),
+            ],
+          ),
+          MCQ(
+            question: "What is the purpose of security awareness training?",
+            options: [
+              Answer(
+                answer:
+                    "To educate employees about security threats and best practices",
+              ),
+              Answer(answer: "To entertain office staff"),
+              Answer(answer: "To test employee loyalty"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Incident Response & Recovery",
+        description:
+            "Develop incident response plans, conduct security audits, classify data, and report vulnerabilities responsibly.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is incident response?",
+            options: [
+              Answer(
+                answer:
+                    "A plan for handling and recovering from security incidents",
+              ),
+              Answer(answer: "Responding to customer service incidents"),
+              Answer(answer: "Reporting incidents to police"),
+            ],
+          ),
+          MCQ(
+            question: "What is a security audit?",
+            options: [
+              Answer(
+                answer:
+                    "A review of systems and processes to identify vulnerabilities",
+              ),
+              Answer(answer: "A financial audit with security"),
+              Answer(answer: "An internal investigation"),
+            ],
+          ),
+          MCQ(
+            question: "What is data classification?",
+            options: [
+              Answer(
+                answer:
+                    "Organizing data by sensitivity level to apply appropriate protections",
+              ),
+              Answer(answer: "Sorting files alphabetically"),
+              Answer(answer: "Deleting unnecessary data"),
+            ],
+          ),
+          MCQ(
+            question: "What should you do if you suspect a phishing email?",
+            options: [
+              Answer(
+                answer: "Report it to IT/Security without clicking any links",
+              ),
+              Answer(answer: "Click links to verify authenticity"),
+              Answer(answer: "Forward it to all colleagues"),
+            ],
+          ),
+          MCQ(
+            question: "What is a responsible disclosure program?",
+            options: [
+              Answer(
+                answer:
+                    "A process for reporting vulnerabilities to vendors before public disclosure",
+              ),
+              Answer(answer: "Publicly announcing all security flaws"),
+              Answer(answer: "Keeping vulnerabilities secret"),
+            ],
+          ),
+        ],
+      ),
     ],
   ),
-
   CourseInfo(
     title: "Physics",
     description:
@@ -57,6 +448,705 @@ final List<CourseInfo> coursesInfo = [
       "Energy & Work",
       "Waves & Motion",
       "Basic Thermodynamics",
+    ],
+    lessons: [
+      Lesson(
+        title: "Classical Mechanics",
+        description:
+            "Explore motion, forces, and Newton's laws of motion governing macroscopic objects.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is classical mechanics?",
+            options: [
+              Answer(
+                answer: "The study of motion and forces of macroscopic objects",
+              ),
+              Answer(answer: "The study of quantum particles"),
+              Answer(answer: "The study of electricity"),
+            ],
+          ),
+          MCQ(
+            question: "What is Newton's first law of motion?",
+            options: [
+              Answer(
+                answer:
+                    "An object at rest stays at rest unless acted upon by force",
+              ),
+              Answer(answer: "Force equals mass times acceleration"),
+              Answer(answer: "Action and reaction are equal"),
+            ],
+          ),
+          MCQ(
+            question: "What is Newton's second law?",
+            options: [
+              Answer(answer: "Force equals mass times acceleration (F=ma)"),
+              Answer(answer: "Objects move in straight lines"),
+              Answer(answer: "Momentum is conserved"),
+            ],
+          ),
+          MCQ(
+            question: "What is Newton's third law?",
+            options: [
+              Answer(
+                answer:
+                    "For every action, there is an equal and opposite reaction",
+              ),
+              Answer(answer: "Objects fall at the same speed"),
+              Answer(answer: "Energy cannot be created or destroyed"),
+            ],
+          ),
+          MCQ(
+            question: "What is velocity?",
+            options: [
+              Answer(answer: "The rate of change of position with direction"),
+              Answer(answer: "The speed of an object"),
+              Answer(answer: "The distance traveled"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Energy & Work",
+        description:
+            "Understand concepts of work, kinetic energy, potential energy, conservation of energy, and power.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is work in physics?",
+            options: [
+              Answer(
+                answer:
+                    "Force applied over a distance in the direction of force",
+              ),
+              Answer(answer: "The amount of effort applied"),
+              Answer(answer: "Heat produced by friction"),
+            ],
+          ),
+          MCQ(
+            question: "What is kinetic energy?",
+            options: [
+              Answer(answer: "Energy of motion"),
+              Answer(answer: "Energy stored in objects"),
+              Answer(answer: "Heat energy"),
+            ],
+          ),
+          MCQ(
+            question: "What is potential energy?",
+            options: [
+              Answer(answer: "Energy stored due to position or configuration"),
+              Answer(answer: "Energy being used"),
+              Answer(answer: "Wasted energy"),
+            ],
+          ),
+          MCQ(
+            question: "What is the law of conservation of energy?",
+            options: [
+              Answer(
+                answer:
+                    "Energy cannot be created or destroyed, only transformed",
+              ),
+              Answer(answer: "Energy always decreases"),
+              Answer(answer: "Energy stays constant in isolated systems"),
+            ],
+          ),
+          MCQ(
+            question: "What is mechanical energy?",
+            options: [
+              Answer(answer: "Sum of kinetic and potential energy"),
+              Answer(answer: "Energy from machines"),
+              Answer(answer: "Electrical energy"),
+            ],
+          ),
+          MCQ(
+            question: "What is power?",
+            options: [
+              Answer(answer: "The rate at which work is done"),
+              Answer(answer: "The amount of force applied"),
+              Answer(answer: "The distance traveled"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Waves & Motion",
+        description:
+            "Learn about waves, wavelength, frequency, amplitude, transverse waves, and the Doppler effect.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a wave?",
+            options: [
+              Answer(
+                answer:
+                    "A disturbance that travels through space and transfers energy",
+              ),
+              Answer(answer: "Water moving in the ocean"),
+              Answer(answer: "A type of vibration"),
+            ],
+          ),
+          MCQ(
+            question: "What is wavelength?",
+            options: [
+              Answer(answer: "The distance between consecutive wave crests"),
+              Answer(answer: "The height of a wave"),
+              Answer(answer: "The speed of a wave"),
+            ],
+          ),
+          MCQ(
+            question: "What is frequency?",
+            options: [
+              Answer(
+                answer: "The number of waves passing a point per unit time",
+              ),
+              Answer(answer: "The distance of a wave"),
+              Answer(answer: "The amplitude of a wave"),
+            ],
+          ),
+          MCQ(
+            question: "What is amplitude?",
+            options: [
+              Answer(
+                answer:
+                    "The maximum displacement of a wave from its rest position",
+              ),
+              Answer(answer: "The wavelength"),
+              Answer(answer: "The frequency"),
+            ],
+          ),
+          MCQ(
+            question: "What are transverse waves?",
+            options: [
+              Answer(
+                answer:
+                    "Waves where particles oscillate perpendicular to wave direction",
+              ),
+              Answer(answer: "Waves that don't move"),
+              Answer(answer: "Waves parallel to motion"),
+            ],
+          ),
+          MCQ(
+            question: "What is the Doppler effect?",
+            options: [
+              Answer(answer: "Change in wave frequency due to relative motion"),
+              Answer(answer: "Waves bouncing off surfaces"),
+              Answer(answer: "Wave interference"),
+            ],
+          ),
+          MCQ(
+            question: "What is sound?",
+            options: [
+              Answer(answer: "A longitudinal wave that travels through media"),
+              Answer(answer: "Vibrations in the air only"),
+              Answer(answer: "Light waves"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Basic Thermodynamics",
+        description:
+            "Master thermodynamics including temperature, heat transfer, entropy, and the laws of thermodynamics.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is thermodynamics?",
+            options: [
+              Answer(
+                answer: "The study of heat, temperature, and energy transfer",
+              ),
+              Answer(answer: "The study of motion"),
+              Answer(answer: "The study of electricity"),
+            ],
+          ),
+          MCQ(
+            question: "What is temperature?",
+            options: [
+              Answer(
+                answer: "A measure of average kinetic energy of particles",
+              ),
+              Answer(answer: "The amount of heat"),
+              Answer(answer: "Energy transfer"),
+            ],
+          ),
+          MCQ(
+            question: "What is the first law of thermodynamics?",
+            options: [
+              Answer(answer: "Energy is conserved; ΔU = Q - W"),
+              Answer(answer: "Heat flows from hot to cold"),
+              Answer(answer: "Entropy always decreases"),
+            ],
+          ),
+          MCQ(
+            question: "What is the second law of thermodynamics?",
+            options: [
+              Answer(answer: "Entropy of isolated systems always increases"),
+              Answer(answer: "Heat cannot be created"),
+              Answer(answer: "Temperature is constant"),
+            ],
+          ),
+          MCQ(
+            question: "What is entropy?",
+            options: [
+              Answer(answer: "A measure of disorder or randomness in a system"),
+              Answer(answer: "Heat content"),
+              Answer(answer: "Temperature difference"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Electricity & Magnetism Basics",
+        description:
+            "Discover electric charge, current, voltage, resistance, magnetism, and Ohm's Law fundamentals.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is electric charge?",
+            options: [
+              Answer(
+                answer:
+                    "A fundamental property of matter that causes electromagnetic force",
+              ),
+              Answer(answer: "The amount of electricity used"),
+              Answer(answer: "A type of battery"),
+            ],
+          ),
+          MCQ(
+            question: "What is current?",
+            options: [
+              Answer(answer: "The flow of electric charge through a conductor"),
+              Answer(answer: "The present time"),
+              Answer(answer: "The speed of electricity"),
+            ],
+          ),
+          MCQ(
+            question: "What is voltage?",
+            options: [
+              Answer(
+                answer: "The electric potential difference between two points",
+              ),
+              Answer(answer: "The speed of electrons"),
+              Answer(answer: "The amount of current"),
+            ],
+          ),
+          MCQ(
+            question: "What is resistance?",
+            options: [
+              Answer(answer: "Opposition to the flow of electric current"),
+              Answer(answer: "Fighting against electricity"),
+              Answer(answer: "Electrical power"),
+            ],
+          ),
+          MCQ(
+            question: "What is a magnet?",
+            options: [
+              Answer(answer: "An object that produces a magnetic field"),
+              Answer(answer: "A metal that attracts iron"),
+              Answer(answer: "A type of battery"),
+            ],
+          ),
+          MCQ(
+            question: "What is Ohm's Law?",
+            options: [
+              Answer(
+                answer: "V = IR (Voltage equals Current times Resistance)",
+              ),
+              Answer(answer: "Energy cannot be created or destroyed"),
+              Answer(answer: "For every action there is an equal reaction"),
+            ],
+          ),
+        ],
+      ),
+    ],
+  ),
+
+  CourseInfo(
+    title: "Mobile App Development",
+    description:
+        "Build modern mobile applications using cross-platform technologies.",
+    numberOfFinishedLessons: 0,
+    totalLessons: lessonsInfo[1].length,
+    about:
+        "Learn how to build modern, beautiful mobile applications using cross-platform technologies. Focus on Flutter and best practices for app development.",
+    imageUrl: "https://cdn-icons-png.flaticon.com/512/1055/1055687.png",
+    sections: [
+      "Mobile App Basics",
+      "Flutter & Dart",
+      "State Management",
+      "UI & UX Principles",
+    ],
+    lessons: [
+      Lesson(
+        title: "Mobile App Basics",
+        description:
+            "Understand mobile application types including native, web, and hybrid apps, and learn about responsive design.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a mobile application?",
+            options: [
+              Answer(answer: "Software designed to run on mobile devices"),
+              Answer(answer: "A desktop software"),
+              Answer(answer: "A web browser"),
+            ],
+          ),
+          MCQ(
+            question: "What are the main types of mobile apps?",
+            options: [
+              Answer(answer: "Native, Web, and Hybrid apps"),
+              Answer(answer: "Only native apps exist"),
+              Answer(answer: "Desktop and mobile apps"),
+            ],
+          ),
+          MCQ(
+            question: "What is a native mobile app?",
+            options: [
+              Answer(
+                answer:
+                    "An app built specifically for one platform using its native language",
+              ),
+              Answer(answer: "An app that works on all platforms"),
+              Answer(answer: "A web application"),
+            ],
+          ),
+          MCQ(
+            question: "What is a cross-platform mobile app?",
+            options: [
+              Answer(
+                answer:
+                    "An app that runs on multiple platforms with shared codebase",
+              ),
+              Answer(answer: "An app that only works on iOS"),
+              Answer(answer: "An app that needs platform-specific code"),
+            ],
+          ),
+          MCQ(
+            question: "What is responsive design in mobile apps?",
+            options: [
+              Answer(answer: "Design that adapts to different screen sizes"),
+              Answer(answer: "Fast loading speed"),
+              Answer(answer: "Colorful user interface"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Flutter & Dart",
+        description:
+            "Master Flutter framework and Dart language, including widgets, Stateless/StatefulWidgets, Hot Reload, and pubspec.yaml.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is Flutter?",
+            options: [
+              Answer(answer: "A cross-platform mobile framework by Google"),
+              Answer(answer: "A native iOS framework"),
+              Answer(answer: "A web development tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is Dart?",
+            options: [
+              Answer(
+                answer:
+                    "A programming language created by Google for building apps",
+              ),
+              Answer(answer: "A game development engine"),
+              Answer(answer: "A database management system"),
+            ],
+          ),
+          MCQ(
+            question: "What are widgets in Flutter?",
+            options: [
+              Answer(
+                answer: "Building blocks that compose the UI of a Flutter app",
+              ),
+              Answer(answer: "Mobile app icons"),
+              Answer(answer: "Database management tools"),
+            ],
+          ),
+          MCQ(
+            question: "What is a StatelessWidget?",
+            options: [
+              Answer(
+                answer:
+                    "A widget that doesn't change state after being created",
+              ),
+              Answer(answer: "A widget that manages state"),
+              Answer(answer: "A temporary widget"),
+            ],
+          ),
+          MCQ(
+            question: "What is a StatefulWidget?",
+            options: [
+              Answer(
+                answer:
+                    "A widget that can change its internal state and rebuild",
+              ),
+              Answer(answer: "A permanent widget"),
+              Answer(answer: "A read-only widget"),
+            ],
+          ),
+          MCQ(
+            question: "What is Hot Reload in Flutter?",
+            options: [
+              Answer(
+                answer:
+                    "A feature that updates code changes instantly without restarting",
+              ),
+              Answer(answer: "Restarting the app completely"),
+              Answer(answer: "Deleting the app cache"),
+            ],
+          ),
+          MCQ(
+            question: "What is the pubspec.yaml file?",
+            options: [
+              Answer(
+                answer: "A configuration file for Flutter project dependencies",
+              ),
+              Answer(answer: "A source code file"),
+              Answer(answer: "An executable file"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "State Management",
+        description:
+            "Learn state management patterns including setState, Provider, BLoC, and Riverpod for efficient app data flow.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is state management?",
+            options: [
+              Answer(
+                answer: "Managing data flow and widget rebuilds in an app",
+              ),
+              Answer(answer: "Deleting old data"),
+              Answer(answer: "Storing passwords"),
+            ],
+          ),
+          MCQ(
+            question:
+                "What is the simplest form of state management in Flutter?",
+            options: [
+              Answer(answer: "Using setState() in StatefulWidget"),
+              Answer(answer: "Using global variables"),
+              Answer(answer: "Storing data in files"),
+            ],
+          ),
+          MCQ(
+            question: "What is the Provider package?",
+            options: [
+              Answer(answer: "A popular state management solution for Flutter"),
+              Answer(answer: "An internet service provider"),
+              Answer(answer: "A data storage tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is BLoC pattern?",
+            options: [
+              Answer(
+                answer:
+                    "A design pattern for separating business logic from UI",
+              ),
+              Answer(answer: "A block of code"),
+              Answer(answer: "A database backup"),
+            ],
+          ),
+          MCQ(
+            question: "What is Riverpod?",
+            options: [
+              Answer(
+                answer:
+                    "A modern state management library for Dart and Flutter",
+              ),
+              Answer(answer: "A type of river"),
+              Answer(answer: "A network protocol"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "UI & UX Principles",
+        description:
+            "Discover UI/UX design principles including consistency, user feedback, and accessibility for mobile apps.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is UI design?",
+            options: [
+              Answer(
+                answer: "Designing the visual elements users interact with",
+              ),
+              Answer(answer: "Writing user interface code"),
+              Answer(answer: "Creating database schemas"),
+            ],
+          ),
+          MCQ(
+            question: "What is UX design?",
+            options: [
+              Answer(
+                answer:
+                    "Designing the overall user experience and satisfaction",
+              ),
+              Answer(answer: "Making apps visually appealing"),
+              Answer(answer: "Writing documentation"),
+            ],
+          ),
+          MCQ(
+            question: "What is the principle of consistency?",
+            options: [
+              Answer(
+                answer:
+                    "Using consistent design patterns and behaviors throughout the app",
+              ),
+              Answer(answer: "Using only one color"),
+              Answer(answer: "Never changing the design"),
+            ],
+          ),
+          MCQ(
+            question: "What is user feedback in UX?",
+            options: [
+              Answer(answer: "Visual or audio responses to user actions"),
+              Answer(answer: "Comments from users"),
+              Answer(answer: "Survey responses"),
+            ],
+          ),
+          MCQ(
+            question: "What is accessibility in mobile apps?",
+            options: [
+              Answer(
+                answer: "Designing apps usable by people with disabilities",
+              ),
+              Answer(answer: "Making apps available offline"),
+              Answer(answer: "Fast app loading"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "App Deployment",
+        description:
+            "Learn app deployment process, app stores, monetization strategies, user retention, and permissions management.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What does APK stand for?",
+            options: [
+              Answer(answer: "Android Package Kit"),
+              Answer(answer: "Application Program Kit"),
+              Answer(answer: "Advanced Programming Kernel"),
+            ],
+          ),
+          MCQ(
+            question: "What is an app store?",
+            options: [
+              Answer(
+                answer:
+                    "A platform for distributing and downloading mobile apps",
+              ),
+              Answer(answer: "A physical store selling phones"),
+              Answer(answer: "A backup service for apps"),
+            ],
+          ),
+          MCQ(
+            question: "What is app monetization?",
+            options: [
+              Answer(answer: "Methods to generate revenue from mobile apps"),
+              Answer(answer: "Promoting an app on social media"),
+              Answer(answer: "Creating backups of app data"),
+            ],
+          ),
+          MCQ(
+            question: "What is user retention?",
+            options: [
+              Answer(
+                answer: "Keeping users engaged and coming back to the app",
+              ),
+              Answer(answer: "Storing user data on the device"),
+              Answer(answer: "Backing up user information"),
+            ],
+          ),
+          MCQ(
+            question: "What is a mobile app permission?",
+            options: [
+              Answer(
+                answer:
+                    "Authorization needed to access device resources like camera or location",
+              ),
+              Answer(answer: "User login credentials"),
+              Answer(answer: "A feature restriction"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Advanced Flutter Concepts",
+        description:
+            "Explore advanced topics including Streams, Futures, context management, Material Design, and Cupertino design in Flutter.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is a Stream in Dart?",
+            options: [
+              Answer(answer: "A sequence of asynchronous data events"),
+              Answer(answer: "A river of water"),
+              Answer(answer: "A file storage method"),
+            ],
+          ),
+          MCQ(
+            question: "What is a Future in Dart?",
+            options: [
+              Answer(
+                answer:
+                    "A representation of a value that may not be available yet",
+              ),
+              Answer(answer: "A prediction of tomorrow"),
+              Answer(answer: "A scheduling tool"),
+            ],
+          ),
+          MCQ(
+            question: "What is the context in Flutter?",
+            options: [
+              Answer(
+                answer:
+                    "A reference to the widget tree location and theme data",
+              ),
+              Answer(answer: "User context or information"),
+              Answer(answer: "A database connection"),
+            ],
+          ),
+          MCQ(
+            question: "What is Material Design in Flutter?",
+            options: [
+              Answer(answer: "Google's design system implemented in Flutter"),
+              Answer(answer: "Physical materials used in phones"),
+              Answer(answer: "A database design pattern"),
+            ],
+          ),
+          MCQ(
+            question: "What is Cupertino design?",
+            options: [
+              Answer(answer: "iOS-style design system in Flutter"),
+              Answer(answer: "Android design system"),
+              Answer(answer: "Web design system"),
+            ],
+          ),
+          MCQ(
+            question: "Why is proper state management important?",
+            options: [
+              Answer(
+                answer:
+                    "It makes code maintainable, scalable, and prevents bugs",
+              ),
+              Answer(answer: "To make apps faster"),
+              Answer(answer: "To reduce app size"),
+            ],
+          ),
+        ],
+      ),
     ],
   ),
 
@@ -75,6 +1165,267 @@ final List<CourseInfo> coursesInfo = [
       "Metaphysics",
       "Philosophy of Mind",
     ],
+    lessons: [
+      Lesson(
+        title: "Introduction to Philosophy",
+        description:
+            "Begin your philosophical journey exploring epistemology, metaphysics, logic, and the Socratic method.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is philosophy?",
+            options: [
+              Answer(
+                answer:
+                    "The love of wisdom and critical examination of fundamental questions",
+              ),
+              Answer(answer: "A religious practice"),
+              Answer(answer: "A scientific discipline"),
+            ],
+          ),
+          MCQ(
+            question: "What is epistemology?",
+            options: [
+              Answer(answer: "The study of knowledge and how we know things"),
+              Answer(answer: "The study of existence"),
+              Answer(answer: "The study of beauty"),
+            ],
+          ),
+          MCQ(
+            question: "What is metaphysics?",
+            options: [
+              Answer(answer: "The study of reality and existence"),
+              Answer(answer: "The study of knowledge"),
+              Answer(answer: "The study of physical objects"),
+            ],
+          ),
+          MCQ(
+            question: "What is logic?",
+            options: [
+              Answer(answer: "The study of reasoning and valid arguments"),
+              Answer(answer: "A way of thinking"),
+              Answer(answer: "Mathematical computation"),
+            ],
+          ),
+          MCQ(
+            question: "What is the Socratic method?",
+            options: [
+              Answer(
+                answer: "A dialogue method using questions to examine beliefs",
+              ),
+              Answer(answer: "A type of argument"),
+              Answer(answer: "A teaching technique"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Ethics",
+        description:
+            "Explore ethical theories including utilitarianism, deontology, virtue ethics, and moral principles.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is ethics?",
+            options: [
+              Answer(
+                answer:
+                    "The philosophical study of right and wrong, good and bad",
+              ),
+              Answer(answer: "Following rules and regulations"),
+              Answer(answer: "Being a good person"),
+            ],
+          ),
+          MCQ(
+            question: "What is utilitarianism?",
+            options: [
+              Answer(
+                answer:
+                    "An ethical theory that maximizes overall happiness or well-being",
+              ),
+              Answer(answer: "Using things for practical purposes"),
+              Answer(answer: "Being efficient"),
+            ],
+          ),
+          MCQ(
+            question: "What is deontology?",
+            options: [
+              Answer(answer: "An ethical theory based on duties and rules"),
+              Answer(answer: "A study of obligations"),
+              Answer(answer: "Following laws"),
+            ],
+          ),
+          MCQ(
+            question: "What is virtue ethics?",
+            options: [
+              Answer(
+                answer: "An ethical theory focusing on character and virtues",
+              ),
+              Answer(answer: "Being virtuous"),
+              Answer(answer: "Following moral codes"),
+            ],
+          ),
+          MCQ(
+            question: "What is the categorical imperative?",
+            options: [
+              Answer(
+                answer:
+                    "Kant's principle to act only on universalizable maxims",
+              ),
+              Answer(answer: "An absolute rule"),
+              Answer(answer: "A strict order"),
+            ],
+          ),
+          MCQ(
+            question: "What is the golden rule?",
+            options: [
+              Answer(answer: "Treat others as you want to be treated"),
+              Answer(answer: "A rule made of gold"),
+              Answer(answer: "The most important rule"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Metaphysics",
+        description:
+            "Investigate the nature of reality, the mind-body problem, dualism, materialism, and free will.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is metaphysics?",
+            options: [
+              Answer(
+                answer:
+                    "The study of reality, existence, and the nature of being",
+              ),
+              Answer(answer: "A mystical practice"),
+              Answer(answer: "The study of the physical world"),
+            ],
+          ),
+          MCQ(
+            question: "What is the mind-body problem?",
+            options: [
+              Answer(
+                answer:
+                    "The philosophical question of how mind and body relate",
+              ),
+              Answer(answer: "Mental and physical health"),
+              Answer(answer: "Consciousness"),
+            ],
+          ),
+          MCQ(
+            question: "What is dualism?",
+            options: [
+              Answer(
+                answer:
+                    "The view that mind and body are two distinct substances",
+              ),
+              Answer(answer: "Having two options"),
+              Answer(answer: "Division into two parts"),
+            ],
+          ),
+          MCQ(
+            question: "What is materialism?",
+            options: [
+              Answer(
+                answer: "The view that physical matter is fundamental reality",
+              ),
+              Answer(answer: "Desiring material possessions"),
+              Answer(answer: "The study of materials"),
+            ],
+          ),
+          MCQ(
+            question: "What is free will?",
+            options: [
+              Answer(
+                answer:
+                    "The ability to make choices not predetermined by prior causes",
+              ),
+              Answer(answer: "Freedom from restrictions"),
+              Answer(answer: "Making independent decisions"),
+            ],
+          ),
+        ],
+      ),
+      Lesson(
+        title: "Philosophy of Mind",
+        description:
+            "Study consciousness, qualia, intentionality, perception, and the mysteries of personal identity.",
+        done: false,
+        questions: [
+          MCQ(
+            question: "What is the philosophy of mind?",
+            options: [
+              Answer(
+                answer:
+                    "The study of consciousness, mental states, and perception",
+              ),
+              Answer(answer: "Understanding how minds work"),
+              Answer(answer: "Psychology"),
+            ],
+          ),
+          MCQ(
+            question: "What is consciousness?",
+            options: [
+              Answer(
+                answer:
+                    "Subjective experience and awareness of thoughts and sensations",
+              ),
+              Answer(answer: "Being awake"),
+              Answer(answer: "Thinking"),
+            ],
+          ),
+          MCQ(
+            question: "What is the hard problem of consciousness?",
+            options: [
+              Answer(
+                answer:
+                    "Why subjective experience arises from physical processes",
+              ),
+              Answer(answer: "Understanding brain function"),
+              Answer(answer: "Studying difficult concepts"),
+            ],
+          ),
+          MCQ(
+            question: "What is qualia?",
+            options: [
+              Answer(
+                answer: "The subjective qualities of conscious experiences",
+              ),
+              Answer(answer: "Different types of things"),
+              Answer(answer: "Qualities in general"),
+            ],
+          ),
+          MCQ(
+            question: "What is intentionality?",
+            options: [
+              Answer(
+                answer: "The property of mental states being about something",
+              ),
+              Answer(answer: "Doing things on purpose"),
+              Answer(answer: "Deliberate action"),
+            ],
+          ),
+          MCQ(
+            question: "What is perception?",
+            options: [
+              Answer(answer: "The process of acquiring sensory information"),
+              Answer(answer: "What you see"),
+              Answer(answer: "Understanding things"),
+            ],
+          ),
+          MCQ(
+            question: "What is personal identity?",
+            options: [
+              Answer(answer: "What makes a person the same person over time"),
+              Answer(answer: "Personal characteristics"),
+              Answer(answer: "Individual traits"),
+            ],
+          ),
+        ],
+      ),
+    ],
   ),
 ];
 
@@ -83,11 +1434,13 @@ final List<List<Lesson>> lessonsInfo = [
   [
     Lesson(
       title: "Introduction to Cybersecurity",
+      description:
+          "Learn the fundamentals of cybersecurity, including what cyber threats are and why security is critical in today's digital world.",
       done: true,
       questions: [
-        Question(
+        MCQ(
           question: "What is cybersecurity?",
-          answers: [
+          options: [
             Answer(
               answer: "Protection of systems and data from digital attacks",
             ),
@@ -95,9 +1448,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Managing office networks only"),
           ],
         ),
-        Question(
+        MCQ(
           question: "Why is cybersecurity important?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "To prevent data breaches and protect sensitive information",
@@ -106,17 +1459,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "To reduce electricity costs"),
           ],
         ),
-        Question(
+        MCQ(
           question: "Who can be a target of cyber attacks?",
-          answers: [
+          options: [
             Answer(answer: "Individuals, businesses, and governments"),
             Answer(answer: "Only large corporations"),
             Answer(answer: "Only military organizations"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a cyber threat?",
-          answers: [
+          options: [
             Answer(answer: "Any action that can compromise digital security"),
             Answer(answer: "A verbal warning"),
             Answer(answer: "A type of computer"),
@@ -126,11 +1479,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Types of Cyber Attacks",
+      description:
+          "Understand common cyber attacks including phishing, DDoS, malware, ransomware, and man-in-the-middle attacks.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a phishing attack?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Tricking users into revealing sensitive information via email",
@@ -139,9 +1494,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A network fishing protocol"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What does a DDoS attack do?",
-          answers: [
+          options: [
             Answer(
               answer: "Overwhelms a system with traffic to make it unavailable",
             ),
@@ -149,17 +1504,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Encrypts user data"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is malware?",
-          answers: [
+          options: [
             Answer(answer: "Software designed to harm or exploit systems"),
             Answer(answer: "A mail delivery system"),
             Answer(answer: "A backup software"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is ransomware?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Malware that encrypts data and demands payment for decryption",
@@ -168,9 +1523,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A type of firewall"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a man-in-the-middle attack?",
-          answers: [
+          options: [
             Answer(answer: "Intercepting communication between two parties"),
             Answer(answer: "Attacking someone in the middle of a room"),
             Answer(answer: "A middleware security tool"),
@@ -180,11 +1535,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Network Security Basics",
+      description:
+          "Master network security fundamentals including firewalls, encryption, VPNs, subnets, and intrusion detection systems.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a firewall?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A security system that monitors and controls network traffic",
@@ -193,9 +1550,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A type of antivirus"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What does encryption do?",
-          answers: [
+          options: [
             Answer(
               answer: "Converts data into code to protect confidentiality",
             ),
@@ -203,9 +1560,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Compresses files"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a VPN?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A virtual private network that encrypts internet connections",
@@ -214,9 +1571,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A video privacy notice"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a subnet?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A subdivision of a network for organization and security",
@@ -225,17 +1582,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A submarine communication system"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What does SSL/TLS do?",
-          answers: [
+          options: [
             Answer(answer: "Encrypts data transmitted over the internet"),
             Answer(answer: "Transmits data without encryption"),
             Answer(answer: "Deletes cached data"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is an intrusion detection system (IDS)?",
-          answers: [
+          options: [
             Answer(answer: "Monitors network traffic for suspicious activity"),
             Answer(answer: "Prevents all network connections"),
             Answer(answer: "A type of antivirus software"),
@@ -245,27 +1602,29 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Authentication & Authorization",
+      description:
+          "Learn to verify user identity, implement authorization controls, and use two-factor authentication and password hashing.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is authentication?",
-          answers: [
+          options: [
             Answer(answer: "Verifying that a user is who they claim to be"),
             Answer(answer: "Giving users permissions"),
             Answer(answer: "Encrypting passwords"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is authorization?",
-          answers: [
+          options: [
             Answer(answer: "Determining what an authenticated user can access"),
             Answer(answer: "Creating new user accounts"),
             Answer(answer: "Verifying user identity"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is two-factor authentication (2FA)?",
-          answers: [
+          options: [
             Answer(
               answer: "Using two verification methods to authenticate a user",
             ),
@@ -273,17 +1632,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Double encryption of passwords"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a strong password?",
-          answers: [
+          options: [
             Answer(answer: "Long, complex with letters, numbers, and symbols"),
             Answer(answer: "Any password longer than 5 characters"),
             Answer(answer: "A password that's easy to remember"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is password hashing?",
-          answers: [
+          options: [
             Answer(
               answer: "Converting a password into a one-way encrypted value",
             ),
@@ -295,11 +1654,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Malware & Threats",
+      description:
+          "Explore various types of malware including viruses, worms, trojans, rootkits, adware, keyloggers, and backdoors.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a virus?",
-          answers: [
+          options: [
             Answer(
               answer: "Malware that replicates by attaching to other programs",
             ),
@@ -307,9 +1668,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "An antivirus software"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a worm?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Self-replicating malware that spreads without user interaction",
@@ -318,41 +1679,41 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A type of antivirus tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a trojan horse?",
-          answers: [
+          options: [
             Answer(answer: "Malware disguised as legitimate software"),
             Answer(answer: "An ancient siege weapon"),
             Answer(answer: "A security software"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a rootkit?",
-          answers: [
+          options: [
             Answer(answer: "Malware that provides unauthorized admin access"),
             Answer(answer: "A kit for growing plant roots"),
             Answer(answer: "A security monitoring tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is adware?",
-          answers: [
+          options: [
             Answer(answer: "Software that displays unwanted advertisements"),
             Answer(answer: "Legitimate advertising software"),
             Answer(answer: "A web browser tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a keylogger?",
-          answers: [
+          options: [
             Answer(answer: "Malware that records keyboard inputs"),
             Answer(answer: "A logging file for servers"),
             Answer(answer: "A keyboard security feature"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a backdoor in malware?",
-          answers: [
+          options: [
             Answer(answer: "A hidden entry point for unauthorized access"),
             Answer(answer: "The back of a computer case"),
             Answer(answer: "A security checkpoint"),
@@ -362,11 +1723,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Cybersecurity Best Practices",
+      description:
+          "Implement essential security practices including backups, patch management, device disposal, and security awareness training.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is the importance of regular backups?",
-          answers: [
+          options: [
             Answer(
               answer: "To recover data in case of loss or ransomware attacks",
             ),
@@ -374,9 +1737,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "To reduce storage costs"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is patch management?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Regularly updating software to fix security vulnerabilities",
@@ -385,17 +1748,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Creating temporary fixes"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What should you do with old devices?",
-          answers: [
+          options: [
             Answer(answer: "Securely wipe data before disposal or recycling"),
             Answer(answer: "Throw them in the trash"),
             Answer(answer: "Leave them in a storage closet"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the purpose of security awareness training?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "To educate employees about security threats and best practices",
@@ -408,11 +1771,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Incident Response & Recovery",
+      description:
+          "Develop incident response plans, conduct security audits, classify data, and report vulnerabilities responsibly.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is incident response?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A plan for handling and recovering from security incidents",
@@ -421,9 +1786,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Reporting incidents to police"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a security audit?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A review of systems and processes to identify vulnerabilities",
@@ -432,9 +1797,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "An internal investigation"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is data classification?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Organizing data by sensitivity level to apply appropriate protections",
@@ -443,9 +1808,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Deleting unnecessary data"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What should you do if you suspect a phishing email?",
-          answers: [
+          options: [
             Answer(
               answer: "Report it to IT/Security without clicking any links",
             ),
@@ -453,9 +1818,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Forward it to all colleagues"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a responsible disclosure program?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A process for reporting vulnerabilities to vendors before public disclosure",
@@ -472,27 +1837,29 @@ final List<List<Lesson>> lessonsInfo = [
   [
     Lesson(
       title: "Mobile App Basics",
+      description:
+          "Understand mobile application types including native, web, and hybrid apps, and learn about responsive design.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a mobile application?",
-          answers: [
+          options: [
             Answer(answer: "Software designed to run on mobile devices"),
             Answer(answer: "A desktop software"),
             Answer(answer: "A web browser"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What are the main types of mobile apps?",
-          answers: [
+          options: [
             Answer(answer: "Native, Web, and Hybrid apps"),
             Answer(answer: "Only native apps exist"),
             Answer(answer: "Desktop and mobile apps"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a native mobile app?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "An app built specifically for one platform using its native language",
@@ -501,9 +1868,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A web application"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a cross-platform mobile app?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "An app that runs on multiple platforms with shared codebase",
@@ -512,9 +1879,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "An app that needs platform-specific code"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is responsive design in mobile apps?",
-          answers: [
+          options: [
             Answer(answer: "Design that adapts to different screen sizes"),
             Answer(answer: "Fast loading speed"),
             Answer(answer: "Colorful user interface"),
@@ -524,19 +1891,21 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Flutter & Dart",
+      description:
+          "Master Flutter framework and Dart language, including widgets, Stateless/StatefulWidgets, Hot Reload, and pubspec.yaml.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is Flutter?",
-          answers: [
+          options: [
             Answer(answer: "A cross-platform mobile framework by Google"),
             Answer(answer: "A native iOS framework"),
             Answer(answer: "A web development tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Dart?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A programming language created by Google for building apps",
@@ -545,9 +1914,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A database management system"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What are widgets in Flutter?",
-          answers: [
+          options: [
             Answer(
               answer: "Building blocks that compose the UI of a Flutter app",
             ),
@@ -555,9 +1924,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Database management tools"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a StatelessWidget?",
-          answers: [
+          options: [
             Answer(
               answer: "A widget that doesn't change state after being created",
             ),
@@ -565,9 +1934,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A temporary widget"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a StatefulWidget?",
-          answers: [
+          options: [
             Answer(
               answer: "A widget that can change its internal state and rebuild",
             ),
@@ -575,9 +1944,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A read-only widget"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Hot Reload in Flutter?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A feature that updates code changes instantly without restarting",
@@ -586,9 +1955,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Deleting the app cache"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the pubspec.yaml file?",
-          answers: [
+          options: [
             Answer(
               answer: "A configuration file for Flutter project dependencies",
             ),
@@ -600,35 +1969,37 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "State Management",
+      description:
+          "Learn state management patterns including setState, Provider, BLoC, and Riverpod for efficient app data flow.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is state management?",
-          answers: [
+          options: [
             Answer(answer: "Managing data flow and widget rebuilds in an app"),
             Answer(answer: "Deleting old data"),
             Answer(answer: "Storing passwords"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the simplest form of state management in Flutter?",
-          answers: [
+          options: [
             Answer(answer: "Using setState() in StatefulWidget"),
             Answer(answer: "Using global variables"),
             Answer(answer: "Storing data in files"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the Provider package?",
-          answers: [
+          options: [
             Answer(answer: "A popular state management solution for Flutter"),
             Answer(answer: "An internet service provider"),
             Answer(answer: "A data storage tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is BLoC pattern?",
-          answers: [
+          options: [
             Answer(
               answer: "A design pattern for separating business logic from UI",
             ),
@@ -636,9 +2007,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A database backup"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Riverpod?",
-          answers: [
+          options: [
             Answer(
               answer: "A modern state management library for Dart and Flutter",
             ),
@@ -650,19 +2021,21 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "UI & UX Principles",
+      description:
+          "Discover UI/UX design principles including consistency, user feedback, and accessibility for mobile apps.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is UI design?",
-          answers: [
+          options: [
             Answer(answer: "Designing the visual elements users interact with"),
             Answer(answer: "Writing user interface code"),
             Answer(answer: "Creating database schemas"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is UX design?",
-          answers: [
+          options: [
             Answer(
               answer: "Designing the overall user experience and satisfaction",
             ),
@@ -670,9 +2043,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Writing documentation"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the principle of consistency?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Using consistent design patterns and behaviors throughout the app",
@@ -681,17 +2054,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Never changing the design"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is user feedback in UX?",
-          answers: [
+          options: [
             Answer(answer: "Visual or audio responses to user actions"),
             Answer(answer: "Comments from users"),
             Answer(answer: "Survey responses"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is accessibility in mobile apps?",
-          answers: [
+          options: [
             Answer(answer: "Designing apps usable by people with disabilities"),
             Answer(answer: "Making apps available offline"),
             Answer(answer: "Fast app loading"),
@@ -701,19 +2074,21 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "App Deployment",
+      description:
+          "Learn app deployment process, app stores, monetization strategies, user retention, and permissions management.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What does APK stand for?",
-          answers: [
+          options: [
             Answer(answer: "Android Package Kit"),
             Answer(answer: "Application Program Kit"),
             Answer(answer: "Advanced Programming Kernel"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is an app store?",
-          answers: [
+          options: [
             Answer(
               answer: "A platform for distributing and downloading mobile apps",
             ),
@@ -721,25 +2096,25 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A backup service for apps"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is app monetization?",
-          answers: [
+          options: [
             Answer(answer: "Methods to generate revenue from mobile apps"),
             Answer(answer: "Promoting an app on social media"),
             Answer(answer: "Creating backups of app data"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is user retention?",
-          answers: [
+          options: [
             Answer(answer: "Keeping users engaged and coming back to the app"),
             Answer(answer: "Storing user data on the device"),
             Answer(answer: "Backing up user information"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a mobile app permission?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Authorization needed to access device resources like camera or location",
@@ -752,19 +2127,21 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Advanced Flutter Concepts",
+      description:
+          "Explore advanced topics including Streams, Futures, context management, Material Design, and Cupertino design in Flutter.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a Stream in Dart?",
-          answers: [
+          options: [
             Answer(answer: "A sequence of asynchronous data events"),
             Answer(answer: "A river of water"),
             Answer(answer: "A file storage method"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a Future in Dart?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A representation of a value that may not be available yet",
@@ -773,9 +2150,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A scheduling tool"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the context in Flutter?",
-          answers: [
+          options: [
             Answer(
               answer: "A reference to the widget tree location and theme data",
             ),
@@ -783,25 +2160,25 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A database connection"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Material Design in Flutter?",
-          answers: [
+          options: [
             Answer(answer: "Google's design system implemented in Flutter"),
             Answer(answer: "Physical materials used in phones"),
             Answer(answer: "A database design pattern"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Cupertino design?",
-          answers: [
+          options: [
             Answer(answer: "iOS-style design system in Flutter"),
             Answer(answer: "Android design system"),
             Answer(answer: "Web design system"),
           ],
         ),
-        Question(
+        MCQ(
           question: "Why is proper state management important?",
-          answers: [
+          options: [
             Answer(
               answer: "It makes code maintainable, scalable, and prevents bugs",
             ),
@@ -817,11 +2194,13 @@ final List<List<Lesson>> lessonsInfo = [
   [
     Lesson(
       title: "Classical Mechanics",
+      description:
+          "Explore motion, forces, and Newton's laws of motion governing macroscopic objects.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is classical mechanics?",
-          answers: [
+          options: [
             Answer(
               answer: "The study of motion and forces of macroscopic objects",
             ),
@@ -829,9 +2208,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The study of electricity"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Newton's first law of motion?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "An object at rest stays at rest unless acted upon by force",
@@ -840,17 +2219,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Action and reaction are equal"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Newton's second law?",
-          answers: [
+          options: [
             Answer(answer: "Force equals mass times acceleration (F=ma)"),
             Answer(answer: "Objects move in straight lines"),
             Answer(answer: "Momentum is conserved"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Newton's third law?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "For every action, there is an equal and opposite reaction",
@@ -859,9 +2238,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Energy cannot be created or destroyed"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is velocity?",
-          answers: [
+          options: [
             Answer(answer: "The rate of change of position with direction"),
             Answer(answer: "The speed of an object"),
             Answer(answer: "The distance traveled"),
@@ -871,11 +2250,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Energy & Work",
+      description:
+          "Understand concepts of work, kinetic energy, potential energy, conservation of energy, and power.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is work in physics?",
-          answers: [
+          options: [
             Answer(
               answer: "Force applied over a distance in the direction of force",
             ),
@@ -883,25 +2264,25 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Heat produced by friction"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is kinetic energy?",
-          answers: [
+          options: [
             Answer(answer: "Energy of motion"),
             Answer(answer: "Energy stored in objects"),
             Answer(answer: "Heat energy"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is potential energy?",
-          answers: [
+          options: [
             Answer(answer: "Energy stored due to position or configuration"),
             Answer(answer: "Energy being used"),
             Answer(answer: "Wasted energy"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the law of conservation of energy?",
-          answers: [
+          options: [
             Answer(
               answer: "Energy cannot be created or destroyed, only transformed",
             ),
@@ -909,17 +2290,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Energy stays constant in isolated systems"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is mechanical energy?",
-          answers: [
+          options: [
             Answer(answer: "Sum of kinetic and potential energy"),
             Answer(answer: "Energy from machines"),
             Answer(answer: "Electrical energy"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is power?",
-          answers: [
+          options: [
             Answer(answer: "The rate at which work is done"),
             Answer(answer: "The amount of force applied"),
             Answer(answer: "The distance traveled"),
@@ -929,11 +2310,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Waves & Motion",
+      description:
+          "Learn about waves, wavelength, frequency, amplitude, transverse waves, and the Doppler effect.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is a wave?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A disturbance that travels through space and transfers energy",
@@ -942,25 +2325,25 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A type of vibration"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is wavelength?",
-          answers: [
+          options: [
             Answer(answer: "The distance between consecutive wave crests"),
             Answer(answer: "The height of a wave"),
             Answer(answer: "The speed of a wave"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is frequency?",
-          answers: [
+          options: [
             Answer(answer: "The number of waves passing a point per unit time"),
             Answer(answer: "The distance of a wave"),
             Answer(answer: "The amplitude of a wave"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is amplitude?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The maximum displacement of a wave from its rest position",
@@ -969,9 +2352,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The frequency"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What are transverse waves?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Waves where particles oscillate perpendicular to wave direction",
@@ -980,17 +2363,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Waves parallel to motion"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the Doppler effect?",
-          answers: [
+          options: [
             Answer(answer: "Change in wave frequency due to relative motion"),
             Answer(answer: "Waves bouncing off surfaces"),
             Answer(answer: "Wave interference"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is sound?",
-          answers: [
+          options: [
             Answer(answer: "A longitudinal wave that travels through media"),
             Answer(answer: "Vibrations in the air only"),
             Answer(answer: "Light waves"),
@@ -1000,11 +2383,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Basic Thermodynamics",
+      description:
+          "Master thermodynamics including temperature, heat transfer, entropy, and the laws of thermodynamics.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is thermodynamics?",
-          answers: [
+          options: [
             Answer(
               answer: "The study of heat, temperature, and energy transfer",
             ),
@@ -1012,33 +2397,33 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The study of electricity"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is temperature?",
-          answers: [
+          options: [
             Answer(answer: "A measure of average kinetic energy of particles"),
             Answer(answer: "The amount of heat"),
             Answer(answer: "Energy transfer"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the first law of thermodynamics?",
-          answers: [
+          options: [
             Answer(answer: "Energy is conserved; ΔU = Q - W"),
             Answer(answer: "Heat flows from hot to cold"),
             Answer(answer: "Entropy always decreases"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the second law of thermodynamics?",
-          answers: [
+          options: [
             Answer(answer: "Entropy of isolated systems always increases"),
             Answer(answer: "Heat cannot be created"),
             Answer(answer: "Temperature is constant"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is entropy?",
-          answers: [
+          options: [
             Answer(answer: "A measure of disorder or randomness in a system"),
             Answer(answer: "Heat content"),
             Answer(answer: "Temperature difference"),
@@ -1048,11 +2433,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Electricity & Magnetism Basics",
+      description:
+          "Discover electric charge, current, voltage, resistance, magnetism, and Ohm's Law fundamentals.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is electric charge?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "A fundamental property of matter that causes electromagnetic force",
@@ -1061,17 +2448,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A type of battery"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is current?",
-          answers: [
+          options: [
             Answer(answer: "The flow of electric charge through a conductor"),
             Answer(answer: "The present time"),
             Answer(answer: "The speed of electricity"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is voltage?",
-          answers: [
+          options: [
             Answer(
               answer: "The electric potential difference between two points",
             ),
@@ -1079,25 +2466,25 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The amount of current"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is resistance?",
-          answers: [
+          options: [
             Answer(answer: "Opposition to the flow of electric current"),
             Answer(answer: "Fighting against electricity"),
             Answer(answer: "Electrical power"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is a magnet?",
-          answers: [
+          options: [
             Answer(answer: "An object that produces a magnetic field"),
             Answer(answer: "A metal that attracts iron"),
             Answer(answer: "A type of battery"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is Ohm's Law?",
-          answers: [
+          options: [
             Answer(answer: "V = IR (Voltage equals Current times Resistance)"),
             Answer(answer: "Energy cannot be created or destroyed"),
             Answer(answer: "For every action there is an equal reaction"),
@@ -1111,11 +2498,13 @@ final List<List<Lesson>> lessonsInfo = [
   [
     Lesson(
       title: "Introduction to Philosophy",
+      description:
+          "Begin your philosophical journey exploring epistemology, metaphysics, logic, and the Socratic method.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is philosophy?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The love of wisdom and critical examination of fundamental questions",
@@ -1124,33 +2513,33 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A scientific discipline"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is epistemology?",
-          answers: [
+          options: [
             Answer(answer: "The study of knowledge and how we know things"),
             Answer(answer: "The study of existence"),
             Answer(answer: "The study of beauty"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is metaphysics?",
-          answers: [
+          options: [
             Answer(answer: "The study of reality and existence"),
             Answer(answer: "The study of knowledge"),
             Answer(answer: "The study of physical objects"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is logic?",
-          answers: [
+          options: [
             Answer(answer: "The study of reasoning and valid arguments"),
             Answer(answer: "A way of thinking"),
             Answer(answer: "Mathematical computation"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the Socratic method?",
-          answers: [
+          options: [
             Answer(
               answer: "A dialogue method using questions to examine beliefs",
             ),
@@ -1162,11 +2551,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Ethics",
+      description:
+          "Explore ethical theories including utilitarianism, deontology, virtue ethics, and moral principles.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is ethics?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The philosophical study of right and wrong, good and bad",
@@ -1175,9 +2566,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Being a good person"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is utilitarianism?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "An ethical theory that maximizes overall happiness or well-being",
@@ -1186,17 +2577,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Being efficient"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is deontology?",
-          answers: [
+          options: [
             Answer(answer: "An ethical theory based on duties and rules"),
             Answer(answer: "A study of obligations"),
             Answer(answer: "Following laws"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is virtue ethics?",
-          answers: [
+          options: [
             Answer(
               answer: "An ethical theory focusing on character and virtues",
             ),
@@ -1204,9 +2595,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Following moral codes"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the categorical imperative?",
-          answers: [
+          options: [
             Answer(
               answer: "Kant's principle to act only on universalizable maxims",
             ),
@@ -1214,9 +2605,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "A strict order"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the golden rule?",
-          answers: [
+          options: [
             Answer(answer: "Treat others as you want to be treated"),
             Answer(answer: "A rule made of gold"),
             Answer(answer: "The most important rule"),
@@ -1226,11 +2617,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Metaphysics",
+      description:
+          "Investigate the nature of reality, the mind-body problem, dualism, materialism, and free will.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is metaphysics?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The study of reality, existence, and the nature of being",
@@ -1239,9 +2632,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The study of the physical world"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the mind-body problem?",
-          answers: [
+          options: [
             Answer(
               answer: "The philosophical question of how mind and body relate",
             ),
@@ -1249,9 +2642,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Consciousness"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is dualism?",
-          answers: [
+          options: [
             Answer(
               answer: "The view that mind and body are two distinct substances",
             ),
@@ -1259,9 +2652,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Division into two parts"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is materialism?",
-          answers: [
+          options: [
             Answer(
               answer: "The view that physical matter is fundamental reality",
             ),
@@ -1269,9 +2662,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "The study of materials"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is free will?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The ability to make choices not predetermined by prior causes",
@@ -1284,11 +2677,13 @@ final List<List<Lesson>> lessonsInfo = [
     ),
     Lesson(
       title: "Philosophy of Mind",
+      description:
+          "Study consciousness, qualia, intentionality, perception, and the mysteries of personal identity.",
       done: false,
       questions: [
-        Question(
+        MCQ(
           question: "What is the philosophy of mind?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "The study of consciousness, mental states, and perception",
@@ -1297,9 +2692,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Psychology"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is consciousness?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Subjective experience and awareness of thoughts and sensations",
@@ -1308,9 +2703,9 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Thinking"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is the hard problem of consciousness?",
-          answers: [
+          options: [
             Answer(
               answer:
                   "Why subjective experience arises from physical processes",
@@ -1319,17 +2714,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Studying difficult concepts"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is qualia?",
-          answers: [
+          options: [
             Answer(answer: "The subjective qualities of conscious experiences"),
             Answer(answer: "Different types of things"),
             Answer(answer: "Qualities in general"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is intentionality?",
-          answers: [
+          options: [
             Answer(
               answer: "The property of mental states being about something",
             ),
@@ -1337,17 +2732,17 @@ final List<List<Lesson>> lessonsInfo = [
             Answer(answer: "Deliberate action"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is perception?",
-          answers: [
+          options: [
             Answer(answer: "The process of acquiring sensory information"),
             Answer(answer: "What you see"),
             Answer(answer: "Understanding things"),
           ],
         ),
-        Question(
+        MCQ(
           question: "What is personal identity?",
-          answers: [
+          options: [
             Answer(answer: "What makes a person the same person over time"),
             Answer(answer: "Personal characteristics"),
             Answer(answer: "Individual traits"),
@@ -1357,6 +2752,7 @@ final List<List<Lesson>> lessonsInfo = [
     ),
   ],
 ];
+
 List<Achievement> achievementsInfo = [
   Achievement(
     icon: Icons.school,
