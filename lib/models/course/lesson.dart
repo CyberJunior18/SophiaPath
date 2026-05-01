@@ -57,7 +57,14 @@ class Lesson {
 
       return value
           .whereType<Map>()
-          .map((item) => LessonContent.fromMap(Map<String, dynamic>.from(item)))
+          .map((item) {
+            try {
+              return LessonContent.fromMap(Map<String, dynamic>.from(item));
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<LessonContent>()
           .toList();
     }
 

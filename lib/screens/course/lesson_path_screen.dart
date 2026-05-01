@@ -6,6 +6,7 @@ import '../../models/course/lesson.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
 import '../Lessons/mcq_test_screen.dart';
+import 'lesson_content_screen.dart';
 import '../../services/course/user_stats_service.dart';
 
 class LessonPathScreen extends StatefulWidget {
@@ -161,13 +162,15 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final score = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => McqTestScreen(
-          section: lesson.title,
-          questions: lesson.questions,
-          courseId: courseIndex,
-          totalLessons: lessons.length,
-          onTestCompleted: () {},
-        ),
+        builder: (_) => lesson.questions.isNotEmpty
+            ? McqTestScreen(
+                section: lesson.title,
+                questions: lesson.questions,
+                courseId: courseIndex,
+                totalLessons: lessons.length,
+                onTestCompleted: () {},
+              )
+            : LessonContentScreen(lesson: lesson),
       ),
     );
 

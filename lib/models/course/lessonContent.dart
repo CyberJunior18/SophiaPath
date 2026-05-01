@@ -38,11 +38,107 @@ class TextLearningContent {
   TextLearningContent({required this.text});
 }
 
+class LessonPage {
+  final int pageId;
+  final String pageTitle;
+  final int orderIndex;
+  final List<LessonBlock> blocks;
+
+  const LessonPage({
+    required this.pageId,
+    required this.pageTitle,
+    required this.orderIndex,
+    required this.blocks,
+  });
+
+  factory LessonPage.fromMap(Map<String, dynamic> map) {
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    final dynamic rawBlocks = map['blocks'];
+    final blocks = rawBlocks is List
+        ? rawBlocks
+              .whereType<Map>()
+              .map(
+                (item) => LessonBlock.fromMap(Map<String, dynamic>.from(item)),
+              )
+              .toList()
+        : const <LessonBlock>[];
+
+    return LessonPage(
+      pageId: asInt(map['pageId'] ?? map['id']),
+      pageTitle: (map['pageTitle'] ?? map['title'] ?? '').toString(),
+      orderIndex: asInt(map['orderIndex']),
+      blocks: blocks,
+    );
+  }
+}
+
+class LessonBlock {
+  final Map<String, dynamic> raw;
+
+  const LessonBlock({required this.raw});
+
+  factory LessonBlock.fromMap(Map<String, dynamic> map) {
+    return LessonBlock(raw: Map<String, dynamic>.from(map));
+  }
+
+  String get type => (raw['type'] ?? '').toString().toLowerCase();
+
+  String get text => (raw['text'] ?? '').toString();
+
+  int get level {
+    final value = raw['level'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 1;
+  }
+
+  String get variant => (raw['variant'] ?? '').toString().toLowerCase();
+
+  List<Map<String, dynamic>> get items {
+    final dynamic rawItems = raw['items'];
+    if (rawItems is! List) return const [];
+
+    return rawItems
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  List<String> get headers {
+    final dynamic rawHeaders = raw['headers'];
+    if (rawHeaders is! List) return const [];
+
+    return rawHeaders.map((item) => item.toString()).toList();
+  }
+
+  List<List<Map<String, dynamic>>> get rows {
+    final dynamic rawRows = raw['rows'];
+    if (rawRows is! List) return const [];
+
+    return rawRows
+        .whereType<List>()
+        .map(
+          (row) => row
+              .whereType<Map>()
+              .map((cell) => Map<String, dynamic>.from(cell))
+              .toList(),
+        )
+        .toList();
+  }
+}
+
 class LessonContent {
   final int id;
   final LessonContentCategory category;
   final LessonContentType type;
   final int orderIndex;
+  // final String partTitle;
+  final List<LessonPage> pages;
   final Map<String, dynamic> data;
 
   const LessonContent({
@@ -50,6 +146,8 @@ class LessonContent {
     required this.category,
     required this.type,
     required this.orderIndex,
+    // required this.partTitle,
+    required this.pages,
     required this.data,
   });
 
@@ -60,13 +158,28 @@ class LessonContent {
       return int.tryParse(value?.toString() ?? '') ?? 0;
     }
 
+    final dynamic rawPages = map['pages'];
+    final parsedPages = rawPages is List
+        ? rawPages
+              .whereType<Map>()
+              .map(
+                (item) => LessonPage.fromMap(Map<String, dynamic>.from(item)),
+              )
+              .toList()
+        : const <LessonPage>[];
+
     final categoryRaw = (map['category'] ?? '').toString().toLowerCase();
     final typeRaw = (map['type'] ?? '').toString().toLowerCase();
+    final bool hasPages = parsedPages.isNotEmpty;
 
     final category =
         stringToLessonContentCategory[categoryRaw] ??
-        LessonContentCategory.EXERCISE;
-    final type = stringToLessonContentType[typeRaw] ?? LessonContentType.MCQ;
+        (hasPages
+            ? LessonContentCategory.LEARNING
+            : LessonContentCategory.EXERCISE);
+    final type =
+        stringToLessonContentType[typeRaw] ??
+        (hasPages ? LessonContentType.TEXT : LessonContentType.MCQ);
 
     if (!_isTypeAllowedForCategory(category: category, type: type)) {
       throw FormatException(
@@ -77,13 +190,15 @@ class LessonContent {
     final rawData = map['data'];
     final parsedData = rawData is Map
         ? Map<String, dynamic>.from(rawData)
-        : <String, dynamic>{};
+        : Map<String, dynamic>.from(map);
 
     return LessonContent(
-      id: asInt(map['id']),
+      id: asInt(map['id'] ?? map['pageId']),
       category: category,
       type: type,
       orderIndex: asInt(map['orderIndex']),
+      // partTitle: (map['partTitle'] ?? map['pageTitle'] ?? '').toString(),
+      pages: parsedPages,
       data: parsedData,
     );
   }
@@ -100,7 +215,13 @@ class LessonContent {
     final rawOptions = data['options'];
     final options = rawOptions is List
         ? rawOptions
-              .map((item) => Answer(answer: item?.toString() ?? ''))
+              .map(
+                (item) => Answer(
+                  answer: item is Map
+                      ? (item['answer'] ?? '').toString()
+                      : item?.toString() ?? '',
+                ),
+              )
               .toList()
         : <Answer>[];
 
