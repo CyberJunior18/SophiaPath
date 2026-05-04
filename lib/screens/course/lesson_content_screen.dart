@@ -43,10 +43,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 
       for (final page in sortedPages) {
         pages.add(
-          _LessonPageViewModel(
-            // contentTitle: content.partTitle,
-            page: page,
-          ),
+          _LessonPageViewModel(contentTitle: content.partTitle, page: page),
         );
       }
     }
@@ -73,13 +70,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     final currentPage = hasPages ? _pages[_currentPageIndex] : null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          currentPage?.page.pageTitle.isNotEmpty == true
-              ? currentPage!.page.pageTitle
-              : widget.lesson.title,
-        ),
-      ),
+      appBar: AppBar(title: Text(widget.lesson.title)),
       body: SafeArea(
         child: Column(
           children: [
@@ -468,11 +459,8 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 }
 
 class _LessonPageViewModel {
-  // final String contentTitle;
+  final String contentTitle;
   final LessonPage page;
 
-  const _LessonPageViewModel({
-    // required this.contentTitle,
-    required this.page,
-  });
+  const _LessonPageViewModel({required this.contentTitle, required this.page});
 }

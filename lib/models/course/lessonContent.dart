@@ -137,7 +137,7 @@ class LessonContent {
   final LessonContentCategory category;
   final LessonContentType type;
   final int orderIndex;
-  // final String partTitle;
+  final String partTitle;
   final List<LessonPage> pages;
   final Map<String, dynamic> data;
 
@@ -146,7 +146,7 @@ class LessonContent {
     required this.category,
     required this.type,
     required this.orderIndex,
-    // required this.partTitle,
+    required this.partTitle,
     required this.pages,
     required this.data,
   });
@@ -197,7 +197,7 @@ class LessonContent {
       category: category,
       type: type,
       orderIndex: asInt(map['orderIndex']),
-      // partTitle: (map['partTitle'] ?? map['pageTitle'] ?? '').toString(),
+      partTitle: (map['partTitle'] ?? map['pageTitle'] ?? '').toString(),
       pages: parsedPages,
       data: parsedData,
     );

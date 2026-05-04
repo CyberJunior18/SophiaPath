@@ -1,7 +1,6 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'models/data.dart';
 import 'screens/chat/chats_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'models/course/course_info.dart';
@@ -10,6 +9,7 @@ import 'screens/settings_screen.dart';
 import 'models/user/user.dart';
 import 'screens/course/course_info_screen.dart';
 import 'screens/course/learning_screen.dart';
+import 'screens/authentication/authService.dart';
 import 'services/user_preferences_services.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -28,7 +28,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
   int _selectedIndex = 0;
 
   bool coursesExpanded = false;
-  final List<CourseInfo> courses = coursesInfo;
+  final AuthService _authService = AuthService();
+  List<CourseInfo> courses = [];
   late List<CourseInfo> registeredCourses = [];
   late Widget currentScreen;
 
@@ -48,7 +49,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
         });
       }
     });
-
+    _loadInitialData();
     _loadUserData();
   }
 
@@ -196,15 +197,33 @@ class _NavigationScreenState extends State<NavigationScreen> {
   User? currentUser;
   bool _isLoading = true;
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadInitialData() async {
     if (!mounted) return;
 
     setState(() => _isLoading = true);
     try {
-      currentUser = await _userService.getUser();
+      final results = await Future.wait([
+        _userService.getUser(),
+        _authService.getAllCourses(),
+      ]);
+
+      currentUser = results[0] as User?;
+      courses = results[1] as List<CourseInfo>;
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    if (!mounted) return;
+
+    try {
+      currentUser = await _userService.getUser();
+    } finally {
+      if (mounted) {
+        setState(() {});
       }
     }
   }

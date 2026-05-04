@@ -28,6 +28,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   int courseIndex = 0;
   late List<bool> unlocked;
   late List<Lesson> lessons;
+  late List<List<Lesson>> lessonsByPages;
+  int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
@@ -72,7 +74,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     final sourceCourse = widget.originalCourse ?? widget.course;
     lessons = _findCourseLessons(sourceCourse);
-    debugPrint('🔍 LessonPathScreen: Found ${lessons.length} lessons');
+    lessonsByPages = _buildLessonPages(lessons);
+    debugPrint(
+      '🔍 LessonPathScreen: Found ${lessons.length} lessons in ${lessonsByPages.length} pages',
+    );
     for (var lesson in lessons) {
       debugPrint('  - ${lesson.title}');
     }
@@ -90,7 +95,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
   List<Lesson> _findCourseLessons(CourseInfo course) {
     if (course.lessons.isNotEmpty) {
-      return course.lessons;
+      final sortedLessons = List<Lesson>.from(course.lessons)
+        ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+      return sortedLessons;
     }
 
     if (course.sections.isNotEmpty) {
@@ -98,7 +105,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         return Lesson(
           title: section,
           done: false,
-          description: '', // to remove
+          description: '',
           questions: [
             MCQ(
               question: 'What is $section?',
@@ -115,6 +122,33 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
 
     return const [];
+  }
+
+  List<List<Lesson>> _buildLessonPages(List<Lesson> allLessons) {
+    final pages = <List<Lesson>>[];
+    for (final lesson in allLessons) {
+      final sortedContents = List<LessonContent>.from(lesson.contents)
+        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+
+      if (sortedContents.isNotEmpty) {
+        final contentLessons = sortedContents.map((content) {
+          return Lesson(
+            id: lesson.id,
+            title: content.partTitle.isNotEmpty
+                ? content.partTitle
+                : lesson.title,
+            description: lesson.description,
+            done: lesson.done,
+            questions: const [],
+            contents: [content],
+          );
+        }).toList();
+        pages.add(contentLessons);
+      } else {
+        pages.add([lesson]);
+      }
+    }
+    return pages;
   }
 
   Future<void> _findDatabaseCourse() async {
@@ -139,20 +173,18 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
   }
 
-  Future<void> startTest(int index) async {
+  Future<void> startTest(Lesson lesson, int pageIndex) async {
     debugPrint(
-      '🔵 startTest called: index=$index, lessons.length=${lessons.length}, unlocked=${unlocked.length}',
+      '🔵 startTest called: lesson=${lesson.title}, pageIndex=$pageIndex, unlocked=${unlocked.length}',
     );
-    if (index >= lessons.length || !unlocked[index]) {
+    if (pageIndex >= unlocked.length || !unlocked[pageIndex]) {
       debugPrint(
-        '❌ Early return: index=$index, lessonLength=${lessons.length}, locked=${!unlocked[index]}',
+        '❌ Early return: pageIndex=$pageIndex, locked=${!unlocked[pageIndex]}',
       );
       return;
     }
 
-    final lesson = lessons[index];
-
-    final isFirstLessonOfFirstCourse = index == 0 && _completedLessons == 0;
+    final isFirstLessonOfFirstCourse = pageIndex == 0 && _completedLessons == 0;
 
     DateTime? startTime;
     if (isFirstLessonOfFirstCourse) {
@@ -176,28 +208,29 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     if (score != null && mounted) {
       final updatedScores = List<int>.from(courseScores);
-      if (score > updatedScores[index]) {
-        updatedScores[index] = score;
+      if (score > updatedScores[pageIndex]) {
+        updatedScores[pageIndex] = score;
       }
 
       final isPassingScore = score >= 70;
-      final shouldUnlockNext = isPassingScore && index + 1 < lessons.length;
+      final shouldUnlockNext =
+          isPassingScore && pageIndex + 1 < unlocked.length;
 
       setState(() {
         courseScores = updatedScores;
 
         if (shouldUnlockNext) {
           final updatedUnlocked = List<bool>.from(unlocked);
-          updatedUnlocked[index + 1] = true;
+          updatedUnlocked[pageIndex + 1] = true;
           unlocked = updatedUnlocked;
         }
       });
 
       final currentCourseIndex = widget.course.id! - 1;
-      await ScoresRepository.addScore(currentCourseIndex, index, score);
+      await ScoresRepository.addScore(currentCourseIndex, pageIndex, score);
 
       if (isPassingScore) {
-        final newCompletedCount = index + 1;
+        final newCompletedCount = pageIndex + 1;
 
         if (newCompletedCount > _completedLessons) {
           _completedLessons = newCompletedCount;
@@ -290,7 +323,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     final theme = Theme.of(context);
     final nodeSpacing = 120.0;
-    final totalLessons = lessons.length;
+    final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
+    final totalNodesInPage = currentPageLessons.length;
+    final totalPages = lessonsByPages.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -327,7 +362,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '$_completedLessons/$totalLessons',
+                  '$_completedLessons/${lessons.length}',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -339,49 +374,101 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: SizedBox(
-          height: totalLessons * nodeSpacing + 30,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 20.0),
-            child: Stack(
-              children: [
-                CustomPaint(
-                  size: Size(double.infinity, totalLessons * nodeSpacing),
-                  painter: LessonPathPainter(
-                    totalLessons,
-                    unlocked: unlocked,
-                    theme: theme,
-                  ),
+
+      body: Column(
+        children: [
+          if (totalPages > 1)
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Text(
+                '${lessons[_currentLessonPageIndex].title}',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
-                for (int i = 0; i < totalLessons; i++)
-                  Positioned(
-                    top: i * nodeSpacing,
-                    left: i % 2 == 0
-                        ? MediaQuery.of(context).size.width * 0.18 - 17
-                        : MediaQuery.of(context).size.width * 0.62 - 17,
-                    child: MouseRegion(
-                      cursor: unlocked[i]
-                          ? SystemMouseCursors.click
-                          : SystemMouseCursors.basic,
-                      child: GestureDetector(
-                        onTap: unlocked[i] ? () => startTest(i) : null,
-                        child: CourseNode(
-                          title: lessons[i].title,
-                          index: i + 1,
-                          locked: !unlocked[i],
-                          percentage: courseScores[i],
-                          isCompleted: i < _completedLessons,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: SizedBox(
+                height: totalNodesInPage * nodeSpacing + 30,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Stack(
+                    children: [
+                      CustomPaint(
+                        size: Size(
+                          double.infinity,
+                          totalNodesInPage * nodeSpacing,
+                        ),
+                        painter: LessonPathPainter(
+                          totalNodesInPage,
+                          unlocked: unlocked,
                           theme: theme,
                         ),
                       ),
-                    ),
+                      for (int i = 0; i < totalNodesInPage; i++)
+                        Positioned(
+                          top: i * nodeSpacing,
+                          left: i % 2 == 0
+                              ? MediaQuery.of(context).size.width * 0.18 - 17
+                              : MediaQuery.of(context).size.width * 0.62 - 17,
+                          child: MouseRegion(
+                            cursor: unlocked[i]
+                                ? SystemMouseCursors.click
+                                : SystemMouseCursors.basic,
+                            child: GestureDetector(
+                              onTap: unlocked[i]
+                                  ? () => startTest(currentPageLessons[i], i)
+                                  : null,
+                              child: CourseNode(
+                                title: currentPageLessons[i].title,
+                                index: i + 1,
+                                locked: !unlocked[i],
+                                percentage: courseScores[i],
+                                isCompleted: i < _completedLessons,
+                                theme: theme,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                ),
+              ),
             ),
           ),
-        ),
+          if (totalPages > 1)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios),
+                    onPressed: _currentLessonPageIndex > 0
+                        ? () => setState(() => _currentLessonPageIndex--)
+                        : null,
+                  ),
+                  Text(
+                    '${_currentLessonPageIndex + 1} / $totalPages',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios),
+                    onPressed: _currentLessonPageIndex < totalPages - 1
+                        ? () => setState(() => _currentLessonPageIndex++)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -16,13 +16,13 @@ import 'screens/authentication/authService.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  Future.microtask(() async {
-    try {
-      await ScoresRepository.initializeScores(coursesInfo.length, 10);
-    } catch (e) {
-      print('Scores init error: $e');
-    }
-  });
+  // Future.microtask(() async {
+  //   try {
+  //     await ScoresRepository.initializeScores(coursesInfo.length, 10);
+  //   } catch (e) {
+  //     print('Scores init error: $e');
+  //   }
+  // });
 
   Future.microtask(() async {
     try {

@@ -94,16 +94,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final correctAnswersCount = await statsService.getCorrectAnswersCount();
     final hasFastCompletion = await statsService.hasFastCompletion();
 
-    bool hasMasteredCourse = courses.any((course) {
-      final courseIndex = coursesInfo.indexWhere(
-        (c) => c.title == course.title,
-      );
-      if (courseIndex >= 0 && courseIndex < lessonsInfo.length) {
-        final totalLessonsInCourse = lessonsInfo[courseIndex].length;
-        return course.lessonsFinished >= totalLessonsInCourse;
-      }
-      return false;
-    });
+    // bool hasMasteredCourse = courses.any((course) {
+    //   final courseIndex = coursesInfo.indexWhere(
+    //     (c) => c.title == course.title,
+    //   );
+    //   if (courseIndex >= 0 && courseIndex < lessonsInfo.length) {
+    //     final totalLessonsInCourse = lessonsInfo[courseIndex].length;
+    //     return course.lessonsFinished >= totalLessonsInCourse;
+    //   }
+    //   return false;
+    // });
 
     for (int i = 0; i < achievements.length; i++) {
       final achievement = achievements[i];
@@ -114,11 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           newProgress = totalLessonsCompleted >= 1 ? 1 : 0;
           break;
 
-        case "Completionist":
-          newProgress = registeredCoursesCount >= coursesInfo.length
-              ? coursesInfo.length.toDouble()
-              : registeredCoursesCount.toDouble();
-          break;
+        // case "Completionist":
+        //   newProgress = registeredCoursesCount >= coursesInfo.length
+        //       ? coursesInfo.length.toDouble()
+        //       : registeredCoursesCount.toDouble();
+        //   break;
 
         case "Perfect Score":
           newProgress = hasPerfectScore ? 1 : 0;
@@ -144,9 +144,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               : registeredCoursesCount.toDouble();
           break;
 
-        case "Master Student":
-          newProgress = hasMasteredCourse ? 1 : 0;
-          break;
+        // case "Master Student":
+        //   newProgress = hasMasteredCourse ? 1 : 0;
+        //   break;
 
         case "Social Learner":
           newProgress = shareCount >= 5 ? 5 : shareCount.toDouble();
