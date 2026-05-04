@@ -26,14 +26,51 @@ class LessonPathScreen extends StatefulWidget {
 class _LessonPathScreenState extends State<LessonPathScreen> {
   List<int> courseScores = [];
   int courseIndex = 0;
-  late List<bool> unlocked;
-  late List<Lesson> lessons;
-  late List<List<Lesson>> lessonsByPages;
+  List<bool> unlocked = [];
+  List<Lesson> lessons = [];
+  List<List<Lesson>> lessonsByPages = [];
   int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
   final UserStatsService _statsService = UserStatsService();
+
+  List<int> _normalizedScores(int desiredLength) {
+    if (desiredLength <= 0) return const [];
+
+    if (courseScores.length >= desiredLength) {
+      return courseScores.sublist(0, desiredLength);
+    }
+
+    return [
+      ...courseScores,
+      ...List.filled(desiredLength - courseScores.length, 0),
+    ];
+  }
+
+  List<bool> _normalizedUnlocked(int desiredLength) {
+    if (desiredLength <= 0) return const [];
+
+    final base = unlocked.isNotEmpty
+        ? unlocked
+        : List<bool>.generate(
+            desiredLength,
+            (index) => index == 0 || index <= _completedLessons,
+          );
+
+    if (base.length >= desiredLength) {
+      return base.sublist(0, desiredLength);
+    }
+
+    return [
+      ...base,
+      ...List<bool>.generate(
+        desiredLength - base.length,
+        (index) => base.length + index <= _completedLessons,
+      ),
+    ];
+  }
+
   Future<void> _loadScores() async {
     final int currentCourseIndex =
         widget.course.id != null && widget.course.id! > 0
@@ -174,12 +211,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   }
 
   Future<void> startTest(Lesson lesson, int pageIndex) async {
+    final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
+    final currentScores = _normalizedScores(currentPageLessons.length);
+    final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
+
     debugPrint(
       '🔵 startTest called: lesson=${lesson.title}, pageIndex=$pageIndex, unlocked=${unlocked.length}',
     );
-    if (pageIndex >= unlocked.length || !unlocked[pageIndex]) {
+    if (pageIndex < 0 || pageIndex >= currentUnlocked.length || !currentUnlocked[pageIndex]) {
       debugPrint(
-        '❌ Early return: pageIndex=$pageIndex, locked=${!unlocked[pageIndex]}',
+        '❌ Early return: pageIndex=$pageIndex, locked=${pageIndex >= currentUnlocked.length ? true : !currentUnlocked[pageIndex]}',
       );
       return;
     }
@@ -207,22 +248,24 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     );
 
     if (score != null && mounted) {
-      final updatedScores = List<int>.from(courseScores);
+      final updatedScores = List<int>.from(currentScores);
       if (score > updatedScores[pageIndex]) {
         updatedScores[pageIndex] = score;
       }
 
       final isPassingScore = score >= 70;
       final shouldUnlockNext =
-          isPassingScore && pageIndex + 1 < unlocked.length;
+          isPassingScore && pageIndex + 1 < currentUnlocked.length;
 
       setState(() {
         courseScores = updatedScores;
 
         if (shouldUnlockNext) {
-          final updatedUnlocked = List<bool>.from(unlocked);
+          final updatedUnlocked = List<bool>.from(currentUnlocked);
           updatedUnlocked[pageIndex + 1] = true;
           unlocked = updatedUnlocked;
+        } else {
+          unlocked = currentUnlocked;
         }
       });
 
@@ -326,6 +369,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final totalNodesInPage = currentPageLessons.length;
     final totalPages = lessonsByPages.length;
+    final currentScores = _normalizedScores(totalNodesInPage);
+    final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
 
     return Scaffold(
       appBar: AppBar(
@@ -405,7 +450,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                         ),
                         painter: LessonPathPainter(
                           totalNodesInPage,
-                          unlocked: unlocked,
+                            unlocked: currentUnlocked,
                           theme: theme,
                         ),
                       ),
@@ -416,18 +461,18 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                               ? MediaQuery.of(context).size.width * 0.18 - 17
                               : MediaQuery.of(context).size.width * 0.62 - 17,
                           child: MouseRegion(
-                            cursor: unlocked[i]
+                            cursor: currentUnlocked[i]
                                 ? SystemMouseCursors.click
                                 : SystemMouseCursors.basic,
                             child: GestureDetector(
-                              onTap: unlocked[i]
+                              onTap: currentUnlocked[i]
                                   ? () => startTest(currentPageLessons[i], i)
                                   : null,
                               child: CourseNode(
                                 title: currentPageLessons[i].title,
                                 index: i + 1,
-                                locked: !unlocked[i],
-                                percentage: courseScores[i],
+                                locked: !currentUnlocked[i],
+                                percentage: currentScores[i],
                                 isCompleted: i < _completedLessons,
                                 theme: theme,
                               ),
