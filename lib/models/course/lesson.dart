@@ -47,7 +47,9 @@ class Lesson {
         return MCQ(
           question: (q['question'] ?? '').toString(),
           options: options,
-          correctAnswerIndex: asInt(q['correctAnswerIndex']),
+          correctAnswerIndex: asInt(
+            q['correctAnswerIndex'] ?? q['correctAnswer'],
+          ),
         );
       }).toList();
     }
@@ -73,8 +75,7 @@ class Lesson {
 
     if (parsedQuestions.isEmpty && parsedContents.isNotEmpty) {
       parsedQuestions = parsedContents
-          .map((content) => content.asMcqOrNull())
-          .whereType<MCQ>()
+          .expand((content) => content.extractQuestions())
           .toList();
     }
 

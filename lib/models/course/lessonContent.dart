@@ -155,6 +155,28 @@ class LessonContent {
     required this.timeToFinish,
   });
 
+  static LessonContentType _inferTypeFromRawPages(dynamic rawPages) {
+    if (rawPages is! List || rawPages.isEmpty) {
+      return LessonContentType.TEXT;
+    }
+
+    final firstPage = rawPages.whereType<Map>().isNotEmpty
+        ? Map<String, dynamic>.from(rawPages.whereType<Map>().first)
+        : <String, dynamic>{};
+
+    final hasQuizFields =
+        firstPage.containsKey('question') ||
+        firstPage.containsKey('answers') ||
+        firstPage.containsKey('correctAnswer') ||
+        firstPage.containsKey('correctAnswerIndex');
+
+    if (hasQuizFields) {
+      return LessonContentType.MCQ;
+    }
+
+    return LessonContentType.TEXT;
+  }
+
   factory LessonContent.fromMap(Map<String, dynamic> map) {
     int asInt(dynamic value) {
       if (value is int) return value;
@@ -176,14 +198,20 @@ class LessonContent {
     final typeRaw = (map['type'] ?? '').toString().toLowerCase();
     final bool hasPages = parsedPages.isNotEmpty;
 
+    final inferredType = typeRaw.isNotEmpty
+        ? stringToLessonContentType[typeRaw]
+        : _inferTypeFromRawPages(rawPages);
+
     final category =
         stringToLessonContentCategory[categoryRaw] ??
         (hasPages
             ? LessonContentCategory.LEARNING
             : LessonContentCategory.EXERCISE);
     final type =
-        stringToLessonContentType[typeRaw] ??
-        (hasPages ? LessonContentType.TEXT : LessonContentType.MCQ);
+        inferredType ??
+        (category == LessonContentCategory.EXERCISE
+            ? LessonContentType.MCQ
+            : LessonContentType.TEXT);
 
     if (!_isTypeAllowedForCategory(category: category, type: type)) {
       throw FormatException(
@@ -212,6 +240,9 @@ class LessonContent {
   MCQ? asMcqOrNull() {
     if (type != LessonContentType.MCQ) return null;
 
+    final questions = extractQuestions();
+    if (questions.isNotEmpty) return questions.first;
+
     int asInt(dynamic value) {
       if (value is int) return value;
       if (value is num) return value.toInt();
@@ -236,6 +267,45 @@ class LessonContent {
       options: options,
       correctAnswerIndex: asInt(data['correctAnswerIndex']),
     );
+  }
+
+  List<MCQ> extractQuestions() {
+    final rawPages = data['pages'];
+    if (rawPages is! List) return const [];
+
+    return rawPages
+        .whereType<Map>()
+        .map((pageItem) {
+          final page = Map<String, dynamic>.from(pageItem);
+          final rawOptions = page['options'] ?? page['answers'];
+          final options = rawOptions is List
+              ? rawOptions
+                    .map(
+                      (item) => Answer(
+                        answer: item is Map
+                            ? (item['answer'] ?? '').toString()
+                            : item?.toString() ?? '',
+                      ),
+                    )
+                    .toList()
+              : <Answer>[];
+
+          int asInt(dynamic value) {
+            if (value is int) return value;
+            if (value is num) return value.toInt();
+            return int.tryParse(value?.toString() ?? '') ?? 0;
+          }
+
+          return MCQ(
+            question: (page['question'] ?? '').toString(),
+            options: options,
+            correctAnswerIndex: page.containsKey('correctAnswerIndex')
+                ? asInt(page['correctAnswerIndex'])
+                : asInt(page['correctAnswer']),
+          );
+        })
+        .where((q) => q.question.isNotEmpty && q.options.isNotEmpty)
+        .toList();
   }
 }
 

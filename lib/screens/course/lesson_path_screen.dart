@@ -186,7 +186,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 : lesson.title,
             description: lesson.description,
             done: lesson.done,
-            questions: const [],
+            questions: content.extractQuestions(),
             contents: [content],
           );
         }).toList();
@@ -380,7 +380,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final nodeSpacing = 120.0;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final totalNodesInPage = currentPageLessons.length;
-    final totalPages = lessonsByPages.length;
     final currentScores = _normalizedScores(totalNodesInPage);
     final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
 
