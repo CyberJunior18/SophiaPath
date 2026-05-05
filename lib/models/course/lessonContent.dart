@@ -138,8 +138,10 @@ class LessonContent {
   final LessonContentType type;
   final int orderIndex;
   final String partTitle;
+  final String chapterName;
   final List<LessonPage> pages;
   final Map<String, dynamic> data;
+  final int timeToFinish; //hours
 
   const LessonContent({
     required this.id,
@@ -147,8 +149,10 @@ class LessonContent {
     required this.type,
     required this.orderIndex,
     required this.partTitle,
+    this.chapterName = '',
     required this.pages,
     required this.data,
+    required this.timeToFinish,
   });
 
   factory LessonContent.fromMap(Map<String, dynamic> map) {
@@ -198,8 +202,10 @@ class LessonContent {
       type: type,
       orderIndex: asInt(map['orderIndex']),
       partTitle: (map['partTitle'] ?? map['pageTitle'] ?? '').toString(),
+      chapterName: (map['chapterName'] ?? '').toString(),
       pages: parsedPages,
       data: parsedData,
+      timeToFinish: asInt(map['timeToFinish']),
     );
   }
 

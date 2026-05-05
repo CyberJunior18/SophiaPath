@@ -12,11 +12,13 @@ import '../../services/course/user_stats_service.dart';
 class LessonPathScreen extends StatefulWidget {
   final CourseInfo course;
   final CourseInfo? originalCourse;
+  final int initialLessonPageIndex;
 
   const LessonPathScreen({
     super.key,
     required this.course,
     this.originalCourse,
+    this.initialLessonPageIndex = 0,
   });
 
   @override
@@ -112,6 +114,14 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final sourceCourse = widget.originalCourse ?? widget.course;
     lessons = _findCourseLessons(sourceCourse);
     lessonsByPages = _buildLessonPages(lessons);
+
+    if (lessonsByPages.isNotEmpty) {
+      _currentLessonPageIndex = widget.initialLessonPageIndex.clamp(
+        0,
+        lessonsByPages.length - 1,
+      );
+    }
+
     debugPrint(
       '🔍 LessonPathScreen: Found ${lessons.length} lessons in ${lessonsByPages.length} pages',
     );
@@ -218,7 +228,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     debugPrint(
       '🔵 startTest called: lesson=${lesson.title}, pageIndex=$pageIndex, unlocked=${unlocked.length}',
     );
-    if (pageIndex < 0 || pageIndex >= currentUnlocked.length || !currentUnlocked[pageIndex]) {
+    if (pageIndex < 0 ||
+        pageIndex >= currentUnlocked.length ||
+        !currentUnlocked[pageIndex]) {
       debugPrint(
         '❌ Early return: pageIndex=$pageIndex, locked=${pageIndex >= currentUnlocked.length ? true : !currentUnlocked[pageIndex]}',
       );
@@ -372,11 +384,101 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final currentScores = _normalizedScores(totalNodesInPage);
     final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
 
+    // build node widgets and compute exact Y positions so painter can follow
+    final List<Widget> nodeWidgets = [];
+    final List<double> nodeCentersY = [];
+    final List<bool> connectNext = [];
+    String? lastChapter;
+    String? prevChapter;
+    double extraGap = 0;
+    const double nodeSize = 80.0;
+    double contentHeight = 0;
+
+    for (int i = 0; i < totalNodesInPage; i++) {
+      final chapterName = currentPageLessons[i].contents[0].chapterName;
+
+      if (chapterName != lastChapter) {
+        lastChapter = chapterName;
+        if (i == 0) {
+          extraGap = 40;
+        } else {
+          extraGap += 120; // space before chapter text
+        }
+        nodeWidgets.add(
+          Positioned(
+            top: i * nodeSpacing + extraGap - 30,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Text(
+                  chapterName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final chapterTop = i * nodeSpacing + extraGap - 30;
+        contentHeight = max(contentHeight, chapterTop + 60);
+
+        extraGap += 60;
+      }
+
+      final nodeTop = i * nodeSpacing + extraGap;
+      nodeCentersY.add(nodeTop + nodeSize / 2);
+      contentHeight = max(contentHeight, nodeTop + nodeSize + 20);
+
+      if (i > 0) {
+        connectNext.add(prevChapter == chapterName);
+      }
+      prevChapter = chapterName;
+
+      nodeWidgets.add(
+        Positioned(
+          top: nodeTop,
+          left: i % 2 == 0
+              ? MediaQuery.of(context).size.width * 0.18 - 17
+              : MediaQuery.of(context).size.width * 0.62 - 17,
+          child: MouseRegion(
+            cursor: currentUnlocked[i]
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
+            child: GestureDetector(
+              onTap: currentUnlocked[i]
+                  ? () => startTest(currentPageLessons[i], i)
+                  : null,
+              child: CourseNode(
+                title: currentPageLessons[i].title,
+                index: i + 1,
+                locked: !currentUnlocked[i],
+                percentage: currentScores[i],
+                isCompleted: i < _completedLessons,
+                theme: theme,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: FittedBox(
           child: Text(
-            widget.course.title,
+            lessons[_currentLessonPageIndex].title,
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,
               fontSize: 20,
@@ -407,7 +509,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '$_completedLessons/${lessons.length}',
+                  '$_completedLessons/$totalNodesInPage',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -422,23 +524,26 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       body: Column(
         children: [
-          if (totalPages > 1)
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                '${lessons[_currentLessonPageIndex].title}',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
+          // if (totalPages > 1)
+          //   Padding(
+          //     padding: const EdgeInsets.all(12.0),
+          //     child: Text(
+          //       '${lessons[_currentLessonPageIndex].title}',
+          //       style: GoogleFonts.poppins(
+          //         fontSize: 16,
+          //         fontWeight: FontWeight.w600,
+          //       ),
+          //       textAlign: TextAlign.center,
+          //     ),
+          //   ),
           Expanded(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: SizedBox(
-                height: totalNodesInPage * nodeSpacing + 30,
+                height: max(
+                  contentHeight + 40,
+                  totalNodesInPage * nodeSpacing + 30,
+                ),
                 child: Padding(
                   padding: const EdgeInsets.only(top: 20.0),
                   child: Stack(
@@ -446,73 +551,52 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                       CustomPaint(
                         size: Size(
                           double.infinity,
-                          totalNodesInPage * nodeSpacing,
+                          nodeCentersY.isNotEmpty
+                              ? nodeCentersY.last + 60
+                              : totalNodesInPage * nodeSpacing,
                         ),
                         painter: LessonPathPainter(
-                          totalNodesInPage,
-                            unlocked: currentUnlocked,
+                          nodeCentersY,
+                          connectNext: connectNext,
+                          unlocked: currentUnlocked,
                           theme: theme,
                         ),
                       ),
-                      for (int i = 0; i < totalNodesInPage; i++)
-                        Positioned(
-                          top: i * nodeSpacing,
-                          left: i % 2 == 0
-                              ? MediaQuery.of(context).size.width * 0.18 - 17
-                              : MediaQuery.of(context).size.width * 0.62 - 17,
-                          child: MouseRegion(
-                            cursor: currentUnlocked[i]
-                                ? SystemMouseCursors.click
-                                : SystemMouseCursors.basic,
-                            child: GestureDetector(
-                              onTap: currentUnlocked[i]
-                                  ? () => startTest(currentPageLessons[i], i)
-                                  : null,
-                              child: CourseNode(
-                                title: currentPageLessons[i].title,
-                                index: i + 1,
-                                locked: !currentUnlocked[i],
-                                percentage: currentScores[i],
-                                isCompleted: i < _completedLessons,
-                                theme: theme,
-                              ),
-                            ),
-                          ),
-                        ),
+                      ...nodeWidgets,
                     ],
                   ),
                 ),
               ),
             ),
           ),
-          if (totalPages > 1)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios),
-                    onPressed: _currentLessonPageIndex > 0
-                        ? () => setState(() => _currentLessonPageIndex--)
-                        : null,
-                  ),
-                  Text(
-                    '${_currentLessonPageIndex + 1} / $totalPages',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios),
-                    onPressed: _currentLessonPageIndex < totalPages - 1
-                        ? () => setState(() => _currentLessonPageIndex++)
-                        : null,
-                  ),
-                ],
-              ),
-            ),
+          // if (totalPages > 1)
+          //   Padding(
+          //     padding: const EdgeInsets.all(16.0),
+          //     child: Row(
+          //       mainAxisAlignment: MainAxisAlignment.center,
+          //       children: [
+          //         IconButton(
+          //           icon: const Icon(Icons.arrow_back_ios),
+          //           onPressed: _currentLessonPageIndex > 0
+          //               ? () => setState(() => _currentLessonPageIndex--)
+          //               : null,
+          //         ),
+          //         Text(
+          //           '${_currentLessonPageIndex + 1} / $totalPages',
+          //           style: GoogleFonts.poppins(
+          //             fontSize: 14,
+          //             fontWeight: FontWeight.w600,
+          //           ),
+          //         ),
+          //         IconButton(
+          //           icon: const Icon(Icons.arrow_forward_ios),
+          //           onPressed: _currentLessonPageIndex < totalPages - 1
+          //               ? () => setState(() => _currentLessonPageIndex++)
+          //               : null,
+          //         ),
+          //       ],
+          //     ),
+          //   ),
         ],
       ),
     );
@@ -701,50 +785,53 @@ class _CourseNodeState extends State<CourseNode> {
 }
 
 class LessonPathPainter extends CustomPainter {
-  final int nodeCount;
+  final List<double> nodeCentersY;
+  final List<bool> connectNext;
   final List<bool> unlocked;
   final ThemeData theme;
 
   LessonPathPainter(
-    this.nodeCount, {
+    this.nodeCentersY, {
+    required this.connectNext,
     required this.unlocked,
     required this.theme,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final spacing = size.height / nodeCount;
     final isDark = theme.brightness == Brightness.dark;
+    final w = size.width;
 
-    for (int i = 0; i < nodeCount - 1; i++) {
-      final isSegmentUnlocked = unlocked[i] && unlocked[i + 1];
+    for (int i = 0; i < nodeCentersY.length - 1; i++) {
+      // skip drawing if there's a chapter break between i and i+1
+      final shouldConnect = (i < connectNext.length) ? connectNext[i] : true;
+      if (!shouldConnect) continue;
+
+      final isSegmentUnlocked =
+          unlocked.length > i && unlocked[i] && unlocked[i + 1];
 
       final paint = Paint()
         ..color = isSegmentUnlocked
-            ? const Color(0xFF3D5CFF).withValues(alpha: 0.7)
+            ? const Color(0xFF3D5CFF).withOpacity(0.7)
             : (isDark ? Colors.grey[700]! : Colors.grey[300]!)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSegmentUnlocked ? 3.5 : 2.5
         ..strokeCap = StrokeCap.round;
 
-      final startX = i % 2 == 0
-          ? size.width * 0.18 + 40
-          : size.width * 0.62 + 40;
-      final startY = i * spacing + 40;
+      final startX = i % 2 == 0 ? w * 0.18 + 40 : w * 0.62 + 40;
+      final startY = nodeCentersY[i];
 
-      final endX = (i + 1) % 2 == 0
-          ? size.width * 0.18 + 40
-          : size.width * 0.62 + 40;
-      final endY = (i + 1) * spacing + 40;
+      final endX = (i + 1) % 2 == 0 ? w * 0.18 + 40 : w * 0.62 + 40;
+      final endY = nodeCentersY[i + 1];
 
       final controlX1 = startX + (endX - startX) * 0.5;
-      final controlY1 = startY + spacing * 0.3;
-      final controlX2 = startX + (endX - startX) * 0.5;
-      final controlY2 = startY + spacing * 0.7;
+      final controlY1 = startY + (endY - startY) * 0.35;
+      final controlX2 = controlX1;
+      final controlY2 = startY + (endY - startY) * 0.65;
 
-      final path = Path();
-      path.moveTo(startX, startY);
-      path.cubicTo(controlX1, controlY1, controlX2, controlY2, endX, endY);
+      final path = Path()
+        ..moveTo(startX, startY)
+        ..cubicTo(controlX1, controlY1, controlX2, controlY2, endX, endY);
 
       canvas.drawPath(path, paint);
 
@@ -810,6 +897,9 @@ class LessonPathPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant LessonPathPainter oldDelegate) {
-    return oldDelegate.unlocked != unlocked || oldDelegate.theme != theme;
+    return oldDelegate.nodeCentersY != nodeCentersY ||
+        oldDelegate.connectNext != connectNext ||
+        oldDelegate.unlocked != unlocked ||
+        oldDelegate.theme != theme;
   }
 }

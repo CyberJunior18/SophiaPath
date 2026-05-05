@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/course/lesson.dart';
-import 'lesson_path_screen.dart';
+import 'course_lessons_grid_screen.dart';
 import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
@@ -133,7 +133,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => LessonPathScreen(course: widget.course),
+              builder: (_) => CourseLessonsGridScreen(course: widget.course),
             ),
           );
         }
@@ -142,7 +142,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => LessonPathScreen(course: widget.course),
+          builder: (_) => CourseLessonsGridScreen(course: widget.course),
         ),
       );
     }
