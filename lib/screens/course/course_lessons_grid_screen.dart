@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/course_info.dart';
 import '../../models/course/lesson.dart';
+import '../Lessons/mcq_test_screen.dart';
+import 'lesson_contents_list_screen.dart';
 import 'lesson_path_screen.dart';
+import 'course_contents_screen.dart';
 
 enum _LessonFilter { all, withContent, withQuiz }
 
@@ -56,14 +59,40 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
     }).toList();
   }
 
-  void _openLessonPath({_LessonGridItem? selectedItem}) {
+  void _openLessonContents(_LessonGridItem item) {
+    final lesson = item.lesson;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonContentsListScreen(lesson: lesson),
+      ),
+    );
+  }
+
+  void _openLessonQuiz(_LessonGridItem item) {
+    final lesson = item.lesson;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => McqTestScreen(
+          section: lesson.title,
+          questions: lesson.questions,
+          courseId: widget.course.id ?? 0,
+          totalLessons: widget.course.lessons.length,
+          onTestCompleted: () {},
+        ),
+      ),
+    );
+  }
+
+  void _openLessonPath(_LessonGridItem item) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => LessonPathScreen(
           course: widget.course,
           originalCourse: widget.course,
-          initialLessonPageIndex: selectedItem?.index ?? 0,
+          initialLessonPageIndex: item.index,
         ),
       ),
     );
@@ -170,7 +199,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
 
                         return InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          onTap: () => _openLessonPath(selectedItem: item),
+                          onTap: () => _openLessonPath(item),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -183,12 +212,94 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  '#${item.index + 1}',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF3D5CFF),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '#${item.index + 1}',
+                                      style: GoogleFonts.poppins(
+                                        color: const Color(0xFF3D5CFF),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      icon: const Icon(Icons.more_vert),
+                                      onSelected: (value) {
+                                        switch (value) {
+                                          case 'contents':
+                                            if (lesson.contents.isNotEmpty) {
+                                              _openLessonContents(item);
+                                            }
+                                            break;
+                                          case 'quiz':
+                                            if (lesson.questions.isNotEmpty) {
+                                              _openLessonQuiz(item);
+                                            }
+                                            break;
+                                          case 'path':
+                                            _openLessonPath(item);
+                                            break;
+                                        }
+                                      },
+                                      itemBuilder: (context) =>
+                                          <PopupMenuEntry<String>>[
+                                            if (lesson.contents.isNotEmpty)
+                                              PopupMenuItem<String>(
+                                                value: 'contents',
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.list_rounded,
+                                                      size: 18,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'View Contents',
+                                                      style:
+                                                          GoogleFonts.poppins(),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            if (lesson.questions.isNotEmpty)
+                                              PopupMenuItem<String>(
+                                                value: 'quiz',
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.quiz_outlined,
+                                                      size: 18,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'Take Quiz',
+                                                      style:
+                                                          GoogleFonts.poppins(),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            PopupMenuItem<String>(
+                                              value: 'path',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.account_tree_outlined,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Full Learning Path',
+                                                    style:
+                                                        GoogleFonts.poppins(),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
@@ -200,7 +311,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
                                     fontSize: 20,
                                   ),
                                 ),
-                                Spacer(),
+                                const Spacer(),
                                 Text(
                                   chapterName,
                                   maxLines: 1,
@@ -210,20 +321,6 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
                                     fontSize: 12,
                                   ),
                                 ),
-                                // const SizedBox(height: 8),
-                                // Expanded(
-                                //   child: Text(
-                                //     lesson.description.isNotEmpty
-                                //         ? lesson.description
-                                //         : 'No description',
-                                //     maxLines: 4,
-                                //     overflow: TextOverflow.ellipsis,
-                                //     style: GoogleFonts.poppins(
-                                //       fontSize: 12,
-                                //       color: theme.textTheme.bodySmall?.color,
-                                //     ),
-                                //   ),
-                                // ),
                                 Row(
                                   children: [
                                     _Badge(
@@ -252,7 +349,14 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () => _openLessonPath(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CourseContentsScreen(course: widget.course),
+                ),
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3D5CFF),
               padding: const EdgeInsets.symmetric(vertical: 14),
