@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:sophia_path/models/course/lesson.dart';
+import 'package:sophia_path/models/course/lesson.dart' as lesson_model;
 import 'course_lessons_grid_screen.dart';
-import '../../services/course/firestore_course_service.dart';
 import '../../models/course/course_info.dart';
+import '../../services/course_api_service.dart';
 import '../../services/course/scores_repo.dart';
 
 class CourseInfoScreen extends StatefulWidget {
@@ -17,39 +17,64 @@ class CourseInfoScreen extends StatefulWidget {
 class _CourseInfoScreenState extends State<CourseInfoScreen> {
   bool _isLoading = false;
   bool _isCourseRegistered = false;
-  List<Course> _registeredCourses = [];
-  List<Lesson> lessonsInfo = [];
-  // final FirestoreCourseService _courseService = FirestoreCourseService();
+  List<lesson_model.Section> sectionsInfo = [];
   late int courseIndex = 0;
-  // final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final CourseApiService _courseApiService = CourseApiService();
+
   @override
   void initState() {
     super.initState();
+    courseIndex = (widget.course.id ?? 1) - 1;
+    sectionsInfo = widget.course.sections;
     _checkIfCourseRegistered();
-    setState(() {
-      courseIndex = widget.course.id! - 1;
-      lessonsInfo = widget.course.lessons;
-    });
   }
 
   Future<void> _checkIfCourseRegistered() async {
     setState(() => _isLoading = true);
 
     try {
-      // final courses = await _courseService.getCourses();
+      final result = await _courseApiService.getMyRegistrations();
+      final registrations = result['data'];
+      final courseId = widget.course.id;
+
+      if (registrations is List) {
+        final matched = registrations.where((registration) {
+          if (registration is! Map) return false;
+
+          final course = registration['course'];
+          if (course is Map) {
+            final registeredCourseId = course['id'];
+            if (courseId != null && registeredCourseId != null) {
+              return registeredCourseId.toString() == courseId.toString();
+            }
+
+            final registeredTitle = course['title']?.toString() ?? '';
+            return registeredTitle == widget.course.title;
+          }
+
+          return false;
+        }).toList();
+
+        if (!mounted) return;
+        setState(() {
+          _isCourseRegistered = matched.isNotEmpty;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      if (!mounted) return;
       setState(() {
-        // _registeredCourses = courses;
-        // _isCourseRegistered = courses.any(
-        //   (course) => course.title == widget.course.title,
-        // );
+        _isCourseRegistered = false;
         _isLoading = false;
       });
-      if (_isCourseRegistered) {
-        // await _loadCourseProgressFromFirebase();
-      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _isCourseRegistered = false;
+        _isLoading = false;
+      });
     }
   }
 
@@ -59,14 +84,15 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // final newCourse = Course(
-      //   title: widget.course.title,
-      //   courseIndex: _registeredCourses.length,
-      // );
-      // await _courseService.insertCourse(newCourse);
+      final courseId = widget.course.id;
+      if (courseId == null) {
+        throw Exception('Missing course id');
+      }
 
-      // Also update the user's registedCoursesIndexes in Firestore
-      // await _syncCourseToFirestore(true);
+      final result = await _courseApiService.registerCourse(courseId);
+      if (result['success'] != true) {
+        throw Exception(result['message'] ?? 'Failed to register course');
+      }
 
       setState(() {
         _isCourseRegistered = true;
@@ -97,16 +123,14 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final courseToDelete = _registeredCourses.firstWhere(
-        (course) => course.title == widget.course.title,
-      );
+      final courseId = widget.course.id;
+      if (courseId == null) {
+        throw Exception('Missing course id');
+      }
 
-      if (courseToDelete.id != null) {
-        // Delete from Firestore
-        // await _courseService.deleteCourse(courseToDelete.id!);
-
-        // Also update the user's registedCoursesIndexes in Firestore
-        // await _syncCourseToFirestore(false);
+      final result = await _courseApiService.unregisterCourse(courseId);
+      if (result['success'] != true) {
+        throw Exception(result['message'] ?? 'Failed to unregister course');
       }
 
       setState(() {
@@ -133,7 +157,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => CourseLessonsGridScreen(course: widget.course),
+              builder: (_) => CourseSectionsGridScreen(course: widget.course),
             ),
           );
         }
@@ -142,7 +166,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => CourseLessonsGridScreen(course: widget.course),
+          builder: (_) => CourseSectionsGridScreen(course: widget.course),
         ),
       );
     }
@@ -236,13 +260,13 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     children: [
                       _buildStatItem(
                         icon: Icons.menu_book,
-                        label: 'Lessons',
-                        value: lessonsInfo.length.toString(),
+                        label: 'Sections',
+                        value: sectionsInfo.length.toString(),
                       ),
                       _buildStatItem(
                         icon: Icons.schedule,
                         label: 'Duration',
-                        value: '${widget.course.sections.length * 30} min',
+                        value: '${sectionsInfo.length * 30} min',
                       ),
                       _buildStatItem(
                         icon: Icons.people,
@@ -262,9 +286,9 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (courseIndex >= 0 && courseIndex < lessonsInfo.length)
-                    ...lessonsInfo.map(
-                      (lesson) => Padding(
+                  if (courseIndex >= 0 && courseIndex < sectionsInfo.length)
+                    ...sectionsInfo.map(
+                      (section) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: Row(
                           children: [
@@ -281,7 +305,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    lesson.title,
+                                    section.title,
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w600,
                                       color: theme.textTheme.bodyLarge!.color!,
@@ -289,7 +313,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    lesson.description,
+                                    section.description,
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
                                       color: theme.textTheme.bodyLarge!.color!
@@ -307,7 +331,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     )
                   else
                     Text(
-                      'No lessons available',
+                      'No sections available',
                       style: GoogleFonts.poppins(
                         color: theme.textTheme.bodyLarge!.color!.withOpacity(
                           0.5,
@@ -315,33 +339,8 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                       ),
                     ),
 
-                  //                 // we need this for later
-                  //                 // ...widget.course.sections.map(
-                  //                 //   (section) => Padding(
-                  //                 //     padding: const EdgeInsets.only(bottom: 10),
-                  //                 //     child: Row(
-                  //                 //       children: [
-                  //                 //         Icon(
-                  //                 //           Icons.check_circle,
-                  //                 //           size: 18,
-                  //                 //           color:
-                  //                 //               _isCourseRegistered
-                  //                 //                   ? const Color(0xFF3D5CFF)
-                  //                 //                   : Colors.grey,
-                  //                 //         ),
-                  //                 //         const SizedBox(width: 10),
-                  //                 //         Expanded(
-                  //                 //           child: Text(
-                  //                 //             section,
-                  //                 //             style: GoogleFonts.poppins(
-                  //                 //               color: theme.textTheme.bodyLarge!.color!,
-                  //                 //             ),
-                  //                 //           ),
-                  //                 //         ),
-                  //                 //       ],
-                  //                 //     ),
-                  //                 //   ),
-                  //                 // ),
+                  // Section titles come from course.sections; course.lessons
+                  // remains the flattened lesson path data.
                   const SizedBox(height: 40),
                   SizedBox(
                     width: double.infinity,

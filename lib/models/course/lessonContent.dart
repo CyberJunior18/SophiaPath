@@ -347,3 +347,6 @@ class Answer {
 
   Answer({required this.answer});
 }
+
+// Backend now refers to section content items as "Lesson".
+typedef Lesson = LessonContent;

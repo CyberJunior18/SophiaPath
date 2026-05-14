@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/course_info.dart';
-import '../../models/course/lesson.dart';
-import '../../models/course/lessonContent.dart';
+import '../../models/course/lesson.dart' as lesson_model;
+import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
 
@@ -14,8 +14,8 @@ class CourseContentsScreen extends StatelessWidget {
 
   Future<void> _openContent(
     BuildContext context,
-    LessonContent content,
-    Lesson lesson,
+    lesson_content_model.LessonContent content,
+    lesson_model.Section lesson,
   ) async {
     final questions = content.extractQuestions();
     if (questions.isNotEmpty) {
@@ -23,12 +23,12 @@ class CourseContentsScreen extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (_) => McqTestScreen(
-            section: content.partTitle.isNotEmpty
-                ? content.partTitle
-                : content.chapterName,
+            section: content.partTitle.isEmpty
+                ? content.chapterName
+                : content.partTitle,
             questions: questions,
             courseId: course.id ?? 0,
-            totalLessons: course.lessons.length,
+            totalLessons: course.sections.length,
             onTestCompleted: () {},
           ),
         ),
@@ -40,11 +40,9 @@ class CourseContentsScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => LessonContentScreen(
-          lesson: Lesson(
+          lesson: lesson_model.Section(
             id: lesson.id,
-            title: content.partTitle.isNotEmpty
-                ? content.partTitle
-                : lesson.title,
+            title: content.partTitle.isEmpty ? lesson.title : content.partTitle,
             questions: const [],
             contents: [content],
             done: lesson.done,
@@ -68,12 +66,12 @@ class CourseContentsScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF3D5CFF),
         foregroundColor: Colors.white,
       ),
-      body: course.lessons.isEmpty
+      body: course.sections.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'No lessons available in this course.',
+                  'No sections available in this course.',
                   style: GoogleFonts.poppins(
                     fontSize: 15,
                     color: theme.textTheme.bodyMedium?.color,
@@ -83,21 +81,22 @@ class CourseContentsScreen extends StatelessWidget {
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: course.lessons.length,
+              itemCount: course.sections.length,
               separatorBuilder: (_, __) => const SizedBox(height: 16),
               itemBuilder: (context, lessonIndex) {
-                final lesson = course.lessons[lessonIndex];
+                final lesson = course.sections[lessonIndex];
 
-                final sortedContents = List<LessonContent>.from(lesson.contents)
-                  ..sort((a, b) {
-                    final chapterCompare = a.chapterName.compareTo(
-                      b.chapterName,
-                    );
-                    if (chapterCompare != 0) return chapterCompare;
-                    return a.orderIndex.compareTo(b.orderIndex);
-                  });
+                final sortedContents =
+                    List<lesson_content_model.Lesson>.from(lesson.contents)
+                      ..sort((a, b) {
+                        final chapterCompare = a.chapterName.compareTo(
+                          b.chapterName,
+                        );
+                        if (chapterCompare != 0) return chapterCompare;
+                        return a.orderIndex.compareTo(b.orderIndex);
+                      });
 
-                final groups = <String, List<LessonContent>>{};
+                final groups = <String, List<lesson_content_model.Lesson>>{};
                 for (final content in sortedContents) {
                   final chapterName = content.chapterName.trim().isNotEmpty
                       ? content.chapterName.trim()
@@ -212,7 +211,8 @@ class CourseContentsScreen extends StatelessWidget {
                                                   children: [
                                                     Icon(
                                                       content.type ==
-                                                              LessonContentType
+                                                              lesson_content_model
+                                                                  .LessonContentType
                                                                   .MCQ
                                                           ? Icons.quiz_outlined
                                                           : Icons
@@ -220,7 +220,8 @@ class CourseContentsScreen extends StatelessWidget {
                                                       size: 20,
                                                       color:
                                                           content.type ==
-                                                              LessonContentType
+                                                              lesson_content_model
+                                                                  .LessonContentType
                                                                   .MCQ
                                                           ? Colors.orange
                                                           : Colors.blue,
@@ -249,7 +250,8 @@ class CourseContentsScreen extends StatelessWidget {
                                                           ),
                                                           Text(
                                                             content.category ==
-                                                                    LessonContentCategory
+                                                                    lesson_content_model
+                                                                        .LessonContentCategory
                                                                         .LEARNING
                                                                 ? 'Learning'
                                                                 : 'Exercise',

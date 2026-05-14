@@ -1,8 +1,7 @@
 import 'dart:math';
-import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/course/lessonContent.dart';
+import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/course_info.dart';
 import '../../services/course/scores_repo.dart';
@@ -30,9 +29,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   List<int> courseScores = [];
   int courseIndex = 0;
   List<bool> unlocked = [];
+  int _currentLessonPageIndex = 0;
   List<lesson_model.Section> lessons = [];
   List<List<lesson_model.Section>> lessonsByPages = [];
-  int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
@@ -155,13 +154,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           done: false,
           description: section.description,
           questions: [
-            MCQ(
+            lesson_content_model.MCQ(
               question: 'What is ${section.title}?',
               options: [
-                Answer(answer: 'Correct Answer'),
-                Answer(answer: 'Wrong Answer 1'),
-                Answer(answer: 'Wrong Answer 2'),
-                Answer(answer: 'Wrong Answer 3'),
+                lesson_content_model.Answer(answer: 'Correct Answer'),
+                lesson_content_model.Answer(answer: 'Wrong Answer 1'),
+                lesson_content_model.Answer(answer: 'Wrong Answer 2'),
+                lesson_content_model.Answer(answer: 'Wrong Answer 3'),
               ],
             ),
           ],
@@ -390,6 +389,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final List<Widget> nodeWidgets = [];
     final List<double> nodeCentersY = [];
     final List<bool> connectNext = [];
+    final List<_ChapterBlock> chapterBlocks = [];
     String? lastChapter;
     String? prevChapter;
     double extraGap = 0;
@@ -406,83 +406,15 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         } else {
           extraGap += 120; // space before chapter text
         }
-
-        //chapters names
-        nodeWidgets.add(
-          Positioned(
+        chapterBlocks.add(
+          _ChapterBlock(
+            chapterName: chapterName,
+            startIndex: i,
             top: i * nodeSpacing + extraGap - 30,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white),
-                ),
-                child: Text(
-                  chapterName,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
           ),
         );
-
-        final chapterTop = i * nodeSpacing + extraGap - 30;
-        contentHeight = max(contentHeight, chapterTop + 60);
 
         extraGap += 60;
-        //dividers
-        nodeWidgets.add(
-          Positioned(
-            top: i * nodeSpacing + extraGap - 135,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: DottedLine(
-                direction: Axis.horizontal,
-                lineThickness: 2.0,
-                dashLength: 4.0,
-                dashColor: theme.brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
-                dashGapLength: 4.0,
-              ),
-            ),
-          ),
-        );
-
-        // nodeWidgets.add( //todo : add a widget that appears on top as lock
-        //   Positioned(
-        //     top: i * nodeSpacing + extraGap - 135,
-        //     left: 0,
-        //     right: 0,
-        //     child: Container(
-        //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        //       decoration: BoxDecoration(
-        //         color: const Color.fromARGB(107, 114, 114, 114),
-        //         borderRadius: BorderRadius.circular(12),
-        //         border: Border.all(color: Colors.white),
-        //       ),
-        //       child: SizedBox(height: 50),
-
-        //       // child: Text(
-        //       //   chapterName,
-        //       //   style: GoogleFonts.poppins(
-        //       //     fontSize: 24,
-        //       //     fontWeight: FontWeight.w600,
-        //       //   ),
-        //       // ),
-        //     ),
-        //   ),
-        // );
       }
 
       final nodeTop = i * nodeSpacing + extraGap;
@@ -494,7 +426,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       }
       prevChapter = chapterName;
 
-      //nodes
       nodeWidgets.add(
         Positioned(
           top: nodeTop,
@@ -518,6 +449,62 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 theme: theme,
               ),
             ),
+          ),
+        ),
+      );
+    }
+
+    final pageHeight = max(
+      contentHeight + 40,
+      totalNodesInPage * nodeSpacing + 30,
+    );
+
+    for (int i = 0; i < chapterBlocks.length; i++) {
+      final chapterStart = chapterBlocks[i].top;
+      final nextChapterStart = i + 1 < chapterBlocks.length
+          ? chapterBlocks[i + 1].top
+          : pageHeight;
+      final isChapterLocked = !currentUnlocked[chapterBlocks[i].startIndex];
+
+      nodeWidgets.add(
+        Positioned(
+          top: chapterStart,
+          left: 0,
+          right: 0,
+          bottom: pageHeight - nextChapterStart,
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(107, 114, 114, 114),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Text(
+                  chapterBlocks[i].chapterName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (isChapterLocked)
+                Positioned(
+                  top: 52,
+                  child: SizedBox(
+                    width: 72,
+                    height: 72,
+                    child: const Center(
+                      child: Icon(Icons.lock, color: Colors.white, size: 30),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       );
@@ -831,6 +818,18 @@ class _CourseNodeState extends State<CourseNode> {
       ],
     );
   }
+}
+
+class _ChapterBlock {
+  final String chapterName;
+  final int startIndex;
+  final double top;
+
+  const _ChapterBlock({
+    required this.chapterName,
+    required this.startIndex,
+    required this.top,
+  });
 }
 
 class LessonPathPainter extends CustomPainter {

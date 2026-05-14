@@ -70,7 +70,9 @@ class Lesson {
           .toList();
     }
 
-    final parsedContents = parseContents(map['contents']);
+    final parsedContents = parseContents(
+      map['contents'] ?? map['lessons'] ?? [],
+    );
     var parsedQuestions = parseQuestions(map['questions']);
 
     if (parsedQuestions.isEmpty && parsedContents.isNotEmpty) {
@@ -81,7 +83,7 @@ class Lesson {
 
     return Lesson(
       id: asInt(map['id']),
-      title: (map['title'] ?? map['name'] ?? '').toString(),
+      title: (map['title'] ?? map['name'] ?? map['partTitle'] ?? '').toString(),
       description: (map['description'] ?? '').toString(),
       done: map['done'] == true,
       questions: parsedQuestions,
@@ -94,3 +96,6 @@ class Lesson {
     return 'Lesson(title: $title, questions: ${questions.length}, done: $done, description: $description)';
   }
 }
+
+// Backend now refers to course units as "Section".
+typedef Section = Lesson;

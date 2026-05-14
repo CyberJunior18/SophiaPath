@@ -10,7 +10,7 @@ class CourseInfo {
   final int totalLessons;
   final String about;
   final String imageUrl;
-  final List<String> sections;
+  final List<Lesson> sections;
   final double progress;
   final bool isCompleted;
   final List<Lesson> lessons;
@@ -43,16 +43,7 @@ class CourseInfo {
 
   factory CourseInfo.fromMap(Map<String, dynamic> map) {
     final dynamic rawSections = map['sections'];
-    List<String> parsedSections = const [];
-
-    if (rawSections is String && rawSections.trim().isNotEmpty) {
-      final decoded = jsonDecode(rawSections);
-      if (decoded is List) {
-        parsedSections = decoded.map((item) => item.toString()).toList();
-      }
-    } else if (rawSections is List) {
-      parsedSections = rawSections.map((item) => item.toString()).toList();
-    }
+    List<Lesson> parsedSections = const [];
 
     int _asInt(dynamic value) {
       if (value is int) return value;
@@ -69,8 +60,57 @@ class CourseInfo {
       }).toList();
     }
 
+    List<Lesson> _parseSections(dynamic value) {
+      if (value is String && value.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(value);
+          return _parseSections(decoded);
+        } catch (_) {
+          return const [];
+        }
+      }
+
+      if (value is! List) return const [];
+
+      return value.whereType<Map>().map((item) {
+        final sectionMap = Map<String, dynamic>.from(item);
+        return Lesson.fromMap(sectionMap);
+      }).toList();
+    }
+
+    List<Lesson> _parseLessonsFromSections(dynamic sectionsValue) {
+      if (sectionsValue is! List) return const [];
+
+      final sectionMaps = sectionsValue
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      if (sectionMaps.isEmpty) return const [];
+
+      final nestedLessons = sectionMaps
+          .expand((section) {
+            final dynamic sectionLessons = section['lessons'];
+            if (sectionLessons is! List) return const <dynamic>[];
+            return sectionLessons;
+          })
+          .whereType<Map>()
+          .map((item) => Lesson.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+
+      if (nestedLessons.isNotEmpty) {
+        return nestedLessons;
+      }
+
+      return _parseLessons(sectionMaps);
+    }
+
+    parsedSections = _parseSections(rawSections);
+
     final dynamic rawLessons = map['lessons'];
-    final int lessonsCount = rawLessons is List ? rawLessons.length : 0;
+    final parsedLessons = rawLessons is List && rawLessons.isNotEmpty
+        ? _parseLessons(rawLessons)
+        : _parseLessonsFromSections(rawSections);
     final int parsedTotalLessons = _asInt(
       map['total_lessons'] ?? map['totalLessons'],
     );
@@ -84,11 +124,13 @@ class CourseInfo {
       ),
       totalLessons: parsedTotalLessons > 0
           ? parsedTotalLessons
-          : (lessonsCount > 0 ? lessonsCount : parsedSections.length),
+          : (parsedLessons.isNotEmpty
+                ? parsedLessons.length
+                : parsedSections.length),
       about: map['about']?.toString() ?? '',
       imageUrl: (map['image_url'] ?? map['imageUrl'] ?? '').toString(),
       sections: parsedSections,
-      lessons: _parseLessons(rawLessons),
+      lessons: parsedLessons,
     );
   }
 }

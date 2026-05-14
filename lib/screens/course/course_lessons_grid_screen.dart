@@ -10,17 +10,17 @@ import 'course_contents_screen.dart';
 
 enum _LessonFilter { all, withContent, withQuiz }
 
-class CourseLessonsGridScreen extends StatefulWidget {
+class CourseSectionsGridScreen extends StatefulWidget {
   final CourseInfo course;
 
-  const CourseLessonsGridScreen({super.key, required this.course});
+  const CourseSectionsGridScreen({super.key, required this.course});
 
   @override
-  State<CourseLessonsGridScreen> createState() =>
-      _CourseLessonsGridScreenState();
+  State<CourseSectionsGridScreen> createState() =>
+      _CourseSectionsGridScreenState();
 }
 
-class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
+class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   _LessonFilter _activeFilter = _LessonFilter.all;
@@ -32,7 +32,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
   }
 
   List<_LessonGridItem> _filteredLessons() {
-    final lessons = widget.course.lessons;
+    final lessons = widget.course.sections;
 
     return List<_LessonGridItem>.generate(
       lessons.length,
@@ -78,7 +78,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
           section: lesson.title,
           questions: lesson.questions,
           courseId: widget.course.id ?? 0,
-          totalLessons: widget.course.lessons.length,
+          totalLessons: widget.course.sections.length,
           onTestCompleted: () {},
         ),
       ),
@@ -111,7 +111,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Lessons',
+          'Sections',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF3D5CFF),
@@ -129,7 +129,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Search lessons, descriptions, or chapter name',
+                hintText: 'Search sections, descriptions, or chapter name',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: theme.cardColor,
@@ -175,7 +175,7 @@ class _CourseLessonsGridScreenState extends State<CourseLessonsGridScreen> {
               child: filtered.isEmpty
                   ? Center(
                       child: Text(
-                        'No lessons found.',
+                        'No sections found.',
                         style: GoogleFonts.poppins(
                           color: theme.textTheme.bodyMedium?.color,
                         ),

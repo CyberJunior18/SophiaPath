@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../models/course/lesson.dart';
-import '../../models/course/lessonContent.dart';
+import '../../models/course/lesson.dart' as lesson_model;
+import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
 
 class LessonContentsListScreen extends StatelessWidget {
-  final Lesson lesson;
+  final lesson_model.Section lesson;
 
   const LessonContentsListScreen({super.key, required this.lesson});
 
   List<_ChapterGroup> _groupContents() {
-    final sortedContents = List<LessonContent>.from(lesson.contents)
+    final sortedContents = List<lesson_content_model.Lesson>.from(lesson.contents)
       ..sort((a, b) {
         final chapterCompare = a.chapterName.compareTo(b.chapterName);
         if (chapterCompare != 0) return chapterCompare;
         return a.orderIndex.compareTo(b.orderIndex);
       });
 
-    final groups = <String, List<LessonContent>>{};
+    final groups = <String, List<lesson_content_model.Lesson>>{};
     for (final content in sortedContents) {
       final chapterName = content.chapterName.trim().isNotEmpty
           ? content.chapterName.trim()
@@ -35,7 +35,7 @@ class LessonContentsListScreen extends StatelessWidget {
         .toList();
   }
 
-  Future<void> _openContent(BuildContext context, LessonContent content) async {
+  Future<void> _openContent(BuildContext context, lesson_content_model.Lesson content) async {
     final questions = content.extractQuestions();
     if (questions.isNotEmpty) {
       await Navigator.push<int>(
@@ -59,7 +59,7 @@ class LessonContentsListScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => LessonContentScreen(
-          lesson: Lesson(
+          lesson: lesson_model.Section(
             id: lesson.id,
             title: content.partTitle.isNotEmpty
                 ? content.partTitle
@@ -147,7 +147,8 @@ class LessonContentsListScreen extends StatelessWidget {
                             ),
                           ),
                           subtitle: Text(
-                            content.type == LessonContentType.MCQ
+                            content.type ==
+                                lesson_content_model.LessonContentType.MCQ
                                 ? 'Exercise'
                                 : 'Learning content',
                             style: GoogleFonts.poppins(fontSize: 12),
@@ -167,7 +168,7 @@ class LessonContentsListScreen extends StatelessWidget {
 
 class _ChapterGroup {
   final String chapterName;
-  final List<LessonContent> contents;
+  final List<lesson_content_model.Lesson> contents;
 
   const _ChapterGroup({required this.chapterName, required this.contents});
 }

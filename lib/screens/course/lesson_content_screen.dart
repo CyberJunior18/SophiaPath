@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../models/course/lesson.dart';
-import '../../models/course/lessonContent.dart';
+import '../../models/course/lesson.dart' as lesson_model;
+import '../../models/course/lessonContent.dart' as lesson_content_model;
 
 class LessonContentScreen extends StatefulWidget {
-  final Lesson lesson;
+  final lesson_model.Section lesson;
 
   const LessonContentScreen({super.key, required this.lesson});
 
@@ -31,14 +31,14 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     super.dispose();
   }
 
-  List<_LessonPageViewModel> _buildPages(Lesson lesson) {
+  List<_LessonPageViewModel> _buildPages(lesson_model.Section lesson) {
     final pages = <_LessonPageViewModel>[];
 
-    final sortedContents = List<LessonContent>.from(lesson.contents)
+    final sortedContents = List<lesson_content_model.Lesson>.from(lesson.contents)
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
     for (final content in sortedContents) {
-      final sortedPages = List<LessonPage>.from(content.pages)
+      final sortedPages = List<lesson_content_model.LessonPage>.from(content.pages)
         ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
       for (final page in sortedPages) {
@@ -67,7 +67,6 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
   @override
   Widget build(BuildContext context) {
     final hasPages = _pages.isNotEmpty;
-    final currentPage = hasPages ? _pages[_currentPageIndex] : null;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.lesson.title)),
@@ -231,7 +230,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildBlock(BuildContext context, LessonBlock block) {
+  Widget _buildBlock(BuildContext context, lesson_content_model.LessonBlock block) {
     switch (block.type) {
       case 'heading':
         final level = block.level;
@@ -332,7 +331,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildCallout(BuildContext context, LessonBlock block) {
+  Widget _buildCallout(BuildContext context, lesson_content_model.LessonBlock block) {
     final variant = block.variant;
     final colorScheme = Theme.of(context).colorScheme;
     final backgroundColor = switch (variant) {
@@ -377,7 +376,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildTable(BuildContext context, LessonBlock block) {
+  Widget _buildTable(BuildContext context, lesson_content_model.LessonBlock block) {
     final headers = block.headers;
     final rows = block.rows;
 
@@ -460,7 +459,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 
 class _LessonPageViewModel {
   final String contentTitle;
-  final LessonPage page;
+  final lesson_content_model.LessonPage page;
 
   const _LessonPageViewModel({required this.contentTitle, required this.page});
 }
