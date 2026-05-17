@@ -1,15 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:sophia_path/models/user/user.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../models/chat/chat_message.dart';
+import '../../models/chat/chat_session_user.dart';
+import '../../services/chat/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
-  final User? chatUser;
   final String? chatId;
   final String? chatRoomId; // ADD THIS PARAMETER
   final String receiverEmail;
   final String receiverID;
   const ChatScreen({
     super.key,
-    this.chatUser,
     this.chatId,
     this.chatRoomId,
     required this.receiverEmail,
@@ -22,34 +26,421 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  // final ChatService _chatService = ChatService();
-  // final AuthService _authService = AuthService();
-  void _sendMessage() async {
+  final ChatService _chatService = ChatService();
+  final List<ChatMessage> _messages = [];
+
+  StreamSubscription<ChatMessage>? _messageSubscription;
+  StreamSubscription<String>? _errorSubscription;
+  StreamSubscription<bool>? _connectionSubscription;
+
+  ChatSessionUser? _currentUser;
+  bool _isLoading = true;
+  bool _isConnected = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapChat();
+  }
+
+  Future<void> _bootstrapChat() async {
+    try {
+      final currentUser = await _chatService.getCurrentUser();
+      final otherUserId = int.tryParse(widget.receiverID);
+      if (otherUserId == null) {
+        throw Exception('Invalid recipient id');
+      }
+
+      if (!mounted) return;
+      _chatService.connect(currentUser.userId);
+
+      _messageSubscription = _chatService.incomingMessages.listen((message) {
+        if (!mounted) return;
+
+        final isRelevant =
+            (message.senderId == currentUser.userId &&
+                message.recipientId == otherUserId) ||
+            (message.senderId == otherUserId &&
+                message.recipientId == currentUser.userId);
+
+        if (!isRelevant) return;
+
+        setState(() {
+          final existingIndex = _messages.indexWhere(
+            (item) => item.id == message.id,
+          );
+          if (existingIndex >= 0) {
+            _messages[existingIndex] = message;
+          } else {
+            _messages.add(message);
+          }
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        });
+      });
+
+      _errorSubscription = _chatService.errors.listen((error) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = error;
+        });
+      });
+
+      _connectionSubscription = _chatService.connectionChanges.listen((
+        connected,
+      ) {
+        if (!mounted) return;
+        setState(() {
+          _isConnected = connected;
+        });
+      });
+
+      final history = await _chatService.getConversationHistory(
+        currentUser.userId,
+        otherUserId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _currentUser = currentUser;
+        _messages
+          ..clear()
+          ..addAll(history);
+        _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        _isLoading = false;
+      });
+
+      await _chatService.markConversationAsRead(
+        currentUser.userId,
+        otherUserId,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.toString();
+      });
+    }
+  }
+
+  Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _currentUser == null) return;
+
+    final recipientId = int.tryParse(widget.receiverID);
+    if (recipientId == null) {
+      setState(() {
+        _errorMessage = 'Recipient id is invalid';
+      });
+      return;
+    }
 
     try {
-      // await _chatService.sendMessage(widget.receiverID, text);
-      _messageController.clear();
-    } catch (e) {
-      print("Error sending message: $e");
-      // Optional: Show error to user
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Failed to send message")));
+      final outgoingMessage = await _chatService.sendMessage(
+        senderId: _currentUser!.userId,
+        recipientId: recipientId,
+        username: _currentUser!.username,
+        message: text,
+        avatar: _currentUser!.avatar,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        if (!_chatService.isConnected) {
+          _messages.add(outgoingMessage);
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        }
+        _messageController.clear();
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
     }
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final localTime = timestamp.toLocal();
+    final hour = localTime.hour.toString().padLeft(2, '0');
+    final minute = localTime.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final currentUserId = _currentUser?.userId;
+    final isMe = currentUserId != null && message.senderId == currentUserId;
+    final theme = Theme.of(context);
+    final otherBubbleColor = theme.brightness == Brightness.dark
+        ? theme.colorScheme.surfaceContainerHighest
+        : theme.colorScheme.surface;
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 320),
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isMe ? theme.colorScheme.primary : otherBubbleColor,
+          border: isMe
+              ? null
+              : Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.75,
+                  ),
+                ),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(isMe ? 18 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 18),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
+          children: [
+            if (!isMe)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  message.senderUsername,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            Text(
+              message.message,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                height: 1.35,
+                color: isMe ? Colors.white : theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _formatTimestamp(message.timestamp),
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                color: isMe
+                    ? Colors.white.withValues(alpha: 0.75)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComposer() {
+    final borderRadius = BorderRadius.circular(18);
+    final theme = Theme.of(context);
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                minLines: 1,
+                maxLines: 5,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _sendMessage(),
+                decoration: InputDecoration(
+                  hintText: 'Write a message...',
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: borderRadius,
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: borderRadius,
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: borderRadius,
+                    borderSide: BorderSide(color: theme.colorScheme.primary),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            InkWell(
+              onTap: _sendMessage,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.send_rounded,
+                  color: theme.colorScheme.onPrimary,
+                  size: 22,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _messageSubscription?.cancel();
+    _errorSubscription?.cancel();
+    _connectionSubscription?.cancel();
+    _chatService.dispose();
+    _messageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final appBarColor = theme.brightness == Brightness.dark
+        ? theme.colorScheme.surfaceContainer
+        : theme.colorScheme.surface;
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.receiverEmail)),
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: appBarColor,
+        foregroundColor: theme.colorScheme.onSurface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            height: 1,
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+        titleSpacing: 0,
+        leading: BackButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          color: theme.colorScheme.onSurface,
+        ),
+        title: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              child: Text(
+                widget.receiverEmail.isNotEmpty
+                    ? widget.receiverEmail[0].toUpperCase()
+                    : '?',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.receiverEmail,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  _isConnected ? 'Connected' : 'Connecting...',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: _isConnected
+                        ? Colors.green
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
-          Text("bread"),
-          //display all messages
-          // Expanded(child: _buildMessageList()),
-          // _buildUserInput(),
+          if (_errorMessage != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              color: const Color(0xFFFFE8E8),
+              child: Text(
+                _errorMessage!,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: const Color(0xFFB42318),
+                ),
+              ),
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No messages yet. Send the first one.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          color: const Color(0xFF607086),
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      return _buildMessageBubble(_messages[index]);
+                    },
+                  ),
+          ),
+          _buildComposer(),
         ],
       ),
     );

@@ -9,6 +9,7 @@ import '../../services/course/scores_repo.dart';
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
 import '../../services/course/user_stats_service.dart';
+import '../../services/course_api_service.dart';
 
 class LessonPathScreen extends StatefulWidget {
   final CourseInfo course;
@@ -83,6 +84,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     await ScoresRepository.initializeScores(0, lessons.length);
 
+    // Try to fetch from backend first
+    final backendGrades = await _fetchBackendGrades();
+    if (backendGrades.isNotEmpty) {
+      setState(() {
+        courseScores = backendGrades;
+      });
+      return;
+    }
+
+    // Fall back to local repository
     final courseScoresList = await ScoresRepository.getCourseScores(
       currentCourseIndex,
     );
@@ -101,6 +112,32 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         }
       }
     });
+  }
+
+  Future<List<int>> _fetchBackendGrades() async {
+    if (widget.course.id == null || widget.course.id! <= 0) {
+      return [];
+    }
+
+    try {
+      final response =
+          await CourseApiService().getCourseLessonGrades(widget.course.id!);
+      if (response['success'] == true && response['data'] is List) {
+        final gradesData = response['data'] as List;
+        final grades = <int>[];
+        for (var grade in gradesData) {
+          if (grade is Map<String, dynamic> && grade['grade'] != null) {
+            grades.add((grade['grade'] as num).toInt());
+          } else {
+            grades.add(0);
+          }
+        }
+        return grades;
+      }
+    } catch (e) {
+      debugPrint('Error fetching backend grades: $e');
+    }
+    return [];
   }
 
   @override
@@ -323,6 +360,21 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           if (newCompletedCount >= lessons.length) {}
 
           await _updateCourseProgress(_completedLessons);
+
+          // Send completion/grade to backend
+          try {
+            if (lesson.id != null) {
+              // For quiz: send grade
+              if (lesson.questions.isNotEmpty) {
+                await CourseApiService().setLessonGrade(lesson.id!, score);
+              } else {
+                // For content: mark as done
+                await CourseApiService().markLessonDone(lesson.id!);
+              }
+            }
+          } catch (e) {
+            debugPrint('Failed to send lesson completion to backend: $e');
+          }
         }
       } else {
         if (!mounted) return;
