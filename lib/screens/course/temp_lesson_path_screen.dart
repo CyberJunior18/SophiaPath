@@ -255,9 +255,15 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 questions: lesson.questions,
                 courseId: courseIndex,
                 totalLessons: lessons.length,
+                lessonId: lesson.id,
                 onTestCompleted: () {},
               )
-            : LessonContentScreen(lesson: lesson),
+            : LessonContentScreen(
+                lesson: lesson,
+                courseId: widget.course.id,
+                sectionId: widget.course.id,
+                lessonId: lesson.id,
+              ),
       ),
     );
 
@@ -860,7 +866,7 @@ class LessonPathPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = isSegmentUnlocked
-            ? const Color(0xFF3D5CFF).withOpacity(0.7)
+            ? const Color(0xFF3D5CFF).withValues(alpha: 0.7)
             : (isDark ? Colors.grey[700]! : Colors.grey[300]!)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSegmentUnlocked ? 3.5 : 2.5

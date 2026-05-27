@@ -8,98 +8,27 @@ class CourseApiService {
   factory CourseApiService() => _instance;
   CourseApiService._internal();
 
+  final AuthService _authService = AuthService();
+
   Future<Map<String, dynamic>> getMyRegistrations() async {
-    final url = Uri.parse('${AuthService.baseUrl}/courses/me/registrations');
-    final token = await AuthStorage.getToken();
-
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? [] : jsonDecode(body);
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
-      return {
-        'success': false,
-        'message': msg ?? 'Failed to fetch registrations',
-      };
+      return {'success': true, 'data': await _authService.getMyRegistrations()};
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
   Future<Map<String, dynamic>> registerCourse(int courseId) async {
-    final url = Uri.parse(
-      '${AuthService.baseUrl}/courses/me/register/$courseId',
-    );
-    final token = await AuthStorage.getToken();
-
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? null : jsonDecode(body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
-      return {'success': false, 'message': msg ?? 'Failed to register course'};
+      return await _authService.registerInCourse(courseId: courseId);
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
   Future<Map<String, dynamic>> unregisterCourse(int courseId) async {
-    final url = Uri.parse(
-      '${AuthService.baseUrl}/courses/me/register/$courseId',
-    );
-    final token = await AuthStorage.getToken();
-
     try {
-      final response = await http.delete(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? null : jsonDecode(body);
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
-      return {
-        'success': false,
-        'message': msg ?? 'Failed to unregister course',
-      };
+      return await _authService.unregisterFromCourse(courseId: courseId);
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -110,33 +39,10 @@ class CourseApiService {
   }
 
   Future<Map<String, dynamic>> getCourseLessonGrades(int courseId) async {
-    final url = Uri.parse(
-      '${AuthService.baseUrl}/courses/me/courses/$courseId/grades',
-    );
-    final token = await AuthStorage.getToken();
-
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? [] : jsonDecode(body);
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
       return {
-        'success': false,
-        'message': msg ?? 'Failed to fetch course lesson grades',
+        'success': true,
+        'data': await _authService.getCourseLessonGrades(courseId: courseId),
       };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -144,70 +50,20 @@ class CourseApiService {
   }
 
   Future<Map<String, dynamic>> setLessonGrade(int lessonId, int grade) async {
+    try {
+      return await _authService.setLessonGrade(
+        lessonId: lessonId,
+        grade: grade.toDouble(),
+      );
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getLessonGrade(int lessonId) async {
     final url = Uri.parse(
       '${AuthService.baseUrl}/courses/me/lessons/$lessonId/grade',
     );
-    final token = await AuthStorage.getToken();
-
-    try {
-      final response = await http.patch(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'grade': grade}),
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? null : jsonDecode(body);
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
-      return {'success': false, 'message': msg ?? 'Failed to set lesson grade'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  Future<Map<String, dynamic>> markLessonDone(int lessonId) async {
-    final url = Uri.parse(
-      '${AuthService.baseUrl}/courses/me/lessons/$lessonId/done',
-    );
-    final token = await AuthStorage.getToken();
-
-    try {
-      final response = await http.patch(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
-
-      final body = response.body.trim();
-      final data = body.isEmpty ? null : jsonDecode(body);
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      }
-
-      final msg = data is Map<String, dynamic>
-          ? data['message']?.toString()
-          : body;
-      return {'success': false, 'message': msg ?? 'Failed to mark lesson done'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
-    }
-  }
-
-  Future<Map<String, dynamic>> getMyGrades() async {
-    final url = Uri.parse('${AuthService.baseUrl}/courses/me/grades');
     final token = await AuthStorage.getToken();
 
     try {
@@ -220,7 +76,7 @@ class CourseApiService {
       );
 
       final body = response.body.trim();
-      final data = body.isEmpty ? [] : jsonDecode(body);
+      final data = body.isEmpty ? null : jsonDecode(body);
 
       if (response.statusCode == 200) {
         return {'success': true, 'data': data};
@@ -231,8 +87,24 @@ class CourseApiService {
           : body;
       return {
         'success': false,
-        'message': msg ?? 'Failed to fetch grades',
+        'message': msg ?? 'Failed to fetch lesson grade',
       };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> markLessonDone(int lessonId) async {
+    try {
+      return await _authService.markLessonDone(lessonId: lessonId);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> getMyGrades() async {
+    try {
+      return {'success': true, 'data': await _authService.getMyGrades()};
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -249,9 +121,7 @@ class CourseApiService {
     try {
       final response = await http.get(
         url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: {'Content-Type': 'application/json'},
       );
 
       final body = response.body.trim();
@@ -272,5 +142,4 @@ class CourseApiService {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
-
 }

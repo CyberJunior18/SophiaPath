@@ -3,26 +3,41 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
+import '../authentication/authService.dart';
 
 class LessonContentScreen extends StatefulWidget {
   final lesson_model.Section lesson;
+  final int? courseId;
+  final int? sectionId;
+  final int? lessonId;
 
-  const LessonContentScreen({super.key, required this.lesson});
+  const LessonContentScreen({
+    super.key,
+    required this.lesson,
+    this.courseId,
+    this.sectionId,
+    this.lessonId,
+  });
 
   @override
   State<LessonContentScreen> createState() => _LessonContentScreenState();
 }
 
 class _LessonContentScreenState extends State<LessonContentScreen> {
+  final AuthService _authService = AuthService();
   late final PageController _pageController;
-  late final List<_LessonPageViewModel> _pages;
+  List<_LessonPageViewModel> _pages = const [];
+  late lesson_model.Section _lesson;
   int _currentPageIndex = 0;
+  bool _isLoading = true;
+  bool _completionSaved = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
-    _pages = _buildPages(widget.lesson);
+    _lesson = widget.lesson;
+    _initializeLesson();
   }
 
   @override
@@ -31,15 +46,49 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     super.dispose();
   }
 
+  Future<void> _initializeLesson() async {
+    try {
+      final courseId = widget.courseId;
+      final sectionId = widget.sectionId;
+      final lessonId = widget.lessonId ?? widget.lesson.id;
+
+      if (courseId != null &&
+          sectionId != null &&
+          lessonId != null &&
+          lessonId > 0) {
+        final fetchedLesson = await _authService.getLessonById(
+          courseId: courseId,
+          sectionId: sectionId,
+          lessonId: lessonId,
+        );
+
+        if (mounted) {
+          _lesson = fetchedLesson;
+        }
+      }
+    } catch (_) {
+      // Fall back to the lesson object supplied by the caller.
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _pages = _buildPages(_lesson);
+      _isLoading = false;
+    });
+  }
+
   List<_LessonPageViewModel> _buildPages(lesson_model.Section lesson) {
     final pages = <_LessonPageViewModel>[];
 
-    final sortedContents = List<lesson_content_model.Lesson>.from(lesson.contents)
-      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    final sortedContents = List<lesson_content_model.Lesson>.from(
+      lesson.contents,
+    )..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
     for (final content in sortedContents) {
-      final sortedPages = List<lesson_content_model.LessonPage>.from(content.pages)
-        ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+      final sortedPages = List<lesson_content_model.LessonPage>.from(
+        content.pages,
+      )..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
 
       for (final page in sortedPages) {
         pages.add(
@@ -60,16 +109,34 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  void _finishLesson() {
+  Future<void> _finishLesson() async {
+    if (!_completionSaved) {
+      _completionSaved = true;
+      final lessonId = widget.lessonId ?? _lesson.id;
+      if (lessonId != null && lessonId > 0) {
+        try {
+          await _authService.setLessonGrade(lessonId: lessonId, grade: 100);
+        } catch (_) {}
+      }
+    }
+
+    if (!mounted) return;
     Navigator.pop(context, 100);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.lesson.title)),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final hasPages = _pages.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.lesson.title)),
+      appBar: AppBar(title: Text(_lesson.title)),
       body: SafeArea(
         child: Column(
           children: [
@@ -230,7 +297,10 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildBlock(BuildContext context, lesson_content_model.LessonBlock block) {
+  Widget _buildBlock(
+    BuildContext context,
+    lesson_content_model.LessonBlock block,
+  ) {
     switch (block.type) {
       case 'heading':
         final level = block.level;
@@ -331,7 +401,10 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildCallout(BuildContext context, lesson_content_model.LessonBlock block) {
+  Widget _buildCallout(
+    BuildContext context,
+    lesson_content_model.LessonBlock block,
+  ) {
     final variant = block.variant;
     final colorScheme = Theme.of(context).colorScheme;
     final backgroundColor = switch (variant) {
@@ -376,7 +449,10 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  Widget _buildTable(BuildContext context, lesson_content_model.LessonBlock block) {
+  Widget _buildTable(
+    BuildContext context,
+    lesson_content_model.LessonBlock block,
+  ) {
     final headers = block.headers;
     final rows = block.rows;
 

@@ -42,10 +42,11 @@ class _LearningScreenState extends State<LearningScreen> {
 
     try {
       final fetchedCourses = await _authService.getAllCourses();
+      final enrichedCourses = await _enrichCoursesWithProgress(fetchedCourses);
       if (!mounted) return;
 
       setState(() {
-        coursesInfo = fetchedCourses;
+        coursesInfo = enrichedCourses;
         totalAvaialableCourses = coursesInfo.length;
         _isLoading = false;
       });
@@ -64,6 +65,52 @@ class _LearningScreenState extends State<LearningScreen> {
         _errorMessage = cleanMessage;
       });
     }
+  }
+
+  Future<List<CourseInfo>> _enrichCoursesWithProgress(
+    List<CourseInfo> fetchedCourses,
+  ) async {
+    return Future.wait(
+      fetchedCourses.map((course) async {
+        int doneCount = course.numberOfFinishedLessons;
+        int totalLessons = course.totalLessons;
+
+        try {
+          if (course.id != null && course.id! > 0) {
+            final gradesData = await _authService.getCourseLessonGrades(
+              courseId: course.id!,
+            );
+
+            totalLessons = gradesData.length;
+            doneCount = gradesData.where((entry) {
+              return entry['done'] == true;
+            }).length;
+          }
+        } catch (_) {
+          // Keep existing course progress if grade enrichment fails.
+        }
+
+        if (totalLessons <= 0) {
+          if (course.lessons.isNotEmpty) {
+            totalLessons = course.lessons.length;
+          } else if (course.sections.isNotEmpty) {
+            totalLessons = course.sections.length;
+          }
+        }
+
+        return CourseInfo(
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          numberOfFinishedLessons: doneCount,
+          totalLessons: totalLessons,
+          about: course.about,
+          imageUrl: course.imageUrl,
+          sections: course.sections,
+          lessons: course.lessons,
+        );
+      }),
+    );
   }
 
   bool _isCourseRegistered(String courseTitle) {
@@ -86,6 +133,7 @@ class _LearningScreenState extends State<LearningScreen> {
     if (courseIndex >= 0) {
       final course = coursesInfo[courseIndex];
       if (course.totalLessons > 0) return course.totalLessons;
+      if (course.lessons.isNotEmpty) return course.lessons.length;
       if (course.sections.isNotEmpty) return course.sections.length;
     }
 
@@ -138,7 +186,7 @@ class _LearningScreenState extends State<LearningScreen> {
               Icon(
                 Icons.info_outline,
                 size: 64,
-                color: theme.textTheme.bodyLarge?.color?.withOpacity(0.5),
+                color: theme.textTheme.bodyLarge?.color?.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               Text(

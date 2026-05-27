@@ -12,12 +12,12 @@ class LessonContentsListScreen extends StatelessWidget {
   const LessonContentsListScreen({super.key, required this.lesson});
 
   List<_ChapterGroup> _groupContents() {
-    final sortedContents = List<lesson_content_model.Lesson>.from(lesson.contents)
-      ..sort((a, b) {
-        final chapterCompare = a.chapterName.compareTo(b.chapterName);
-        if (chapterCompare != 0) return chapterCompare;
-        return a.orderIndex.compareTo(b.orderIndex);
-      });
+    final sortedContents =
+        List<lesson_content_model.Lesson>.from(lesson.contents)..sort((a, b) {
+          final chapterCompare = a.chapterName.compareTo(b.chapterName);
+          if (chapterCompare != 0) return chapterCompare;
+          return a.orderIndex.compareTo(b.orderIndex);
+        });
 
     final groups = <String, List<lesson_content_model.Lesson>>{};
     for (final content in sortedContents) {
@@ -35,7 +35,10 @@ class LessonContentsListScreen extends StatelessWidget {
         .toList();
   }
 
-  Future<void> _openContent(BuildContext context, lesson_content_model.Lesson content) async {
+  Future<void> _openContent(
+    BuildContext context,
+    lesson_content_model.Lesson content,
+  ) async {
     final questions = content.extractQuestions();
     if (questions.isNotEmpty) {
       await Navigator.push<int>(
@@ -48,6 +51,7 @@ class LessonContentsListScreen extends StatelessWidget {
             questions: questions,
             courseId: lesson.id ?? 0,
             totalLessons: lesson.contents.length,
+            lessonId: lesson.id,
             onTestCompleted: () {},
           ),
         ),
@@ -69,6 +73,9 @@ class LessonContentsListScreen extends StatelessWidget {
             done: lesson.done,
             description: lesson.description,
           ),
+          courseId: lesson.id,
+          sectionId: lesson.id,
+          lessonId: lesson.id,
         ),
       ),
     );
@@ -104,7 +111,7 @@ class LessonContentsListScreen extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: groups.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final group = groups[index];
                 return Container(
@@ -148,7 +155,7 @@ class LessonContentsListScreen extends StatelessWidget {
                           ),
                           subtitle: Text(
                             content.type ==
-                                lesson_content_model.LessonContentType.MCQ
+                                    lesson_content_model.LessonContentType.MCQ
                                 ? 'Exercise'
                                 : 'Learning content',
                             style: GoogleFonts.poppins(fontSize: 12),

@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/course/lesson.dart' as lesson_model;
 import 'course_lessons_grid_screen.dart';
 import '../../models/course/course_info.dart';
-import '../../services/course_api_service.dart';
+import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
 
 class CourseInfoScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
   List<lesson_model.Section> sectionsInfo = [];
   late int courseIndex = 0;
 
-  final CourseApiService _courseApiService = CourseApiService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -34,39 +34,27 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await _courseApiService.getMyRegistrations();
-      final registrations = result['data'];
+      final registrations = await _authService.getMyRegistrations();
       final courseId = widget.course.id;
 
-      if (registrations is List) {
-        final matched = registrations.where((registration) {
-          if (registration is! Map) return false;
-
-          final course = registration['course'];
-          if (course is Map) {
-            final registeredCourseId = course['id'];
-            if (courseId != null && registeredCourseId != null) {
-              return registeredCourseId.toString() == courseId.toString();
-            }
-
-            final registeredTitle = course['title']?.toString() ?? '';
-            return registeredTitle == widget.course.title;
+      final matched = registrations.where((registration) {
+        final course = registration['course'];
+        if (course is Map) {
+          final registeredCourseId = course['id'];
+          if (courseId != null && registeredCourseId != null) {
+            return registeredCourseId.toString() == courseId.toString();
           }
 
-          return false;
-        }).toList();
+          final registeredTitle = course['title']?.toString() ?? '';
+          return registeredTitle == widget.course.title;
+        }
 
-        if (!mounted) return;
-        setState(() {
-          _isCourseRegistered = matched.isNotEmpty;
-          _isLoading = false;
-        });
-        return;
-      }
+        return false;
+      }).toList();
 
       if (!mounted) return;
       setState(() {
-        _isCourseRegistered = false;
+        _isCourseRegistered = matched.isNotEmpty;
         _isLoading = false;
       });
     } catch (e) {
@@ -89,7 +77,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         throw Exception('Missing course id');
       }
 
-      final result = await _courseApiService.registerCourse(courseId);
+      final result = await _authService.registerInCourse(courseId: courseId);
       if (result['success'] != true) {
         throw Exception(result['message'] ?? 'Failed to register course');
       }
@@ -128,7 +116,9 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         throw Exception('Missing course id');
       }
 
-      final result = await _courseApiService.unregisterCourse(courseId);
+      final result = await _authService.unregisterFromCourse(
+        courseId: courseId,
+      );
       if (result['success'] != true) {
         throw Exception(result['message'] ?? 'Failed to unregister course');
       }
@@ -317,7 +307,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
                                       color: theme.textTheme.bodyLarge!.color!
-                                          .withOpacity(0.6),
+                                          .withValues(alpha: 0.6),
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -333,8 +323,8 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     Text(
                       'No sections available',
                       style: GoogleFonts.poppins(
-                        color: theme.textTheme.bodyLarge!.color!.withOpacity(
-                          0.5,
+                        color: theme.textTheme.bodyLarge!.color!.withValues(
+                          alpha: 0.5,
                         ),
                       ),
                     ),

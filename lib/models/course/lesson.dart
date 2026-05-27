@@ -70,10 +70,29 @@ class Lesson {
           .toList();
     }
 
-    final parsedContents = parseContents(
-      map['contents'] ?? map['lessons'] ?? [],
-    );
+    final dynamic rawPages = map['pages'];
+    final parsedContents = <LessonContent>[
+      ...parseContents(map['contents'] ?? map['lessons'] ?? []),
+    ];
+
+    if (parsedContents.isEmpty && rawPages is List && rawPages.isNotEmpty) {
+      final syntheticContent = Map<String, dynamic>.from(map)
+        ..putIfAbsent('id', () => map['id'] ?? map['lessonId'])
+        ..putIfAbsent('category', () => map['category'] ?? 'learning')
+        ..putIfAbsent('type', () => map['type'] ?? 'text')
+        ..putIfAbsent('orderIndex', () => map['orderIndex'] ?? 0)
+        ..putIfAbsent('partTitle', () => map['partTitle'] ?? map['title'])
+        ..putIfAbsent('chapterName', () => map['chapterName'] ?? '')
+        ..['pages'] = rawPages;
+
+      parsedContents.add(LessonContent.fromMap(syntheticContent));
+    }
+
     var parsedQuestions = parseQuestions(map['questions']);
+
+    if (parsedQuestions.isEmpty && rawPages is List) {
+      parsedQuestions = parseQuestions(rawPages);
+    }
 
     if (parsedQuestions.isEmpty && parsedContents.isNotEmpty) {
       parsedQuestions = parsedContents

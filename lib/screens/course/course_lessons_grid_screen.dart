@@ -86,6 +86,11 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
   }
 
   void _openLessonPath(_LessonGridItem item) {
+    final sectionId = item.lesson.id;
+    if (sectionId == null || sectionId <= 0) {
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -93,6 +98,8 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
           course: widget.course,
           originalCourse: widget.course,
           initialLessonPageIndex: item.index,
+          sectionId: sectionId,
+          sectionTitle: item.lesson.title,
         ),
       ),
     );

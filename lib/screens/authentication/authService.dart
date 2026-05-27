@@ -122,11 +122,9 @@ class AuthService {
     }
 
     final profileEndpoints = <String>[
-      '$baseUrl/auth/profile',
       '$baseUrl/users/me',
+      '$baseUrl/auth/profile',
     ];
-
-    String? lastError;
 
     try {
       for (final endpoint in profileEndpoints) {
@@ -148,10 +146,6 @@ class AuthService {
           if (normalizedProfile != null) {
             return {'success': true, 'data': normalizedProfile};
           }
-
-          lastError =
-              'Profile response from $endpoint did not include user data';
-          continue;
         }
 
         if (response.statusCode == 401) {
@@ -161,20 +155,9 @@ class AuthService {
             'message': 'Session expired. Please login again.',
           };
         }
-
-        final message = data is Map<String, dynamic>
-            ? (data['message']?.toString() ?? 'Failed to load profile')
-            : (responseBody.isNotEmpty
-                  ? responseBody
-                  : 'Failed to load profile');
-
-        lastError = '$endpoint: $message';
       }
 
-      return {
-        'success': false,
-        'message': lastError ?? 'Failed to load profile',
-      };
+      return {'success': false, 'message': 'Failed to load profile'};
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -282,42 +265,91 @@ class AuthService {
         data['data'],
         data['profile'],
         data['result'],
-        data,
       ];
 
       for (final candidate in candidates) {
         if (candidate is Map<String, dynamic>) {
-          return candidate;
+          return _withProfileAliases(candidate);
         }
         if (candidate is Map) {
-          return Map<String, dynamic>.from(candidate);
+          return _withProfileAliases(Map<String, dynamic>.from(candidate));
         }
       }
+
+      return _withProfileAliases(Map<String, dynamic>.from(data));
     }
 
     if (data is Map) {
-      return Map<String, dynamic>.from(data);
+      return _withProfileAliases(Map<String, dynamic>.from(data));
     }
 
     return null;
   }
 
-  Future<List<CourseInfo>> getAllCourses() async {
-    final url = Uri.parse('$baseUrl/courses');
-    final token = await AuthStorage.getToken();
+  Map<String, dynamic> _withProfileAliases(Map<String, dynamic> profile) {
+    profile.putIfAbsent('userId', () => profile['id']);
+    profile.putIfAbsent('id', () => profile['userId']);
+    profile.putIfAbsent('fullName', () => profile['fullname']);
+    profile.putIfAbsent('fullname', () => profile['fullName']);
+    profile.putIfAbsent('profileImage', () => profile['avatar']);
+    profile.putIfAbsent('avatar', () => profile['profileImage']);
+    profile.putIfAbsent('roleID', () => profile['role']);
+    profile.putIfAbsent('role', () => profile['roleID']);
+    profile.putIfAbsent('dateTime', () => profile['date']);
+    profile.putIfAbsent('date', () => profile['dateTime']);
+    return profile;
+  }
 
-    if (token == null) {
-      throw Exception('No token found. Please login again.');
+  Map<String, String> _jsonHeaders({String? token}) {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
+  bool _looksLikeExerciseLesson(dynamic pages) {
+    if (pages is! List) return false;
+
+    for (final page in pages.whereType<Map>()) {
+      final map = Map<String, dynamic>.from(page);
+      if (map.containsKey('question') || map.containsKey('answers')) {
+        return true;
+      }
     }
 
+    return false;
+  }
+
+  List<Map<String, dynamic>> _normalizeMapList(dynamic rawList) {
+    if (rawList is! List) {
+      return <Map<String, dynamic>>[];
+    }
+
+    return rawList
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  dynamic _extractPayload(dynamic data, {List<String> keys = const []}) {
+    if (data is Map<String, dynamic>) {
+      for (final key in keys) {
+        if (data.containsKey(key)) {
+          return data[key];
+        }
+      }
+      return data;
+    }
+
+    return data;
+  }
+
+  Future<List<CourseInfo>> getAllCourses() async {
+    final url = Uri.parse('$baseUrl/courses');
+
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http.get(url, headers: _jsonHeaders());
 
       final responseBody = response.body.trim();
       final dynamic data = responseBody.isEmpty
@@ -360,9 +392,12 @@ class AuthService {
 
   Future<Lesson> getLessonById({
     required int courseId,
+    required int sectionId,
     required int lessonId,
   }) async {
-    final url = Uri.parse('$baseUrl/courses/$courseId/lessons/$lessonId');
+    final url = Uri.parse(
+      '$baseUrl/courses/$courseId/sections/$sectionId/lessons/$lessonId',
+    );
     final token = await AuthStorage.getToken();
 
     if (token == null) {
@@ -370,13 +405,7 @@ class AuthService {
     }
 
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http.get(url, headers: _jsonHeaders(token: token));
 
       final responseBody = response.body.trim();
       final dynamic data = responseBody.isEmpty
@@ -392,7 +421,19 @@ class AuthService {
           throw Exception('Invalid lesson payload format.');
         }
 
-        return Lesson.fromMap(Map<String, dynamic>.from(rawLesson));
+        final lessonMap = Map<String, dynamic>.from(rawLesson);
+        final dynamic pages = lessonMap['pages'];
+        final isExercise =
+            lessonMap['category']?.toString().toLowerCase() == 'exercise' ||
+            _looksLikeExerciseLesson(pages);
+
+        lessonMap
+          ..putIfAbsent('partTitle', () => lessonMap['title'])
+          ..putIfAbsent('category', () => isExercise ? 'exercise' : 'learning')
+          ..putIfAbsent('type', () => isExercise ? 'mcq' : 'text')
+          ..putIfAbsent('pages', () => pages is List ? pages : <dynamic>[]);
+
+        return Lesson.fromMap(lessonMap);
       }
 
       if (response.statusCode == 401) {
@@ -405,10 +446,602 @@ class AuthService {
           : null;
 
       throw Exception(
-        backendMessage ?? 'Failed to fetch lesson (HTTP ${response.statusCode})',
+        backendMessage ??
+            'Failed to fetch lesson (HTTP ${response.statusCode})',
       );
     } catch (e) {
       throw Exception('Network error: $e');
+    }
+  }
+
+  // profile shit
+  Future<List<Map<String, dynamic>>> getSectionLessonsGrades({
+    required int courseID,
+    required int sectionID,
+  }) async {
+    final token = await AuthStorage.getToken();
+
+    if (token == null) {
+      return [];
+    }
+
+    final donelessonsEndpoint =
+        '$baseUrl/courses/$courseID/sections/$sectionID/done-lessons';
+
+    try {
+      final response = await http.get(
+        Uri.parse(donelessonsEndpoint),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['doneLessons'] ??
+                        data['lessons'] ??
+                        data['data'] ??
+                        data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        final lessons = rawList.whereType<Map>().map((item) {
+          final lesson = Map<String, dynamic>.from(item);
+          return {
+            'lessonId':
+                lesson['lessonId'] ?? lesson['id'] ?? lesson['doneLessonId'],
+            'grade': lesson['grade'] ?? lesson['score'],
+          };
+        }).toList();
+
+        return lessons;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSectionLessons({
+    required int courseId,
+    required int sectionId,
+  }) async {
+    final token = await AuthStorage.getToken();
+
+    if (token == null) {
+      return [];
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/courses/$courseId/sections/$sectionId/lessons'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final rawList = _normalizeMapList(
+          _extractPayload(data, keys: const ['lessons', 'data', 'items']),
+        );
+
+        return rawList;
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> registerInCourse({required int courseId}) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'No token found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/courses/me/register/$courseId'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return {
+          'success': false,
+          'message': 'Session expired. Please login again.',
+        };
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      return {
+        'success': false,
+        'message':
+            backendMessage ??
+            'Failed to register in course (HTTP ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> unregisterFromCourse({
+    required int courseId,
+  }) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'No token found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/courses/me/register/$courseId'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return {
+          'success': false,
+          'message': 'Session expired. Please login again.',
+        };
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      return {
+        'success': false,
+        'message':
+            backendMessage ??
+            'Failed to unregister from course (HTTP ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMyRegistrations() async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return [];
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/courses/me/registrations'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['registrations'] ?? data['data'] ?? data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        return rawList.whereType<Map>().map((item) {
+          final registration = Map<String, dynamic>.from(item);
+          return {
+            'registrationId':
+                registration['registrationId'] ?? registration['id'],
+            'registeredAt': registration['registeredAt'],
+            'course': registration['course'],
+          };
+        }).toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMyGrades() async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return [];
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/courses/me/grades'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['grades'] ?? data['data'] ?? data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        return rawList.whereType<Map>().map((item) {
+          final grade = Map<String, dynamic>.from(item);
+          return grade;
+        }).toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getCourseLessonGrades({
+    required int courseId,
+  }) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return [];
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/courses/me/courses/$courseId/grades'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['lessons'] ??
+                        data['grades'] ??
+                        data['data'] ??
+                        data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDoneLessonsInCourse({
+    required int courseId,
+    int? sectionId,
+  }) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return [];
+    }
+
+    final uri = Uri.parse('$baseUrl/courses/me/courses/$courseId/done-lessons')
+        .replace(
+          queryParameters: sectionId == null
+              ? null
+              : {'sectionId': sectionId.toString()},
+        );
+
+    try {
+      final response = await http.get(uri, headers: _jsonHeaders(token: token));
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['doneLessons'] ??
+                        data['lessons'] ??
+                        data['data'] ??
+                        data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDoneLessonsInSection({
+    required int courseId,
+    required int sectionId,
+  }) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return [];
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/courses/$courseId/sections/$sectionId/done-lessons',
+        ),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        final dynamic rawList = data is List
+            ? data
+            : (data is Map<String, dynamic>
+                  ? (data['doneLessons'] ??
+                        data['lessons'] ??
+                        data['data'] ??
+                        data['items'])
+                  : null);
+
+        if (rawList is! List) {
+          return [];
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> setLessonGrade({
+    required int lessonId,
+    required double grade,
+  }) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'No token found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/courses/me/lessons/$lessonId/grade'),
+        headers: _jsonHeaders(token: token),
+        body: jsonEncode({'grade': grade}),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return {
+          'success': false,
+          'message': 'Session expired. Please login again.',
+        };
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      return {
+        'success': false,
+        'message':
+            backendMessage ??
+            'Failed to set lesson grade (HTTP ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> markLessonDone({required int lessonId}) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'No token found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/courses/me/lessons/$lessonId/done'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return {
+          'success': false,
+          'message': 'Session expired. Please login again.',
+        };
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      return {
+        'success': false,
+        'message':
+            backendMessage ??
+            'Failed to mark lesson done (HTTP ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> unmarkLessonDone({required int lessonId}) async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      return {
+        'success': false,
+        'message': 'No token found. Please login again.',
+      };
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/courses/me/lessons/$lessonId/done'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200) {
+        return {'success': true, 'data': data};
+      }
+
+      if (response.statusCode == 401) {
+        await AuthStorage.clearToken();
+        return {
+          'success': false,
+          'message': 'Session expired. Please login again.',
+        };
+      }
+
+      final backendMessage = data is Map<String, dynamic>
+          ? data['message']?.toString()
+          : null;
+      return {
+        'success': false,
+        'message':
+            backendMessage ??
+            'Failed to unmark lesson done (HTTP ${response.statusCode})',
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 

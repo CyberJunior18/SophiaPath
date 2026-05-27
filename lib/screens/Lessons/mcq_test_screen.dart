@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/course/lessonContent.dart';
+import '../authentication/authService.dart';
 import '../../services/course/user_stats_service.dart';
 
 class McqTestScreen extends StatefulWidget {
@@ -9,6 +10,7 @@ class McqTestScreen extends StatefulWidget {
   final List<MCQ> questions;
   final int courseId;
   final int totalLessons;
+  final int? lessonId;
   final VoidCallback? onTestCompleted;
 
   const McqTestScreen({
@@ -17,6 +19,7 @@ class McqTestScreen extends StatefulWidget {
     required this.questions,
     required this.courseId,
     required this.totalLessons,
+    this.lessonId,
     this.onTestCompleted,
   });
 
@@ -61,6 +64,16 @@ class _McqTestScreenState extends State<McqTestScreen> {
 
     if (score >= 70) {
       await _statsService.incrementCorrectAnswers();
+    }
+
+    final lessonId = widget.lessonId;
+    if (lessonId != null && lessonId > 0) {
+      try {
+        await AuthService().setLessonGrade(
+          lessonId: lessonId,
+          grade: score.toDouble(),
+        );
+      } catch (_) {}
     }
 
     if (!mounted) return;

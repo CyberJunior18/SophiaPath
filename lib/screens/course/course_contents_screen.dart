@@ -29,6 +29,7 @@ class CourseContentsScreen extends StatelessWidget {
             questions: questions,
             courseId: course.id ?? 0,
             totalLessons: course.sections.length,
+            lessonId: lesson.id,
             onTestCompleted: () {},
           ),
         ),
@@ -48,6 +49,9 @@ class CourseContentsScreen extends StatelessWidget {
             done: lesson.done,
             description: lesson.description,
           ),
+          courseId: course.id,
+          sectionId: lesson.id,
+          lessonId: lesson.id,
         ),
       ),
     );
@@ -82,7 +86,7 @@ class CourseContentsScreen extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: course.sections.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
               itemBuilder: (context, lessonIndex) {
                 final lesson = course.sections[lessonIndex];
 

@@ -2,23 +2,73 @@ import 'dart:math';
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../models/course/lessonContent.dart';
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/course_info.dart';
+import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
 import '../../services/course/user_stats_service.dart';
-import '../../services/course_api_service.dart';
+
+class _LessonNodeData {
+  final int id;
+  final String title;
+  final String category;
+  final String chapterName;
+  final int orderIndex;
+
+  const _LessonNodeData({
+    required this.id,
+    required this.title,
+    required this.category,
+    required this.chapterName,
+    required this.orderIndex,
+  });
+
+  factory _LessonNodeData.fromMap(Map<String, dynamic> map) {
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    return _LessonNodeData(
+      id: asInt(map['id'] ?? map['lessonId']),
+      title: (map['title'] ?? '').toString(),
+      category: (map['category'] ?? '').toString().toLowerCase(),
+      chapterName: (map['chapterName'] ?? '').toString(),
+      orderIndex: asInt(map['orderIndex']),
+    );
+  }
+
+  factory _LessonNodeData.fromLesson(
+    lesson_model.Section lesson, {
+    required int orderIndex,
+  }) {
+    return _LessonNodeData(
+      id: lesson.id ?? 0,
+      title: lesson.title,
+      category: lesson.questions.isNotEmpty ? 'exercise' : 'learning',
+      chapterName: lesson.contents.isNotEmpty
+          ? lesson.contents.first.chapterName
+          : '',
+      orderIndex: orderIndex,
+    );
+  }
+}
 
 class LessonPathScreen extends StatefulWidget {
   final CourseInfo course;
+  final int sectionId;
+  final String? sectionTitle;
   final CourseInfo? originalCourse;
   final int initialLessonPageIndex;
 
   const LessonPathScreen({
     super.key,
     required this.course,
+    required this.sectionId,
+    this.sectionTitle,
     this.originalCourse,
     this.initialLessonPageIndex = 0,
   });
@@ -31,8 +81,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   List<int> courseScores = [];
   int courseIndex = 0;
   List<bool> unlocked = [];
-  List<lesson_model.Section> lessons = [];
-  List<List<lesson_model.Section>> lessonsByPages = [];
+  final AuthService _authService = AuthService();
+  List<_LessonNodeData> lessons = [];
+  List<List<_LessonNodeData>> lessonsByPages = [];
+  final Set<int> _doneLessonIds = <int>{};
   int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
@@ -84,16 +136,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     await ScoresRepository.initializeScores(0, lessons.length);
 
-    // Try to fetch from backend first
-    final backendGrades = await _fetchBackendGrades();
-    if (backendGrades.isNotEmpty) {
-      setState(() {
-        courseScores = backendGrades;
-      });
-      return;
-    }
-
-    // Fall back to local repository
     final courseScoresList = await ScoresRepository.getCourseScores(
       currentCourseIndex,
     );
@@ -114,32 +156,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     });
   }
 
-  Future<List<int>> _fetchBackendGrades() async {
-    if (widget.course.id == null || widget.course.id! <= 0) {
-      return [];
-    }
-
-    try {
-      final response =
-          await CourseApiService().getCourseLessonGrades(widget.course.id!);
-      if (response['success'] == true && response['data'] is List) {
-        final gradesData = response['data'] as List;
-        final grades = <int>[];
-        for (var grade in gradesData) {
-          if (grade is Map<String, dynamic> && grade['grade'] != null) {
-            grades.add((grade['grade'] as num).toInt());
-          } else {
-            grades.add(0);
-          }
-        }
-        return grades;
-      }
-    } catch (e) {
-      debugPrint('Error fetching backend grades: $e');
-    }
-    return [];
-  }
-
   @override
   void initState() {
     super.initState();
@@ -149,16 +165,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   Future<void> _initializeScreen() async {
     setState(() => _isLoading = true);
 
-    final sourceCourse = widget.originalCourse ?? widget.course;
-    lessons = _findCourseLessons(sourceCourse);
-    lessonsByPages = _buildLessonPages(lessons);
+    lessons = await _loadSectionLessons();
+    lessonsByPages = lessons.isEmpty ? <List<_LessonNodeData>>[] : [lessons];
+    _currentLessonPageIndex = 0;
 
-    if (lessonsByPages.isNotEmpty) {
-      _currentLessonPageIndex = widget.initialLessonPageIndex.clamp(
-        0,
-        lessonsByPages.length - 1,
-      );
-    }
+    await _loadDoneLessons();
 
     debugPrint(
       '🔍 LessonPathScreen: Found ${lessons.length} lessons in ${lessonsByPages.length} pages',
@@ -171,71 +182,90 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     await _loadScores();
 
+    _completedLessons = _countCompletedPrefix();
     unlocked = List.generate(lessons.length, (index) {
-      return index == 0 || index <= _completedLessons;
+      return index <= _completedLessons;
     });
 
     setState(() => _isLoading = false);
   }
 
-  List<lesson_model.Section> _findCourseLessons(CourseInfo course) {
-    if (course.sections.isNotEmpty) {
-      final sortedLessons = List<lesson_model.Section>.from(course.sections)
-        ..sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
-      return sortedLessons;
+  Future<void> _loadDoneLessons() async {
+    final courseId = widget.course.id;
+    if (courseId == null || courseId <= 0) {
+      _doneLessonIds.clear();
+      _completedLessons = 0;
+      return;
     }
 
-    if (course.lessons.isNotEmpty) {
-      return course.lessons.map((section) {
-        return lesson_model.Section(
-          title: section.title,
-          done: false,
-          description: section.description,
-          questions: [
-            MCQ(
-              question: 'What is ${section.title}?',
-              options: [
-                Answer(answer: 'Correct Answer'),
-                Answer(answer: 'Wrong Answer 1'),
-                Answer(answer: 'Wrong Answer 2'),
-                Answer(answer: 'Wrong Answer 3'),
-              ],
-            ),
-          ],
-        );
-      }).toList();
+    final doneLessons = await _authService.getDoneLessonsInCourse(
+      courseId: courseId,
+      sectionId: widget.sectionId,
+    );
+
+    _doneLessonIds
+      ..clear()
+      ..addAll(
+        doneLessons.map((lesson) => lesson['lessonId']).whereType<int>(),
+      );
+  }
+
+  int _countCompletedPrefix() {
+    var completed = 0;
+
+    for (final lesson in lessons) {
+      if (!_doneLessonIds.contains(lesson.id)) {
+        break;
+      }
+      completed += 1;
+    }
+
+    return completed;
+  }
+
+  Future<List<_LessonNodeData>> _loadSectionLessons() async {
+    final courseId = widget.course.id;
+    if (courseId == null || courseId <= 0) {
+      return _fallbackLessonNodes();
+    }
+
+    final sectionLessons = await _authService.getSectionLessons(
+      courseId: courseId,
+      sectionId: widget.sectionId,
+    );
+
+    if (sectionLessons.isNotEmpty) {
+      return sectionLessons
+          .map(_LessonNodeData.fromMap)
+          .where((lesson) => lesson.id > 0 || lesson.title.isNotEmpty)
+          .toList();
+    }
+
+    return _fallbackLessonNodes();
+  }
+
+  List<_LessonNodeData> _fallbackLessonNodes() {
+    if (widget.originalCourse?.sections.isNotEmpty == true) {
+      return List<_LessonNodeData>.generate(
+        widget.originalCourse!.sections.length,
+        (index) => _LessonNodeData.fromLesson(
+          widget.originalCourse!.sections[index],
+          orderIndex: index,
+        ),
+      );
+    }
+
+    if (widget.course.sections.isNotEmpty) {
+      return List<_LessonNodeData>.generate(
+        widget.course.sections.length,
+        (index) => _LessonNodeData.fromLesson(
+          widget.course.sections[index],
+          orderIndex: index,
+        ),
+      );
     }
 
     return const [];
-  }
-
-  List<List<lesson_model.Section>> _buildLessonPages(
-    List<lesson_model.Section> allLessons,
-  ) {
-    final pages = <List<lesson_model.Section>>[];
-    for (final lesson in allLessons) {
-      final sortedContents = List.from(lesson.contents)
-        ..sort((a, b) => (a.orderIndex ?? 0).compareTo(b.orderIndex ?? 0));
-
-      if (sortedContents.isNotEmpty) {
-        final contentLessons = sortedContents.map((content) {
-          return lesson_model.Section(
-            id: lesson.id,
-            title: (content.partTitle ?? '').isNotEmpty
-                ? (content.partTitle ?? '')
-                : lesson.title,
-            description: lesson.description,
-            done: lesson.done,
-            questions: content.extractQuestions() ?? [],
-            contents: [content],
-          );
-        }).toList();
-        pages.add(contentLessons);
-      } else {
-        pages.add([lesson]);
-      }
-    }
-    return pages;
   }
 
   Future<void> _findDatabaseCourse() async {
@@ -260,7 +290,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
   }
 
-  Future<void> startTest(lesson_model.Section lesson, int pageIndex) async {
+  Future<void> startTest(_LessonNodeData lesson, int pageIndex) async {
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final currentScores = _normalizedScores(currentPageLessons.length);
     final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
@@ -283,19 +313,60 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     if (isFirstLessonOfFirstCourse) {
       startTime = DateTime.now();
     }
-    debugPrint("\n Lessons info : ${lesson.toString()}");
+    if (widget.course.id == null || lesson.id <= 0) {
+      return;
+    }
+
+    final isExercise = lesson.category == 'exercise';
+    lesson_model.Section fullLesson = lesson_model.Section(
+      id: lesson.id,
+      title: lesson.title,
+      questions: const [],
+      contents: const [],
+      done: false,
+      description: '',
+    );
+
+    if (isExercise) {
+      try {
+        fullLesson = await _authService.getLessonById(
+          courseId: widget.course.id!,
+          sectionId: widget.sectionId,
+          lessonId: lesson.id,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load quiz lesson: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    debugPrint("\n Lessons info : ${fullLesson.toString()}");
     final score = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => lesson.questions.isNotEmpty
+        builder: (_) => isExercise && fullLesson.questions.isNotEmpty
             ? McqTestScreen(
-                section: lesson.title,
-                questions: lesson.questions,
+                section: fullLesson.title,
+                questions: fullLesson.questions,
                 courseId: courseIndex,
                 totalLessons: lessons.length,
+                lessonId: lesson.id,
                 onTestCompleted: () {},
               )
-            : LessonContentScreen(lesson: lesson),
+            : LessonContentScreen(
+                lesson: fullLesson,
+                courseId: widget.course.id,
+                sectionId: widget.sectionId,
+                lessonId: lesson.id,
+              ),
       ),
     );
 
@@ -332,7 +403,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
           await _statsService.recordLessonCompletion(
             widget.course.title,
-            lesson.title,
+            fullLesson.title,
           );
 
           if (score == 100) {
@@ -340,7 +411,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           }
 
           if (score >= 70) {
-            final correctCount = (lesson.questions.length * (score / 100))
+            final correctCount = (fullLesson.questions.length * (score / 100))
                 .round();
             for (int i = 0; i < correctCount; i++) {
               await _statsService.incrementCorrectAnswers();
@@ -360,21 +431,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           if (newCompletedCount >= lessons.length) {}
 
           await _updateCourseProgress(_completedLessons);
-
-          // Send completion/grade to backend
-          try {
-            if (lesson.id != null) {
-              // For quiz: send grade
-              if (lesson.questions.isNotEmpty) {
-                await CourseApiService().setLessonGrade(lesson.id!, score);
-              } else {
-                // For content: mark as done
-                await CourseApiService().markLessonDone(lesson.id!);
-              }
-            }
-          } catch (e) {
-            debugPrint('Failed to send lesson completion to backend: $e');
-          }
         }
       } else {
         if (!mounted) return;
@@ -431,6 +487,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       );
     }
 
+    if (lessonsByPages.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: Text(widget.sectionTitle ?? widget.course.title)),
+        body: const Center(child: Text('No lessons found in this section.')),
+      );
+    }
+
     final theme = Theme.of(context);
     final nodeSpacing = 120.0;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
@@ -449,7 +512,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     double contentHeight = 0;
 
     for (int i = 0; i < totalNodesInPage; i++) {
-      final chapterName = currentPageLessons[i].contents[0].chapterName;
+      final chapterName = currentPageLessons[i].chapterName.isNotEmpty
+          ? currentPageLessons[i].chapterName
+          : 'General';
 
       if (chapterName != lastChapter) {
         lastChapter = chapterName;
@@ -566,7 +631,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 index: i + 1,
                 locked: !currentUnlocked[i],
                 percentage: currentScores[i],
-                isCompleted: i < _completedLessons,
+                isCompleted: _doneLessonIds.contains(currentPageLessons[i].id),
                 theme: theme,
               ),
             ),
@@ -579,7 +644,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       appBar: AppBar(
         title: FittedBox(
           child: Text(
-            lessons[_currentLessonPageIndex].title,
+            widget.sectionTitle ?? widget.course.title,
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,
               fontSize: 20,
@@ -913,7 +978,7 @@ class LessonPathPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = isSegmentUnlocked
-            ? const Color(0xFF3D5CFF).withOpacity(0.7)
+            ? const Color(0xFF3D5CFF).withValues(alpha: 0.7)
             : (isDark ? Colors.grey[700]! : Colors.grey[300]!)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSegmentUnlocked ? 3.5 : 2.5
