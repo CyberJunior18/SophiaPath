@@ -163,6 +163,16 @@ class AuthService {
     }
   }
 
+  Future<int> getMyXp() async {
+    final profileResult = await getProfile();
+    if (profileResult['success'] != true || profileResult['data'] is! Map) {
+      return 0;
+    }
+
+    final profile = Map<String, dynamic>.from(profileResult['data'] as Map);
+    return _asInt(profile['xp']);
+  }
+
   Future<Map<String, dynamic>> updateProfile({
     required String username,
     required String fullname,
@@ -287,6 +297,8 @@ class AuthService {
   }
 
   Map<String, dynamic> _withProfileAliases(Map<String, dynamic> profile) {
+    profile.putIfAbsent('xp', () => _asInt(profile['xp'] ?? profile['XP']));
+    profile.putIfAbsent('XP', () => profile['xp']);
     profile.putIfAbsent('userId', () => profile['id']);
     profile.putIfAbsent('id', () => profile['userId']);
     profile.putIfAbsent('fullName', () => profile['fullname']);
@@ -298,6 +310,12 @@ class AuthService {
     profile.putIfAbsent('dateTime', () => profile['date']);
     profile.putIfAbsent('date', () => profile['dateTime']);
     return profile;
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Map<String, String> _jsonHeaders({String? token}) {

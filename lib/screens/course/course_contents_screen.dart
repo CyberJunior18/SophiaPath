@@ -3,55 +3,66 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/course_info.dart';
 import '../../models/course/lesson.dart' as lesson_model;
-import '../../models/course/lessonContent.dart' as lesson_content_model;
-import '../Lessons/mcq_test_screen.dart';
+import '../authentication/authService.dart';
 import 'lesson_content_screen.dart';
 
-class CourseContentsScreen extends StatelessWidget {
+class CourseContentsScreen extends StatefulWidget {
   final CourseInfo course;
 
   const CourseContentsScreen({super.key, required this.course});
 
-  Future<void> _openContent(
-    BuildContext context,
-    lesson_content_model.LessonContent content,
-    lesson_model.Section lesson,
-  ) async {
-    final questions = content.extractQuestions();
-    if (questions.isNotEmpty) {
-      await Navigator.push<int>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => McqTestScreen(
-            section: content.partTitle.isEmpty
-                ? content.chapterName
-                : content.partTitle,
-            questions: questions,
-            courseId: course.id ?? 0,
-            totalLessons: course.sections.length,
-            lessonId: lesson.id,
-            onTestCompleted: () {},
-          ),
-        ),
-      );
-      return;
-    }
+  @override
+  State<CourseContentsScreen> createState() => _CourseContentsScreenState();
+}
 
-    await Navigator.push(
+class _CourseContentsScreenState extends State<CourseContentsScreen> {
+  final AuthService _auth = AuthService();
+  final Map<int, List<Map<String, dynamic>>> _sectionLessons = {};
+  final Set<int> _loadingSections = {};
+
+  Future<void> _ensureSectionLoaded(int? courseId, int? sectionId) async {
+    if (courseId == null || sectionId == null) return;
+    if (_sectionLessons.containsKey(sectionId)) return;
+    setState(() => _loadingSections.add(sectionId));
+    try {
+      final list = await _auth.getSectionLessons(
+        courseId: courseId,
+        sectionId: sectionId,
+      );
+      _sectionLessons[sectionId] = list;
+    } catch (_) {
+      _sectionLessons[sectionId] = [];
+    } finally {
+      if (mounted) setState(() => _loadingSections.remove(sectionId));
+    }
+  }
+
+  void _openLessonFromMap(Map<String, dynamic> lessonMap) {
+    final lid = lessonMap['id'] ?? lessonMap['lessonId'];
+    final int lessonId = lid is int
+        ? lid
+        : int.tryParse(lid?.toString() ?? '') ?? 0;
+    final title = (lessonMap['title'] ?? lessonMap['name'] ?? '').toString();
+
+    if (lessonId <= 0) return;
+
+    final lesson = lesson_model.Section(
+      id: lessonId,
+      title: title.isNotEmpty ? title : 'Untitled',
+      questions: const [],
+      contents: const [],
+      done: false,
+      description: (lessonMap['description'] ?? '').toString(),
+    );
+
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => LessonContentScreen(
-          lesson: lesson_model.Section(
-            id: lesson.id,
-            title: content.partTitle.isEmpty ? lesson.title : content.partTitle,
-            questions: const [],
-            contents: [content],
-            done: lesson.done,
-            description: lesson.description,
-          ),
-          courseId: course.id,
-          sectionId: lesson.id,
-          lessonId: lesson.id,
+          lesson: lesson,
+          courseId: widget.course.id,
+          sectionId: lessonMap['sectionId'] ?? lessonMap['section'],
+          lessonId: lessonId,
         ),
       ),
     );
@@ -64,13 +75,13 @@ class CourseContentsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          '${course.title} - All Content',
+          '${widget.course.title} - All Content',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF3D5CFF),
         foregroundColor: Colors.white,
       ),
-      body: course.sections.isEmpty
+      body: widget.course.sections.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -85,28 +96,21 @@ class CourseContentsScreen extends StatelessWidget {
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: course.sections.length,
+              itemCount: widget.course.sections.length,
               separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, lessonIndex) {
-                final lesson = course.sections[lessonIndex];
+              itemBuilder: (context, sectionIndex) {
+                final section = widget.course.sections[sectionIndex];
+                final sectionId = section.id;
 
-                final sortedContents =
-                    List<lesson_content_model.Lesson>.from(lesson.contents)
-                      ..sort((a, b) {
-                        final chapterCompare = a.chapterName.compareTo(
-                          b.chapterName,
-                        );
-                        if (chapterCompare != 0) return chapterCompare;
-                        return a.orderIndex.compareTo(b.orderIndex);
-                      });
-
-                final groups = <String, List<lesson_content_model.Lesson>>{};
-                for (final content in sortedContents) {
-                  final chapterName = content.chapterName.trim().isNotEmpty
-                      ? content.chapterName.trim()
-                      : 'General';
-                  groups.putIfAbsent(chapterName, () => []).add(content);
-                }
+                final cached = sectionId != null
+                    ? _sectionLessons[sectionId]
+                    : null;
+                final lessonCount = sectionId != null
+                    ? (_sectionLessons[sectionId]?.length ??
+                          section.contents.length)
+                    : section.contents.length;
+                final isLoading =
+                    sectionId != null && _loadingSections.contains(sectionId);
 
                 return Container(
                   decoration: BoxDecoration(
@@ -117,7 +121,11 @@ class CourseContentsScreen extends StatelessWidget {
                     ),
                   ),
                   child: ExpansionTile(
-                    initiallyExpanded: lessonIndex == 0,
+                    initiallyExpanded: sectionIndex == 0,
+                    onExpansionChanged: (expanded) async {
+                      if (expanded)
+                        await _ensureSectionLoaded(widget.course.id, sectionId);
+                    },
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -125,22 +133,35 @@ class CourseContentsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     title: Text(
-                      '${lessonIndex + 1}. ${lesson.title}',
+                      '${sectionIndex + 1}. ${section.title}',
                       style: GoogleFonts.poppins(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     subtitle: Text(
-                      '${lesson.contents.length} content item${lesson.contents.length == 1 ? '' : 's'}',
+                      '$lessonCount content item${lessonCount == 1 ? '' : 's'}',
                       style: GoogleFonts.poppins(fontSize: 12),
                     ),
                     children: [
-                      if (lesson.contents.isEmpty)
+                      if (isLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (cached == null)
                         Padding(
                           padding: const EdgeInsets.all(16),
                           child: Text(
-                            'No content available',
+                            'Tap to load lessons for this section.',
+                            style: GoogleFonts.poppins(color: Colors.grey),
+                          ),
+                        )
+                      else if (cached.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'No lessons found for this section.',
                             style: GoogleFonts.poppins(color: Colors.grey),
                           ),
                         )
@@ -149,142 +170,86 @@ class CourseContentsScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final chapter in groups.keys)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 8,
+                            children: cached.map((lessonMap) {
+                              final title =
+                                  (lessonMap['title'] ??
+                                          lessonMap['name'] ??
+                                          'Untitled')
+                                      .toString();
+                              final category = (lessonMap['category'] ?? '')
+                                  .toString()
+                                  .toLowerCase();
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Material(
+                                  child: InkWell(
+                                    onTap: () => _openLessonFromMap(lessonMap),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.05,
                                         ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFF3D5CFF,
-                                          ).withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          chapter,
-                                          style: GoogleFonts.poppins(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: const Color(0xFF3D5CFF),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: Colors.grey.withValues(
+                                            alpha: 0.15,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      ...?groups[chapter]?.map(
-                                        (content) => Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 8,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            category == 'exercise' ||
+                                                    category == 'mcq'
+                                                ? Icons.quiz_outlined
+                                                : Icons.menu_book_outlined,
+                                            size: 20,
+                                            color:
+                                                category == 'exercise' ||
+                                                    category == 'mcq'
+                                                ? Colors.orange
+                                                : Colors.blue,
                                           ),
-                                          child: Material(
-                                            child: InkWell(
-                                              onTap: () => _openContent(
-                                                context,
-                                                content,
-                                                lesson,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  10,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.withValues(
-                                                    alpha: 0.05,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  border: Border.all(
-                                                    color: Colors.grey
-                                                        .withValues(
-                                                          alpha: 0.15,
-                                                        ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  title,
+                                                  style: GoogleFonts.poppins(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
                                                   ),
                                                 ),
-                                                child: Row(
-                                                  children: [
-                                                    Icon(
-                                                      content.type ==
-                                                              lesson_content_model
-                                                                  .LessonContentType
-                                                                  .MCQ
-                                                          ? Icons.quiz_outlined
-                                                          : Icons
-                                                                .menu_book_outlined,
-                                                      size: 20,
-                                                      color:
-                                                          content.type ==
-                                                              lesson_content_model
-                                                                  .LessonContentType
-                                                                  .MCQ
-                                                          ? Colors.orange
-                                                          : Colors.blue,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            content
-                                                                    .partTitle
-                                                                    .isNotEmpty
-                                                                ? content
-                                                                      .partTitle
-                                                                : 'Untitled',
-                                                            style:
-                                                                GoogleFonts.poppins(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  fontSize: 13,
-                                                                ),
-                                                          ),
-                                                          Text(
-                                                            content.category ==
-                                                                    lesson_content_model
-                                                                        .LessonContentCategory
-                                                                        .LEARNING
-                                                                ? 'Learning'
-                                                                : 'Exercise',
-                                                            style:
-                                                                GoogleFonts.poppins(
-                                                                  fontSize: 11,
-                                                                  color: Colors
-                                                                      .grey[600],
-                                                                ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    Icon(
-                                                      Icons.chevron_right,
-                                                      size: 18,
-                                                      color: Colors.grey[400],
-                                                    ),
-                                                  ],
+                                                Text(
+                                                  category == 'exercise'
+                                                      ? 'Exercise'
+                                                      : 'Learning',
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 11,
+                                                    color: Colors.grey[600],
+                                                  ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
                                           ),
-                                        ),
+                                          Icon(
+                                            Icons.chevron_right,
+                                            size: 18,
+                                            color: Colors.grey[400],
+                                          ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                            ],
+                              );
+                            }).toList(),
                           ),
                         ),
                     ],

@@ -8,6 +8,7 @@ import '../Lessons/mcq_test_screen.dart';
 import 'lesson_contents_list_screen.dart';
 import 'lesson_path_screen.dart';
 import 'course_contents_screen.dart';
+import 'course_info_screen.dart';
 
 enum _LessonFilter { all, withContent, withQuiz }
 
@@ -160,6 +161,20 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
         ),
         backgroundColor: const Color(0xFF3D5CFF),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Course info',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CourseInfoScreen(course: widget.course),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

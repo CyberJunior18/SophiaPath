@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'course_info_screen.dart';
+import 'course_lessons_grid_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 
@@ -244,7 +245,19 @@ class _LearningScreenState extends State<LearningScreen> {
 
             return InkWell(
               onTap: () {
-                // debugPrint(coursesInfo.map((e) => e.toMap()).toString());
+                // If user is registered, go straight to course sections grid
+                if (isRegistered) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CourseSectionsGridScreen(course: sampleCourse),
+                    ),
+                  ).then((_) => _loadCourses());
+                  return;
+                }
+
+                // otherwise show course info screen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -317,7 +330,7 @@ class _LearningScreenState extends State<LearningScreen> {
                       ],
                     ),
 
-                    if (isRegistered!)
+                    if (isRegistered)
                       Column(
                         children: [
                           LinearProgressIndicator(

@@ -10,6 +10,7 @@ import '../../services/course/user_stats_service.dart';
 
 import '../../models/user/achievements.dart';
 import '../../models/user/user.dart';
+import '../authentication/authService.dart';
 import '../../services/user_preferences_services.dart';
 import '../../services/course/firestore_course_service.dart';
 import 'package:share_plus/share_plus.dart';
@@ -24,6 +25,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final AuthService _authService = AuthService();
   final UserPreferencesService _userService = UserPreferencesService.instance;
   // final FirestoreCourseService _courseService = FirestoreCourseService();
   final UserStatsService _statsService = UserStatsService();
@@ -53,6 +55,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
     try {
       _currentUser = await _userService.getUser();
+      if (_currentUser != null) {
+        final xp = await _authService.getMyXp();
+        _currentUser = _currentUser!.copyWith(xp: xp);
+      }
       _achievements = await _calculateAchievementsProgress();
       if (mounted) {
         setState(() => _isLoading = false);
@@ -343,6 +349,93 @@ Keep learning with me! 💪
                 ),
               ),
               SizedBox(height: screenHeight * 0.03),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3D5CFF), Color(0xFF1CB0F6)],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF3D5CFF).withValues(alpha: 0.22),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.bolt,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'XP',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '${displayUser.xp}',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        '${displayUser.xp} XP',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: screenHeight * 0.025),
 
               Container(
                 padding: EdgeInsets.all(isSmallScreen ? 16 : 20),

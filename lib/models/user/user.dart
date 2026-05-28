@@ -10,6 +10,7 @@ class User {
   final List<double> achievementsProgress;
   final List<CourseInfo> registeredCourses;
   final List<int> registedCoursesIndexes;
+  final int xp;
   DateTime? lastSeen;
   bool isOnline = false;
   String? status;
@@ -29,6 +30,7 @@ class User {
     required this.registeredCourses,
     required this.fullName,
     required this.registedCoursesIndexes,
+    this.xp = 0,
   });
 
   bool get isAvailableForChat => isOnline && lastSeen != null;
@@ -56,6 +58,7 @@ class User {
       'age': age,
       'gender': sex,
       'profilePicture': profileImage,
+      'xp': xp,
       'lastSeen': lastSeen?.toIso8601String(),
       'isOnline': isOnline,
     };
@@ -98,6 +101,7 @@ class User {
         achievementsProgress: achievementsProgress,
         registeredCourses: registeredCourses,
         registedCoursesIndexes: registedCoursesIndexes,
+        xp: (map['xp'] as num?)?.toInt() ?? map['XP'] ?? 0,
       )
       ..lastSeen = map['lastSeen'] != null
           ? DateTime.parse(map['lastSeen'])
@@ -117,6 +121,7 @@ class User {
     List<double>? achievementsScores,
     List<CourseInfo>? registeredCourses,
     List<int>? registedCoursesIndexes,
+    int? xp,
     DateTime? lastSeen,
     bool? isOnline,
     String? status,
@@ -133,6 +138,7 @@ class User {
         registeredCourses: registeredCourses ?? this.registeredCourses,
         registedCoursesIndexes:
             registedCoursesIndexes ?? this.registedCoursesIndexes,
+        xp: xp ?? this.xp,
       )
       ..lastSeen = lastSeen ?? this.lastSeen
       ..isOnline = isOnline ?? this.isOnline
@@ -164,6 +170,7 @@ class User {
       achievementsProgress: _safeListDouble(data['achievementsProgress']),
       registeredCourses: [], // Handle separately if needed
       registedCoursesIndexes: _safeListInt(data['registedCoursesIndexes']),
+      xp: (data['xp'] as num?)?.toInt() ?? (data['XP'] as num?)?.toInt() ?? 0,
     )..isOnline = data['isOnline'] == true;
   }
 
@@ -196,4 +203,5 @@ final User sampleUser = User(
   achievementsProgress: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   registeredCourses: [],
   registedCoursesIndexes: [],
+  xp: 0,
 );

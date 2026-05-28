@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/course/lesson.dart' as lesson_model;
@@ -13,6 +14,8 @@ class _LessonNodeData {
   final int id;
   final String title;
   final String category;
+  final String description;
+  final int pageCount;
   final String chapterName;
   final int orderIndex;
 
@@ -20,23 +23,64 @@ class _LessonNodeData {
     required this.id,
     required this.title,
     required this.category,
+    required this.description,
+    required this.pageCount,
     required this.chapterName,
     required this.orderIndex,
   });
 
-  factory _LessonNodeData.fromMap(Map<String, dynamic> map) {
-    int asInt(dynamic value) {
-      if (value is int) return value;
-      if (value is num) return value.toInt();
-      return int.tryParse(value?.toString() ?? '') ?? 0;
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static int _countPagesFromValue(dynamic value) {
+    if (value is! List) return 0;
+
+    var total = 0;
+    for (final item in value.whereType<Map>()) {
+      final map = Map<String, dynamic>.from(item);
+
+      final directPageCount = _asInt(
+        map['pageCount'] ?? map['pagesCount'] ?? map['numberOfPages'],
+      );
+      if (directPageCount > 0) {
+        total += directPageCount;
+        continue;
+      }
+
+      final rawPages = map['pages'];
+      if (rawPages is List && rawPages.isNotEmpty) {
+        total += rawPages.length;
+        continue;
+      }
+
+      total += _countPagesFromValue(map['contents'] ?? map['lessons']);
     }
 
+    return total > 0 ? total : value.length;
+  }
+
+  factory _LessonNodeData.fromMap(Map<String, dynamic> map) {
+    final directPageCount = _asInt(
+      map['pageCount'] ?? map['pagesCount'] ?? map['numberOfPages'],
+    );
+    final nestedPages = _countPagesFromValue(map['contents'] ?? map['lessons']);
+    final rawPages = _countPagesFromValue(map['pages']);
+
     return _LessonNodeData(
-      id: asInt(map['id'] ?? map['lessonId']),
+      id: _asInt(map['id'] ?? map['lessonId']),
       title: (map['title'] ?? '').toString(),
       category: (map['category'] ?? '').toString().toLowerCase(),
+      description: (map['description'] ?? '').toString(),
+      pageCount: directPageCount > 0
+          ? directPageCount
+          : nestedPages > 0
+          ? nestedPages
+          : rawPages,
       chapterName: (map['chapterName'] ?? '').toString(),
-      orderIndex: asInt(map['orderIndex']),
+      orderIndex: _asInt(map['orderIndex']),
     );
   }
 
@@ -48,6 +92,11 @@ class _LessonNodeData {
       id: lesson.id ?? 0,
       title: lesson.title,
       category: lesson.questions.isNotEmpty ? 'exercise' : 'learning',
+      description: lesson.description,
+      pageCount: lesson.contents.fold<int>(
+        0,
+        (count, content) => count + content.pages.length,
+      ),
       chapterName: lesson.contents.isNotEmpty
           ? lesson.contents.first.chapterName
           : '',
@@ -56,20 +105,21 @@ class _LessonNodeData {
   }
 }
 
-class _ChapterLessonEntry {
-  final _LessonNodeData lesson;
-  final int globalIndex;
+IconData _lessonCategoryIcon(String category) {
+  final normalized = category.trim().toLowerCase();
 
-  const _ChapterLessonEntry({required this.lesson, required this.globalIndex});
-}
+  if (normalized == 'exercise' || normalized == 'quiz' || normalized == 'mcq') {
+    return Icons.fitness_center_rounded;
+  }
 
-class _ChapterGroup {
-  final String chapterName;
-  final List<_ChapterLessonEntry> lessons;
+  if (normalized == 'assessment' ||
+      normalized == 'assesment' ||
+      normalized == 'test' ||
+      normalized == 'exam') {
+    return Icons.sports_esports_rounded;
+  }
 
-  const _ChapterGroup({required this.chapterName, required this.lessons});
-
-  int get totalLessons => lessons.length;
+  return Icons.menu_book_rounded;
 }
 
 class LessonPathScreen extends StatefulWidget {
@@ -102,7 +152,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   final Set<int> _doneLessonIds = <int>{};
   final Map<int, double> _lessonPercent = {};
   final Map<int, Color> _lessonNodeColors = {};
-  final Set<String> _expandedChapters = <String>{};
   int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
@@ -143,38 +192,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         (index) => base.length + index <= _completedLessons,
       ),
     ];
-  }
-
-  List<_ChapterGroup> _chapterGroups() {
-    final Map<String, List<_ChapterLessonEntry>> grouped = {};
-
-    for (var index = 0; index < lessons.length; index++) {
-      final lesson = lessons[index];
-      final chapterName = lesson.chapterName.isNotEmpty
-          ? lesson.chapterName
-          : 'General';
-      grouped.putIfAbsent(chapterName, () => <_ChapterLessonEntry>[]);
-      grouped[chapterName]!.add(
-        _ChapterLessonEntry(lesson: lesson, globalIndex: index),
-      );
-    }
-
-    return grouped.entries
-        .map((entry) => _ChapterGroup(
-              chapterName: entry.key,
-              lessons: entry.value,
-            ))
-        .toList();
-  }
-
-  bool _chapterHasUnlockedLessons(
-    _ChapterGroup group,
-    List<bool> currentUnlocked,
-  ) {
-    return group.lessons.any((entry) {
-      final index = entry.globalIndex;
-      return index >= 0 && index < currentUnlocked.length && currentUnlocked[index];
-    });
   }
 
   Future<void> _loadScores() async {
@@ -602,88 +619,183 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
   }
 
-  Widget _buildChapterLessonPath(
-    _ChapterGroup group,
-    ThemeData theme,
-    List<int> currentScores,
-    List<bool> currentUnlocked,
-  ) {
-    final nodeSpacing = 120.0;
-    final List<Widget> nodeWidgets = [];
-    final List<double> nodeCentersY = [];
-    final List<bool> connectNext = [];
-    String? prevChapter;
-    double extraGap = 0;
-    const double nodeSize = 80.0;
-    double contentHeight = 0;
+  Future<void> _showLessonPreview(_LessonNodeData lesson, int pageIndex) async {
+    final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
+    final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
+    final isLessonDone = _doneLessonIds.contains(lesson.id);
 
-    for (var i = 0; i < group.lessons.length; i++) {
-      final entry = group.lessons[i];
-      final lesson = entry.lesson;
-      final nodeTop = i * nodeSpacing + extraGap;
-      nodeCentersY.add(nodeTop + nodeSize / 2);
-      contentHeight = max(contentHeight, nodeTop + nodeSize + 20);
-
-      if (i > 0) {
-        connectNext.add(prevChapter == group.chapterName);
-      }
-      prevChapter = group.chapterName;
-
-      nodeWidgets.add(
-        Positioned(
-          top: nodeTop,
-          left: i % 2 == 0
-              ? MediaQuery.of(context).size.width * 0.18 - 17
-              : MediaQuery.of(context).size.width * 0.62 - 17,
-          child: MouseRegion(
-            cursor: currentUnlocked[entry.globalIndex]
-                ? SystemMouseCursors.click
-                : SystemMouseCursors.basic,
-            child: GestureDetector(
-              onTap: currentUnlocked[entry.globalIndex]
-                  ? () => startTest(lesson, entry.globalIndex)
-                  : null,
-              child: CourseNode(
-                title: lesson.title,
-                index: entry.globalIndex + 1,
-                locked: !currentUnlocked[entry.globalIndex],
-                percentage: lesson.category == 'exercise'
-                    ? (_lessonPercent[lesson.id] != null
-                          ? _lessonPercent[lesson.id]!.round()
-                          : currentScores[entry.globalIndex])
-                    : 0,
-                isCompleted: _doneLessonIds.contains(lesson.id),
-                theme: theme,
-                nodeColor: _lessonNodeColors[lesson.id],
-              ),
-            ),
-          ),
-        ),
-      );
+    if (pageIndex < 0 ||
+        pageIndex >= currentUnlocked.length ||
+        !currentUnlocked[pageIndex]) {
+      return;
     }
 
-    return SizedBox(
-      height: max(contentHeight + 30, group.lessons.length * nodeSpacing + 20),
-      child: Stack(
-        children: [
-          CustomPaint(
-            size: Size(
-              double.infinity,
-              nodeCentersY.isNotEmpty
-                  ? nodeCentersY.last + 60
-                  : group.lessons.length * nodeSpacing,
+    final description = lesson.description.trim().isEmpty
+        ? 'Start this lesson when you are ready.'
+        : lesson.description.trim();
+    final pageLabel = '${lesson.pageCount} pages';
+
+    final shouldStart = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (dialogContext) {
+        final theme = Theme.of(dialogContext);
+        final isDark = theme.brightness == Brightness.dark;
+        final accentColor = isLessonDone
+            ? const Color(0xFF58CC02)
+            : const Color.fromARGB(255, 39, 156, 0);
+        final accentSoftColor = isLessonDone
+            ? const Color(0xFF58CC02).withValues(alpha: 0.12)
+            : const Color(0xFFFFC93C).withValues(alpha: 0.14);
+        final buttonLabel = isLessonDone
+            ? 'RETAKE THE LESSON'
+            : 'START THE LESSON';
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 360),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+            decoration: BoxDecoration(
+              color: isLessonDone
+                  ? (isDark ? const Color(0xFF1F2D1F) : const Color(0xFFF2FBF0))
+                  : theme.cardColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isLessonDone
+                    ? accentColor.withValues(alpha: isDark ? 0.55 : 0.95)
+                    : isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : const Color(0xFFE5E5E5),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isLessonDone
+                      ? accentColor.withValues(alpha: isDark ? 0.22 : 0.18)
+                      : Colors.black.withValues(alpha: isDark ? 0.35 : 0.16),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            painter: LessonPathPainter(
-              nodeCentersY,
-              connectNext: connectNext,
-              unlocked: currentUnlocked,
-              theme: theme,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isLessonDone ? 'Completed lesson' : lesson.category,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: accentColor,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            lesson.title,
+                            textAlign: TextAlign.left,
+                            softWrap: true,
+                            maxLines: 3, // or null for unlimited
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.nunito(
+                              fontSize: 21,
+                              fontWeight: FontWeight.w900,
+                              color: theme.textTheme.titleLarge?.color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14), // width, not height, inside Row
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1CB0F6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _lessonCategoryIcon(lesson.category),
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  description,
+                  textAlign: TextAlign.left,
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    height: 1.35,
+                    color: theme.textTheme.bodyMedium?.color?.withValues(
+                      alpha: 0.78,
+                    ),
+                  ),
+                ),
+                // const SizedBox(height: 14),
+                // Container(
+                //   padding: const EdgeInsets.symmetric(
+                //     horizontal: 12,
+                //     vertical: 7,
+                //   ),
+                //   decoration: BoxDecoration(
+                //     color: accentSoftColor,
+                //     borderRadius: BorderRadius.circular(999),
+                //   ),
+                //   child: Text(
+                //     pageLabel,
+                //     style: GoogleFonts.nunito(
+                //       fontSize: 13,
+                //       fontWeight: FontWeight.w800,
+                //       color: accentColor,
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(height: 18),
+                const SizedBox(height: 18),
+
+                SizedBox(
+                  width: 300,
+                  height: 50,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accentColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      buttonLabel,
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          ...nodeWidgets,
-        ],
-      ),
+        );
+      },
     );
+
+    if (shouldStart == true && mounted) {
+      await startTest(lesson, pageIndex);
+    }
   }
 
   @override
@@ -705,11 +817,148 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
 
     final theme = Theme.of(context);
-    final chapterGroups = _chapterGroups();
+    final nodeSpacing = 120.0;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final totalNodesInPage = currentPageLessons.length;
     final currentScores = _normalizedScores(totalNodesInPage);
     final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
+
+    // build node widgets and compute exact Y positions so painter can follow
+    final List<Widget> nodeWidgets = [];
+    final List<double> nodeCentersY = [];
+    final List<bool> connectNext = [];
+    String? lastChapter;
+    String? prevChapter;
+    double extraGap = 0;
+    const double nodeSize = 80.0;
+    double contentHeight = 0;
+
+    for (int i = 0; i < totalNodesInPage; i++) {
+      final chapterName = currentPageLessons[i].chapterName.isNotEmpty
+          ? currentPageLessons[i].chapterName
+          : 'General';
+
+      if (chapterName != lastChapter) {
+        lastChapter = chapterName;
+        if (i == 0) {
+          extraGap = 40;
+        } else {
+          extraGap += 120; // space before chapter text
+        }
+
+        //chapters names
+        nodeWidgets.add(
+          Positioned(
+            top: i * nodeSpacing + extraGap - 30,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white),
+                ),
+                child: Text(
+                  chapterName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final chapterTop = i * nodeSpacing + extraGap - 30;
+        contentHeight = max(contentHeight, chapterTop + 60);
+
+        extraGap += 60;
+        //dividers
+        nodeWidgets.add(
+          Positioned(
+            top: i * nodeSpacing + extraGap - 135,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: DottedLine(
+                direction: Axis.horizontal,
+                lineThickness: 2.0,
+                dashLength: 4.0,
+                dashColor: theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+                dashGapLength: 4.0,
+              ),
+            ),
+          ),
+        );
+
+        // nodeWidgets.add( //todo : add a widget that appears on top as lock
+        //   Positioned(
+        //     top: i * nodeSpacing + extraGap - 135,
+        //     left: 0,
+        //     right: 0,
+        //     child: Container(
+        //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        //       decoration: BoxDecoration(
+        //         color: const Color.fromARGB(107, 114, 114, 114),
+        //         borderRadius: BorderRadius.circular(12),
+        //         border: Border.all(color: Colors.white),
+        //       ),
+        //       child: SizedBox(height: 50),
+
+        //       // child: Text(
+        //       //   chapterName,
+        //       //   style: GoogleFonts.poppins(
+        //       //     fontSize: 24,
+        //       //     fontWeight: FontWeight.w600,
+        //       //   ),
+        //       // ),
+        //     ),
+        //   ),
+        // );
+      }
+
+      final nodeTop = i * nodeSpacing + extraGap;
+      nodeCentersY.add(nodeTop + nodeSize / 2);
+      contentHeight = max(contentHeight, nodeTop + nodeSize + 20);
+
+      if (i > 0) {
+        connectNext.add(prevChapter == chapterName);
+      }
+      prevChapter = chapterName;
+
+      //nodes
+      nodeWidgets.add(
+        Positioned(
+          top: nodeTop,
+          left: i % 2 == 0
+              ? MediaQuery.of(context).size.width * 0.18 - 17
+              : MediaQuery.of(context).size.width * 0.62 - 17,
+          child: CourseNode(
+            title: currentPageLessons[i].title,
+            index: i + 1,
+            locked: !currentUnlocked[i],
+            percentage: currentPageLessons[i].category == 'exercise'
+                ? (_lessonPercent[currentPageLessons[i].id] != null
+                      ? _lessonPercent[currentPageLessons[i].id]!.round()
+                      : currentScores[i])
+                : 0,
+            isCompleted: _doneLessonIds.contains(currentPageLessons[i].id),
+            category: currentPageLessons[i].category,
+            theme: theme,
+            nodeColor: _lessonNodeColors[currentPageLessons[i].id],
+            enabled: currentUnlocked[i],
+            onTap: () => _showLessonPreview(currentPageLessons[i], i),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -761,88 +1010,79 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       body: Column(
         children: [
+          // if (totalPages > 1)
+          //   Padding(
+          //     padding: const EdgeInsets.all(12.0),
+          //     child: Text(
+          //       '${lessons[_currentLessonPageIndex].title}',
+          //       style: GoogleFonts.poppins(
+          //         fontSize: 16,
+          //         fontWeight: FontWeight.w600,
+          //       ),
+          //       textAlign: TextAlign.center,
+          //     ),
+          //   ),
           Expanded(
-            child: ListView.separated(
+            child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              itemCount: chapterGroups.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final group = chapterGroups[index];
-                final isExpanded = _expandedChapters.contains(group.chapterName);
-                final hasUnlockedLessons = _chapterHasUnlockedLessons(
-                  group,
-                  currentUnlocked,
-                );
-                final doneCount = group.lessons.where((entry) {
-                  return _doneLessonIds.contains(entry.lesson.id);
-                }).length;
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: ExpansionTile(
-                    initiallyExpanded: false,
-                    onExpansionChanged: (expanded) {
-                      setState(() {
-                        if (expanded) {
-                          _expandedChapters.add(group.chapterName);
-                        } else {
-                          _expandedChapters.remove(group.chapterName);
-                        }
-                      });
-                    },
-                    subtitle: Text(
-                      '$doneCount/${group.totalLessons} lessons completed',
-                      style: GoogleFonts.poppins(fontSize: 12),
-                    ),
-                    title: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            group.chapterName,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                        if (!hasUnlockedLessons)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: Icon(
-                              Icons.lock_outline,
-                              size: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                      ],
-                    ),
-                    trailing: Icon(
-                      isExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                    ),
+              child: SizedBox(
+                height: max(
+                  contentHeight + 40,
+                  totalNodesInPage * nodeSpacing + 30,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Stack(
                     children: [
-                      const SizedBox(height: 8),
-                      _buildChapterLessonPath(
-                        group,
-                        theme,
-                        currentScores,
-                        currentUnlocked,
+                      CustomPaint(
+                        size: Size(
+                          double.infinity,
+                          nodeCentersY.isNotEmpty
+                              ? nodeCentersY.last + 60
+                              : totalNodesInPage * nodeSpacing,
+                        ),
+                        painter: LessonPathPainter(
+                          nodeCentersY,
+                          connectNext: connectNext,
+                          unlocked: currentUnlocked,
+                          theme: theme,
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      ...nodeWidgets,
                     ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
+          // if (totalPages > 1)
+          //   Padding(
+          //     padding: const EdgeInsets.all(16.0),
+          //     child: Row(
+          //       mainAxisAlignment: MainAxisAlignment.center,
+          //       children: [
+          //         IconButton(
+          //           icon: const Icon(Icons.arrow_back_ios),
+          //           onPressed: _currentLessonPageIndex > 0
+          //               ? () => setState(() => _currentLessonPageIndex--)
+          //               : null,
+          //         ),
+          //         Text(
+          //           '${_currentLessonPageIndex + 1} / $totalPages',
+          //           style: GoogleFonts.poppins(
+          //             fontSize: 14,
+          //             fontWeight: FontWeight.w600,
+          //           ),
+          //         ),
+          //         IconButton(
+          //           icon: const Icon(Icons.arrow_forward_ios),
+          //           onPressed: _currentLessonPageIndex < totalPages - 1
+          //               ? () => setState(() => _currentLessonPageIndex++)
+          //               : null,
+          //         ),
+          //       ],
+          //     ),
+          //   ),
         ],
       ),
     );
@@ -853,20 +1093,26 @@ class CourseNode extends StatefulWidget {
   final String title;
   final int index;
   final bool locked;
+  final String category;
   final int percentage;
   final bool isCompleted;
   final ThemeData theme;
   final Color? nodeColor;
+  final bool enabled;
+  final VoidCallback? onTap;
 
   const CourseNode({
     super.key,
     required this.title,
     required this.index,
     required this.locked,
+    required this.category,
     this.percentage = 0,
     this.isCompleted = false,
     required this.theme,
     this.nodeColor,
+    this.enabled = true,
+    this.onTap,
   });
 
   @override
@@ -876,30 +1122,42 @@ class CourseNode extends StatefulWidget {
 class _CourseNodeState extends State<CourseNode> {
   bool hovering = false;
 
+  Color _darken(Color color, [double amount = 0.18]) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl
+        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
+        .toColor();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final nodeSize = 80.0;
+    const nodeSize = 80.0;
     final isDark = widget.theme.brightness == Brightness.dark;
 
     Color nodeColor;
     Color borderColor;
+    Color shadowColor;
     Color textColor = Colors.white;
 
     // allow overriding node color from parent
     if (widget.nodeColor != null && !widget.locked) {
       nodeColor = widget.nodeColor!;
-      borderColor = widget.nodeColor!.withOpacity(0.9);
+      borderColor = widget.nodeColor!.withValues(alpha: 0.9);
+      shadowColor = _darken(nodeColor, 0.16);
       textColor = Colors.white;
     } else if (widget.locked) {
-      nodeColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
-      borderColor = isDark ? Colors.grey[600]! : Colors.grey[400]!;
+      nodeColor = isDark ? const Color(0xFF3F4654) : const Color(0xFFE5E5E5);
+      borderColor = isDark ? const Color(0xFF555F70) : const Color(0xFFD0D0D0);
+      shadowColor = isDark ? const Color(0xFF2C323D) : const Color(0xFFBDBDBD);
       textColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
     } else if (widget.isCompleted) {
-      nodeColor = const Color(0xFF4CAF50);
-      borderColor = const Color(0xFF388E3C);
+      nodeColor = const Color(0xFF58CC02);
+      borderColor = const Color(0xFF58CC02);
+      shadowColor = const Color(0xFF46A302);
     } else {
-      nodeColor = const Color(0xFF3D5CFF);
-      borderColor = const Color(0xFF1E40AF);
+      nodeColor = const Color(0xFF1CB0F6);
+      borderColor = const Color(0xFF1CB0F6);
+      shadowColor = const Color(0xFF0A8ED1);
     }
 
     return Column(
@@ -918,35 +1176,40 @@ class _CourseNodeState extends State<CourseNode> {
                 ),
               ),
 
-            Container(
-              padding: EdgeInsets.all(10),
-              width: nodeSize,
-              height: nodeSize,
-              decoration: BoxDecoration(
-                color: nodeColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: borderColor, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: widget.locked ? 0.1 : 0.25,
-                    ),
-                    blurRadius: 6,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: widget.locked
-                    ? Icon(Icons.lock, color: textColor, size: 24)
-                    : Text(
-                        widget.index.toString(),
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+            _DuolingoButton(
+              enabled: widget.enabled && !widget.locked,
+              onPressed: widget.onTap,
+              baseColor: nodeColor,
+              shadowColor: shadowColor,
+              borderColor: borderColor,
+              size: nodeSize,
+              shadowHeight: 6,
+              borderRadius: nodeSize / 2,
+              shape: BoxShape.circle,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(
+                        alpha: isDark || widget.locked ? 0.06 : 0.28,
                       ),
+                      blurRadius: 0,
+                      offset: const Offset(0, 2),
+                      spreadRadius: -1,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: widget.locked
+                      ? Icon(Icons.lock, color: textColor, size: 24)
+                      : Icon(
+                          _lessonCategoryIcon(widget.category),
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                ),
               ),
             ),
 
@@ -1040,6 +1303,108 @@ class _CourseNodeState extends State<CourseNode> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DuolingoButton extends StatefulWidget {
+  final bool enabled;
+  final VoidCallback? onPressed;
+  final Widget child;
+  final Color baseColor;
+  final Color shadowColor;
+  final Color borderColor;
+  final double size;
+  final double shadowHeight;
+  final double borderRadius;
+  final BoxShape shape;
+
+  const _DuolingoButton({
+    required this.enabled,
+    required this.onPressed,
+    required this.child,
+    required this.baseColor,
+    required this.shadowColor,
+    required this.borderColor,
+    this.size = 80,
+    this.shadowHeight = 6,
+    this.borderRadius = 16,
+    this.shape = BoxShape.rectangle,
+  });
+
+  @override
+  State<_DuolingoButton> createState() => _DuolingoButtonState();
+}
+
+class _DuolingoButtonState extends State<_DuolingoButton> {
+  bool _isPressed = false;
+
+  void _setPressed(bool pressed) {
+    if (!widget.enabled || _isPressed == pressed) return;
+    setState(() => _isPressed = pressed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pressedOffset = _isPressed ? widget.shadowHeight : 0.0;
+    final cursor = widget.enabled
+        ? SystemMouseCursors.click
+        : SystemMouseCursors.basic;
+
+    return MouseRegion(
+      cursor: cursor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: widget.enabled ? (_) => _setPressed(true) : null,
+        onTapUp: widget.enabled
+            ? (_) {
+                _setPressed(false);
+                widget.onPressed?.call();
+              }
+            : null,
+        onTapCancel: widget.enabled ? () => _setPressed(false) : null,
+        child: SizedBox(
+          width: widget.size,
+          height: widget.size + widget.shadowHeight,
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Positioned(
+                top: widget.shadowHeight,
+                child: Container(
+                  width: widget.size,
+                  height: widget.size,
+                  decoration: BoxDecoration(
+                    color: widget.shadowColor,
+                    shape: widget.shape,
+                    borderRadius: widget.shape == BoxShape.rectangle
+                        ? BorderRadius.circular(widget.borderRadius)
+                        : null,
+                  ),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 50),
+                curve: Curves.easeOut,
+                top: pressedOffset,
+                child: Container(
+                  width: widget.size,
+                  height: widget.size,
+                  decoration: BoxDecoration(
+                    color: widget.baseColor,
+                    shape: widget.shape,
+                    borderRadius: widget.shape == BoxShape.rectangle
+                        ? BorderRadius.circular(widget.borderRadius)
+                        : null,
+                    border: Border.all(color: widget.borderColor, width: 2),
+                  ),
+                  child: Center(child: widget.child),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

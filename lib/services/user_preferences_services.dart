@@ -50,6 +50,10 @@ class UserPreferencesService {
         achievementsProgress: const [],
         registeredCourses: const [],
         registedCoursesIndexes: const [],
+        xp:
+            (source['xp'] as num?)?.toInt() ??
+            (source['XP'] as num?)?.toInt() ??
+            0,
       );
 
       return await saveUser(user);
@@ -77,6 +81,7 @@ class UserPreferencesService {
         age: userMap['age'] ?? 0,
         sex: userMap['gender'] ?? '',
         profileImage: userMap['profilePicture'] ?? '',
+        xp: (userMap['xp'] as num?)?.toInt() ?? 0,
         achievementsProgress: userMap['achievementsScores'] != null
             ? (jsonDecode(userMap['achievementsScores']) as List)
                   .map((e) => (e as num).toDouble())
