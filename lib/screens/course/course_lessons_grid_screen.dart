@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/course_info.dart';
 import '../../models/course/lesson.dart';
+import '../authentication/authService.dart';
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_contents_list_screen.dart';
 import 'lesson_path_screen.dart';
@@ -24,11 +25,47 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   _LessonFilter _activeFilter = _LessonFilter.all;
+  final Map<int, int> _sectionLessonCounts = {};
+  final Map<int, int> _sectionQuizCounts = {};
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSectionSummaries();
+  }
+
+  Future<void> _loadSectionSummaries() async {
+    final courseId = widget.course.id;
+    if (courseId == null) return;
+
+    for (final s in widget.course.sections) {
+      final sid = s.id ?? 0;
+      if (sid <= 0) continue;
+      try {
+        final List<Map<String, dynamic>> lessonsList = await _authService
+            .getSectionLessons(courseId: courseId, sectionId: sid);
+
+        final lessonsCount = lessonsList.length;
+        final quizCount = lessonsList.where((l) {
+          final cat = (l['category'] ?? '').toString().toLowerCase();
+          return cat == 'exercise' || cat == 'quiz' || cat == 'mcq';
+        }).length;
+
+        setState(() {
+          _sectionLessonCounts[sid] = lessonsCount;
+          _sectionQuizCounts[sid] = quizCount;
+        });
+      } catch (_) {
+        // ignore errors per-section
+      }
+    }
   }
 
   List<_LessonGridItem> _filteredLessons() {
@@ -331,13 +368,15 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                 Row(
                                   children: [
                                     _Badge(
-                                      icon: Icons.article_outlined,
-                                      text: '${lesson.contents.length}',
+                                      icon: Icons.menu_book_outlined,
+                                      text:
+                                          '${_sectionLessonCounts[lesson.id] ?? lesson.contents.length}',
                                     ),
                                     const SizedBox(width: 8),
                                     _Badge(
                                       icon: Icons.quiz_outlined,
-                                      text: '${lesson.questions.length}',
+                                      text:
+                                          '${_sectionQuizCounts[lesson.id] ?? lesson.questions.length}',
                                     ),
                                   ],
                                 ),

@@ -85,6 +85,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   List<_LessonNodeData> lessons = [];
   List<List<_LessonNodeData>> lessonsByPages = [];
   final Set<int> _doneLessonIds = <int>{};
+  final Map<int, double> _lessonPercent = {};
+  final Map<int, Color> _lessonNodeColors = {};
   int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
@@ -170,6 +172,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     _currentLessonPageIndex = 0;
 
     await _loadDoneLessons();
+    await _loadLessonGrades();
 
     debugPrint(
       '🔍 LessonPathScreen: Found ${lessons.length} lessons in ${lessonsByPages.length} pages',
@@ -208,6 +211,61 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       ..addAll(
         doneLessons.map((lesson) => lesson['lessonId']).whereType<int>(),
       );
+  }
+
+  Future<void> _loadLessonGrades() async {
+    final courseId = widget.course.id;
+    if (courseId == null || courseId <= 0) return;
+
+    try {
+      final grades = await _authService.getSectionLessonsGrades(
+        courseID: courseId,
+        sectionID: widget.sectionId,
+      );
+
+      final Map<int, double> newPercents = {};
+      final Map<int, Color> newColors = {};
+
+      for (final g in grades) {
+        final lid = (g['lessonId'] ?? g['lesson'] ?? g['id']) as dynamic;
+        int lessonId = 0;
+        if (lid is int) lessonId = lid;
+        if (lessonId <= 0) continue;
+
+        final rawGrade = g['grade'] ?? g['score'];
+        double gradeVal = 0.0;
+        if (rawGrade is num) {
+          gradeVal = rawGrade.toDouble();
+        } else if (rawGrade is String) {
+          gradeVal = double.tryParse(rawGrade) ?? 0.0;
+        }
+
+        if (gradeVal <= 0) continue;
+
+        // if backend stores 0..1 normalize to 0..100
+        final percent = gradeVal <= 1.0 ? (gradeVal * 100.0) : gradeVal;
+        newPercents[lessonId] = percent;
+
+        Color nodeColor = Theme.of(context).cardColor;
+        if (percent >= 80) {
+          nodeColor = Colors.green[700]!;
+        } else if (percent >= 50) {
+          nodeColor = Colors.amber.withOpacity(0.18);
+        } else {
+          nodeColor = Colors.blue.withOpacity(0.10);
+        }
+        newColors[lessonId] = nodeColor;
+      }
+
+      if (mounted) {
+        setState(() {
+          _lessonPercent.addAll(newPercents);
+          _lessonNodeColors.addAll(newColors);
+        });
+      }
+    } catch (_) {
+      // ignore
+    }
   }
 
   int _countCompletedPrefix() {
@@ -382,6 +440,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       setState(() {
         courseScores = updatedScores;
+        _doneLessonIds.add(lesson.id);
 
         if (shouldUnlockNext) {
           final updatedUnlocked = List<bool>.from(currentUnlocked);
@@ -431,6 +490,25 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           if (newCompletedCount >= lessons.length) {}
 
           await _updateCourseProgress(_completedLessons);
+        }
+        // update UI with the latest score percentage and node color for this lesson
+        if (lesson.id > 0) {
+          final double percent = score.toDouble();
+          Color nodeColor = Theme.of(context).cardColor;
+          if (percent >= 80) {
+            nodeColor = Colors.green[700]!;
+          } else if (percent >= 50) {
+            nodeColor = Colors.amber.withOpacity(0.18);
+          } else {
+            nodeColor = Colors.blue.withOpacity(0.10);
+          }
+
+          if (mounted) {
+            setState(() {
+              _lessonPercent[lesson.id] = percent;
+              _lessonNodeColors[lesson.id] = nodeColor;
+            });
+          }
         }
       } else {
         if (!mounted) return;
@@ -630,9 +708,14 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 title: currentPageLessons[i].title,
                 index: i + 1,
                 locked: !currentUnlocked[i],
-                percentage: currentScores[i],
+                percentage: currentPageLessons[i].category == 'exercise'
+                    ? (_lessonPercent[currentPageLessons[i].id] != null
+                          ? _lessonPercent[currentPageLessons[i].id]!.round()
+                          : currentScores[i])
+                    : 0,
                 isCompleted: _doneLessonIds.contains(currentPageLessons[i].id),
                 theme: theme,
+                nodeColor: _lessonNodeColors[currentPageLessons[i].id],
               ),
             ),
           ),
@@ -776,6 +859,7 @@ class CourseNode extends StatefulWidget {
   final int percentage;
   final bool isCompleted;
   final ThemeData theme;
+  final Color? nodeColor;
 
   const CourseNode({
     super.key,
@@ -785,6 +869,7 @@ class CourseNode extends StatefulWidget {
     this.percentage = 0,
     this.isCompleted = false,
     required this.theme,
+    this.nodeColor,
   });
 
   @override
@@ -803,7 +888,12 @@ class _CourseNodeState extends State<CourseNode> {
     Color borderColor;
     Color textColor = Colors.white;
 
-    if (widget.locked) {
+    // allow overriding node color from parent
+    if (widget.nodeColor != null && !widget.locked) {
+      nodeColor = widget.nodeColor!;
+      borderColor = widget.nodeColor!.withOpacity(0.9);
+      textColor = Colors.white;
+    } else if (widget.locked) {
       nodeColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
       borderColor = isDark ? Colors.grey[600]! : Colors.grey[400]!;
       textColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
@@ -873,6 +963,13 @@ class _CourseNodeState extends State<CourseNode> {
                     shape: BoxShape.circle,
                     color: Colors.white,
                     border: Border.all(color: Colors.green, width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Icon(Icons.check, size: 12, color: Colors.green),
                 ),
@@ -933,15 +1030,15 @@ class _CourseNodeState extends State<CourseNode> {
               ),
               if (widget.isCompleted && !widget.locked)
                 const SizedBox(height: 2),
-              if (widget.isCompleted && !widget.locked)
-                Text(
-                  'Completed',
-                  style: GoogleFonts.poppins(
-                    fontSize: 9,
-                    color: Colors.green,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+              // if (widget.isCompleted && !widget.locked)
+              //   Text(
+              //     'Completed',
+              //     style: GoogleFonts.poppins(
+              //       fontSize: 9,
+              //       color: Colors.green,
+              //       fontWeight: FontWeight.w500,
+              //     ),
+              //   ),
             ],
           ),
         ),
