@@ -17,6 +17,7 @@ class _LearningScreenState extends State<LearningScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   int totalAvaialableCourses = 0;
+  Set<int> _myRegisteredCourseIds = {};
 
   @override
   void initState() {
@@ -33,6 +34,11 @@ class _LearningScreenState extends State<LearningScreen> {
     'Business Management',
   ];
   Future<void> _loadCourses() async {
+    final regs = await _authService.getMyRegistrations();
+    _myRegisteredCourseIds = regs
+        .where((r) => r['course']?['id'] != null)
+        .map((r) => r['course']['id'] as int)
+        .toSet();
     if (!mounted) return;
 
     setState(() {
@@ -81,7 +87,11 @@ class _LearningScreenState extends State<LearningScreen> {
               courseId: course.id!,
             );
 
-            totalLessons = gradesData.length;
+            // Use backend-declared totalLessons when available; otherwise derive from grades list.
+            if (totalLessons <= 0) {
+              totalLessons = gradesData.length;
+            }
+
             doneCount = gradesData.where((entry) {
               return entry['done'] == true;
             }).length;
@@ -223,7 +233,9 @@ class _LearningScreenState extends State<LearningScreen> {
 
           if (isAvailable) {
             final sampleCourse = coursesInfo[index];
-            final isRegistered = _isCourseRegistered(sampleCourse.title);
+            final isRegistered = _myRegisteredCourseIds.contains(
+              sampleCourse.id,
+            );
             final lessonsFinished = _getLessonsFinished(sampleCourse.title);
             final totalLessons = _getTotalLessons(sampleCourse.title);
             final progress = totalLessons > 0
@@ -232,7 +244,7 @@ class _LearningScreenState extends State<LearningScreen> {
 
             return InkWell(
               onTap: () {
-                debugPrint(coursesInfo.map((e) => e.toMap()).toString());
+                // debugPrint(coursesInfo.map((e) => e.toMap()).toString());
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -305,7 +317,7 @@ class _LearningScreenState extends State<LearningScreen> {
                       ],
                     ),
 
-                    if (isRegistered)
+                    if (isRegistered!)
                       Column(
                         children: [
                           LinearProgressIndicator(
