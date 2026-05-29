@@ -156,7 +156,50 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   String? _firestoreCourseId;
   int _completedLessons = 0;
   bool _isLoading = true;
+  bool _didInitialAutoScroll = false;
+  int? _pendingAutoScrollIndex;
+  final ScrollController _scrollController = ScrollController();
+  final List<GlobalKey> _lessonNodeKeys = <GlobalKey>[];
   final UserStatsService _statsService = UserStatsService();
+
+  void _syncLessonNodeKeys(int count) {
+    if (_lessonNodeKeys.length == count) return;
+
+    if (_lessonNodeKeys.length < count) {
+      _lessonNodeKeys.addAll(
+        List<GlobalKey>.generate(
+          count - _lessonNodeKeys.length,
+          (_) => GlobalKey(),
+        ),
+      );
+      return;
+    }
+
+    _lessonNodeKeys.removeRange(count, _lessonNodeKeys.length);
+  }
+
+  void _scheduleAutoScrollToIndex(int? index) {
+    if (index == null || index < 0 || index >= lessons.length) {
+      return;
+    }
+
+    _pendingAutoScrollIndex = index;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _didInitialAutoScroll) return;
+
+      final targetContext = _lessonNodeKeys[index].currentContext;
+      if (targetContext == null) return;
+
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+        alignment: 0.35,
+      );
+
+      _didInitialAutoScroll = true;
+    });
+  }
 
   List<int> _normalizedScores(int desiredLength) {
     if (desiredLength <= 0) return const [];
@@ -229,6 +272,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     _initializeScreen();
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _initializeScreen() async {
     setState(() => _isLoading = true);
 
@@ -254,6 +303,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     unlocked = List.generate(lessons.length, (index) {
       return index <= _completedLessons;
     });
+
+    _syncLessonNodeKeys(lessons.length);
+    _scheduleAutoScrollToIndex(
+      _completedLessons > 0 ? _completedLessons - 1 : null,
+    );
 
     setState(() => _isLoading = false);
   }
@@ -633,7 +687,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final description = lesson.description.trim().isEmpty
         ? 'Start this lesson when you are ready.'
         : lesson.description.trim();
-    final pageLabel = '${lesson.pageCount} pages';
 
     final shouldStart = await showDialog<bool>(
       context: context,
@@ -644,9 +697,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         final accentColor = isLessonDone
             ? const Color(0xFF58CC02)
             : const Color.fromARGB(255, 39, 156, 0);
-        final accentSoftColor = isLessonDone
-            ? const Color(0xFF58CC02).withValues(alpha: 0.12)
-            : const Color(0xFFFFC93C).withValues(alpha: 0.14);
         final buttonLabel = isLessonDone
             ? 'RETAKE THE LESSON'
             : 'START THE LESSON';
@@ -822,6 +872,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final totalNodesInPage = currentPageLessons.length;
     final currentScores = _normalizedScores(totalNodesInPage);
     final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
+    _syncLessonNodeKeys(totalNodesInPage);
+
+    if (!_didInitialAutoScroll && _pendingAutoScrollIndex != null) {
+      _scheduleAutoScrollToIndex(_pendingAutoScrollIndex);
+    }
 
     // build node widgets and compute exact Y positions so painter can follow
     final List<Widget> nodeWidgets = [];
@@ -936,6 +991,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       //nodes
       nodeWidgets.add(
         Positioned(
+          key: _lessonNodeKeys[i],
           top: nodeTop,
           left: i % 2 == 0
               ? MediaQuery.of(context).size.width * 0.18 - 17
@@ -1024,6 +1080,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           //   ),
           Expanded(
             child: SingleChildScrollView(
+              controller: _scrollController,
               physics: const BouncingScrollPhysics(),
               child: SizedBox(
                 height: max(

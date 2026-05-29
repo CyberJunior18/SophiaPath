@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/inline_code_text.dart';
 
 import '../../models/course/course_info.dart';
 import '../../models/course/lesson.dart' as lesson_model;
@@ -219,7 +220,7 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                Text(
+                                                InlineCodeText(
                                                   title,
                                                   style: GoogleFonts.poppins(
                                                     fontWeight: FontWeight.w600,

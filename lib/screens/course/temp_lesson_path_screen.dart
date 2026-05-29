@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../widgets/inline_code_text.dart';
 import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/course_info.dart';
@@ -519,7 +520,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     return Scaffold(
       appBar: AppBar(
         title: FittedBox(
-          child: Text(
+          child: InlineCodeText(
             lessons[_currentLessonPageIndex].title,
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,

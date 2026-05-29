@@ -334,6 +334,17 @@ class AuthService {
       if (map.containsKey('question') || map.containsKey('answers')) {
         return true;
       }
+
+      final blocks = map['blocks'];
+      if (blocks is List) {
+        for (final block in blocks.whereType<Map>()) {
+          final blockMap = Map<String, dynamic>.from(block);
+          final type = (blockMap['type'] ?? '').toString().toLowerCase();
+          if (type == 'mcq' || type == 'fill_code' || type == 'find_error') {
+            return true;
+          }
+        }
+      }
     }
 
     return false;

@@ -29,8 +29,26 @@ class Lesson {
     List<MCQ> parseQuestions(dynamic value) {
       if (value is! List) return const [];
 
-      return value.whereType<Map>().map((item) {
+      return value.whereType<Map>().expand((item) {
         final q = Map<String, dynamic>.from(item);
+        final blocks = q['blocks'];
+
+        if (blocks is List && blocks.isNotEmpty) {
+          return blocks
+              .whereType<Map>()
+              .map(
+                (block) => MCQ.fromExerciseMap(
+                  Map<String, dynamic>.from(block),
+                  fallbackTitle: (q['pageTitle'] ?? q['title'] ?? '')
+                      .toString(),
+                ),
+              )
+              .whereType<MCQ>();
+        }
+
+        final parsedQuestion = MCQ.fromExerciseMap(q);
+        if (parsedQuestion != null) return [parsedQuestion];
+
         final rawOptions = q['options'] ?? q['answers'];
         final options = rawOptions is List
             ? rawOptions
@@ -44,13 +62,15 @@ class Lesson {
                   .toList()
             : <Answer>[];
 
-        return MCQ(
-          question: (q['question'] ?? '').toString(),
-          options: options,
-          correctAnswerIndex: asInt(
-            q['correctAnswerIndex'] ?? q['correctAnswer'],
+        return [
+          MCQ(
+            question: (q['question'] ?? '').toString(),
+            options: options,
+            correctAnswerIndex: asInt(
+              q['correctAnswerIndex'] ?? q['correctAnswer'],
+            ),
           ),
-        );
+        ];
       }).toList();
     }
 
@@ -79,7 +99,12 @@ class Lesson {
       final syntheticContent = Map<String, dynamic>.from(map)
         ..putIfAbsent('id', () => map['id'] ?? map['lessonId'])
         ..putIfAbsent('category', () => map['category'] ?? 'learning')
-        ..putIfAbsent('type', () => map['type'] ?? 'text')
+        ..putIfAbsent(
+          'type',
+          () => (map['category'] ?? '').toString().toLowerCase() == 'exercise'
+              ? 'mcq'
+              : map['type'] ?? 'text',
+        )
         ..putIfAbsent('orderIndex', () => map['orderIndex'] ?? 0)
         ..putIfAbsent('partTitle', () => map['partTitle'] ?? map['title'])
         ..putIfAbsent('chapterName', () => map['chapterName'] ?? '')

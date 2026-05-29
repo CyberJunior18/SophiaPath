@@ -1,4 +1,4 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
+// ignore_for_file: public_member_api_docs, sort_constructors_first, constant_identifier_names, non_constant_identifier_names
 enum LessonContentType { TEXT, VIDEO, IMAGE, MCQ, FILLBLANK }
 
 enum LessonContentLearningType { TEXT, VIDEO, IMAGE }
@@ -160,18 +160,30 @@ class LessonContent {
       return LessonContentType.TEXT;
     }
 
-    final firstPage = rawPages.whereType<Map>().isNotEmpty
-        ? Map<String, dynamic>.from(rawPages.whereType<Map>().first)
-        : <String, dynamic>{};
+    for (final pageItem in rawPages.whereType<Map>()) {
+      final page = Map<String, dynamic>.from(pageItem);
+      final hasQuizFields =
+          page.containsKey('question') ||
+          page.containsKey('answers') ||
+          page.containsKey('correctAnswer') ||
+          page.containsKey('correctAnswerIndex');
 
-    final hasQuizFields =
-        firstPage.containsKey('question') ||
-        firstPage.containsKey('answers') ||
-        firstPage.containsKey('correctAnswer') ||
-        firstPage.containsKey('correctAnswerIndex');
+      if (hasQuizFields) {
+        return LessonContentType.MCQ;
+      }
 
-    if (hasQuizFields) {
-      return LessonContentType.MCQ;
+      final rawBlocks = page['blocks'];
+      if (rawBlocks is List) {
+        for (final blockItem in rawBlocks.whereType<Map>()) {
+          final block = Map<String, dynamic>.from(blockItem);
+          final blockType = (block['type'] ?? '').toString().toLowerCase();
+          if (blockType == 'mcq' ||
+              blockType == 'fill_code' ||
+              blockType == 'find_error') {
+            return LessonContentType.MCQ;
+          }
+        }
+      }
     }
 
     return LessonContentType.TEXT;
@@ -273,39 +285,29 @@ class LessonContent {
     final rawPages = data['pages'];
     if (rawPages is! List) return const [];
 
-    return rawPages
-        .whereType<Map>()
-        .map((pageItem) {
-          final page = Map<String, dynamic>.from(pageItem);
-          final rawOptions = page['options'] ?? page['answers'];
-          final options = rawOptions is List
-              ? rawOptions
-                    .map(
-                      (item) => Answer(
-                        answer: item is Map
-                            ? (item['answer'] ?? '').toString()
-                            : item?.toString() ?? '',
-                      ),
-                    )
-                    .toList()
-              : <Answer>[];
+    final questions = <MCQ>[];
 
-          int asInt(dynamic value) {
-            if (value is int) return value;
-            if (value is num) return value.toInt();
-            return int.tryParse(value?.toString() ?? '') ?? 0;
-          }
+    for (final pageItem in rawPages.whereType<Map>()) {
+      final page = Map<String, dynamic>.from(pageItem);
+      final pageTitle = (page['pageTitle'] ?? page['title'] ?? '').toString();
+      final rawBlocks = page['blocks'];
 
-          return MCQ(
-            question: (page['question'] ?? '').toString(),
-            options: options,
-            correctAnswerIndex: page.containsKey('correctAnswerIndex')
-                ? asInt(page['correctAnswerIndex'])
-                : asInt(page['correctAnswer']),
+      if (rawBlocks is List && rawBlocks.isNotEmpty) {
+        for (final blockItem in rawBlocks.whereType<Map>()) {
+          final question = MCQ.fromExerciseMap(
+            Map<String, dynamic>.from(blockItem),
+            fallbackTitle: pageTitle,
           );
-        })
-        .where((q) => q.question.isNotEmpty && q.options.isNotEmpty)
-        .toList();
+          if (question != null) questions.add(question);
+        }
+        continue;
+      }
+
+      final question = MCQ.fromExerciseMap(page, fallbackTitle: pageTitle);
+      if (question != null) questions.add(question);
+    }
+
+    return questions;
   }
 }
 
@@ -330,6 +332,12 @@ class MCQ {
   final List<Answer> options;
   final int correctAnswerIndex;
   final String answeredTip;
+  final String exerciseType;
+  final String instruction;
+  final String fileName;
+  final String codeLanguage;
+  final List<CodeTemplateLine> codeTemplateLines;
+  final List<String> codeSnippetLines;
 
   MCQ({
     required this.question,
@@ -337,15 +345,159 @@ class MCQ {
     this.correctAnswerIndex = 0,
     this.answeredTip =
         'Focus on the core concept and compare all options before choosing.', // tobeadded for each lesson
+    this.exerciseType = 'mcq',
+    this.instruction = '',
+    this.fileName = '',
+    this.codeLanguage = '',
+    this.codeTemplateLines = const [],
+    this.codeSnippetLines = const [],
   });
 
   String get answerComment => 'Tip: $answeredTip';
+
+  bool get isFillCode => exerciseType == 'fill_code';
+  bool get hasCodeSnippet => codeSnippetLines.isNotEmpty;
+
+  List<CodeTemplateLine> get inputLines =>
+      codeTemplateLines.where((line) => line.type == 'input').toList();
+
+  factory MCQ.fillCode({
+    required String instruction,
+    required String fileName,
+    required String codeLanguage,
+    required List<CodeTemplateLine> codeTemplateLines,
+  }) {
+    return MCQ(
+      question: instruction,
+      options: const [],
+      instruction: instruction,
+      fileName: fileName,
+      codeLanguage: codeLanguage,
+      codeTemplateLines: codeTemplateLines,
+      exerciseType: 'fill_code',
+      answeredTip: 'Compare each blank with the surrounding code.',
+    );
+  }
+
+  static MCQ? fromExerciseMap(
+    Map<String, dynamic> map, {
+    String fallbackTitle = '',
+  }) {
+    final type = (map['type'] ?? 'mcq').toString().toLowerCase();
+
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    List<Answer> parseOptions(dynamic rawOptions) {
+      if (rawOptions is! List) return const [];
+
+      return rawOptions
+          .map(
+            (item) => Answer(
+              answer: item is Map
+                  ? (item['answer'] ?? '').toString()
+                  : item?.toString() ?? '',
+            ),
+          )
+          .where((answer) => answer.answer.isNotEmpty)
+          .toList();
+    }
+
+    if (type == 'fill_code') {
+      final rawTemplate = map['codeTemplate'];
+      final template = rawTemplate is Map
+          ? Map<String, dynamic>.from(rawTemplate)
+          : <String, dynamic>{};
+      final rawLines = template['lines'];
+      final codeLines = rawLines is List
+          ? rawLines
+                .whereType<Map>()
+                .map(
+                  (line) =>
+                      CodeTemplateLine.fromMap(Map<String, dynamic>.from(line)),
+                )
+                .toList()
+          : const <CodeTemplateLine>[];
+
+      if (codeLines.isEmpty) return null;
+
+      return MCQ.fillCode(
+        instruction: (map['instruction'] ?? fallbackTitle).toString(),
+        fileName: (map['fileName'] ?? '').toString(),
+        codeLanguage: (template['language'] ?? '').toString(),
+        codeTemplateLines: codeLines,
+      );
+    }
+
+    final rawSnippet = map['codeSnippet'];
+    final snippet = rawSnippet is Map
+        ? Map<String, dynamic>.from(rawSnippet)
+        : <String, dynamic>{};
+    final rawSnippetLines = snippet['lines'];
+    final snippetLines = rawSnippetLines is List
+        ? rawSnippetLines.map((line) => line.toString()).toList()
+        : const <String>[];
+
+    final question = (map['question'] ?? map['instruction'] ?? fallbackTitle)
+        .toString();
+    final options = parseOptions(map['options'] ?? map['answers']);
+
+    if (question.isEmpty || options.isEmpty) return null;
+
+    return MCQ(
+      question: question,
+      options: options,
+      correctAnswerIndex: map.containsKey('correctAnswerIndex')
+          ? asInt(map['correctAnswerIndex'])
+          : asInt(map['correctAnswer']),
+      exerciseType: type == 'find_error' ? 'find_error' : 'mcq',
+      instruction: (map['instruction'] ?? question).toString(),
+      fileName: (map['fileName'] ?? '').toString(),
+      codeLanguage: (snippet['language'] ?? '').toString(),
+      codeSnippetLines: snippetLines,
+      answeredTip: type == 'find_error'
+          ? 'Read the code from top to bottom and check the syntax carefully.'
+          : 'Focus on the core concept and compare all options before choosing.',
+    );
+  }
 }
 
 class Answer {
   final String answer;
 
   Answer({required this.answer});
+}
+
+class CodeTemplateLine {
+  final String type;
+  final String content;
+  final int width;
+  final String expectedAnswer;
+
+  const CodeTemplateLine({
+    required this.type,
+    this.content = '',
+    this.width = 6,
+    this.expectedAnswer = '',
+  });
+
+  factory CodeTemplateLine.fromMap(Map<String, dynamic> map) {
+    int asInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '') ?? 0;
+    }
+
+    return CodeTemplateLine(
+      type: (map['type'] ?? 'code').toString().toLowerCase(),
+      content: (map['content'] ?? '').toString(),
+      width: asInt(map['width']) > 0 ? asInt(map['width']) : 6,
+      expectedAnswer: (map['expectedAnswer'] ?? '').toString(),
+    );
+  }
 }
 
 // Backend now refers to section content items as "Lesson".

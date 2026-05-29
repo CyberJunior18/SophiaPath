@@ -339,6 +339,9 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
       case 'table':
         return _buildTable(context, block);
 
+      case 'normal_code':
+        return _buildNormalCodeBlock(context, block);
+
       default:
         return Container(
           width: double.infinity,
@@ -455,31 +458,38 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
   ) {
     final headers = block.headers;
     final rows = block.rows;
+    final columnCount = rows.fold<int>(
+      headers.length,
+      (currentMax, row) => row.length > currentMax ? row.length : currentMax,
+    );
 
-    if (headers.isEmpty && rows.isEmpty) {
+    if (columnCount == 0) {
       return const SizedBox.shrink();
     }
 
     final borderColor = Theme.of(context).colorScheme.outlineVariant;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Table(
-        border: TableBorder.all(color: borderColor),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        columnWidths: {
-          for (int i = 0; i < headers.length; i++)
-            i: const IntrinsicColumnWidth(),
-        },
-        children: [
-          if (headers.isNotEmpty)
-            TableRow(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-              children: headers
-                  .map(
-                    (header) => Padding(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          child: Table(
+            border: TableBorder.all(color: borderColor),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            columnWidths: {
+              for (int i = 0; i < columnCount; i++) i: const FlexColumnWidth(),
+            },
+            children: [
+              if (headers.isNotEmpty)
+                TableRow(
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                  ),
+                  children: List.generate(columnCount, (index) {
+                    final header = index < headers.length ? headers[index] : '';
+                    return Padding(
                       padding: const EdgeInsets.all(12),
                       child: Text(
                         header,
@@ -488,24 +498,26 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                           fontSize: 13,
                         ),
                       ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ...rows.map(
-            (row) => TableRow(
-              children: row
-                  .map(
-                    (cell) => Padding(
+                    );
+                  }),
+                ),
+              ...rows.map(
+                (row) => TableRow(
+                  children: List.generate(columnCount, (index) {
+                    final cell = index < row.length
+                        ? row[index]
+                        : const <String, dynamic>{};
+                    return Padding(
                       padding: const EdgeInsets.all(12),
                       child: _buildTableCell(context, cell),
-                    ),
-                  )
-                  .toList(),
-            ),
+                    );
+                  }),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -531,6 +543,236 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
       ),
     );
   }
+
+  Widget _buildNormalCodeBlock(
+    BuildContext context,
+    lesson_content_model.LessonBlock block,
+  ) {
+    final snippet = block.raw['codeSnippet'];
+    final snippetMap = snippet is Map
+        ? Map<String, dynamic>.from(snippet)
+        : const <String, dynamic>{};
+    final language = (snippetMap['language'] ?? '').toString().trim();
+    final rawLines = snippetMap['lines'] ?? block.raw['lines'];
+    final lines = rawLines is List
+        ? rawLines.map((line) => line.toString()).toList()
+        : const <String>[];
+
+    if (lines.isEmpty && block.text.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final codeLines = lines.isNotEmpty ? lines : block.text.split('\n');
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHigh,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
+                    border: Border(
+                      bottom: BorderSide(color: colorScheme.outlineVariant),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.code, size: 18, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          language.isNotEmpty ? language.toUpperCase() : 'CODE',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(codeLines.length, (index) {
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == codeLines.length - 1 ? 0 : 6,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  '${index + 1}',
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: 12,
+                                    height: 1.5,
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.75),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _buildHighlightedCodeText(
+                                context,
+                                codeLines[index],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHighlightedCodeText(BuildContext context, String code) {
+    final theme = Theme.of(context);
+
+    return RichText(
+      text: _highlightedCodeTextSpan(
+        code,
+        theme,
+        GoogleFonts.robotoMono(
+          fontSize: 13,
+          height: 1.5,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      softWrap: false,
+    );
+  }
+
+  TextSpan _highlightedCodeTextSpan(
+    String source,
+    ThemeData theme,
+    TextStyle baseStyle,
+  ) {
+    final spans = <TextSpan>[];
+    var lastMatchEnd = 0;
+
+    for (final match in _codeTokenPattern.allMatches(source)) {
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(text: source.substring(lastMatchEnd, match.start)));
+      }
+
+      final token = source.substring(match.start, match.end);
+      spans.add(TextSpan(text: token, style: _styleForCodeToken(token, theme)));
+      lastMatchEnd = match.end;
+    }
+
+    if (lastMatchEnd < source.length) {
+      spans.add(TextSpan(text: source.substring(lastMatchEnd)));
+    }
+
+    return TextSpan(style: baseStyle, children: spans);
+  }
+
+  TextStyle _styleForCodeToken(String token, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    Color color;
+    FontWeight fontWeight = FontWeight.w400;
+
+    if (token.startsWith('//')) {
+      color = isDark ? const Color(0xFF6A9955) : const Color(0xFF008000);
+    } else if (token.startsWith('/*')) {
+      color = isDark ? const Color(0xFF6A9955) : const Color(0xFF008000);
+    } else if (token.startsWith('"') || token.startsWith("'")) {
+      color = isDark ? const Color(0xFFCE9178) : const Color(0xFFA31515);
+    } else if (RegExp(r'^\d').hasMatch(token)) {
+      color = isDark ? const Color(0xFFB5CEA8) : const Color(0xFF098658);
+    } else if (_codeKeywords.contains(token)) {
+      color = isDark ? const Color(0xFF569CD6) : const Color(0xFF0000FF);
+      fontWeight = FontWeight.w600;
+    } else if (_codeLibraryWords.contains(token)) {
+      color = isDark ? const Color(0xFFDCDCAA) : const Color(0xFF795E26);
+    } else {
+      color = isDark ? const Color(0xFFD4D4D4) : const Color(0xFF333333);
+    }
+
+    return TextStyle(color: color, fontWeight: fontWeight);
+  }
+
+  static final RegExp _codeTokenPattern = RegExp(
+    r'''(//.*$|/\*.*?\*/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:#include|using|namespace|int|return|void|double|float|char|string|bool|if|else|for|while|class|struct|public|private|true|false|const|auto|long|short|switch|case|break|continue|new|delete)\b|\b(?:cout|cin|std|endl|main)\b|\b\d+(?:\.\d+)?\b|[{}()[\];,<>+\-*/=])''',
+    multiLine: true,
+    dotAll: true,
+  );
+
+  static const Set<String> _codeKeywords = {
+    '#include',
+    'using',
+    'namespace',
+    'int',
+    'return',
+    'void',
+    'double',
+    'float',
+    'char',
+    'string',
+    'bool',
+    'if',
+    'else',
+    'for',
+    'while',
+    'class',
+    'struct',
+    'public',
+    'private',
+    'true',
+    'false',
+    'const',
+    'auto',
+    'long',
+    'short',
+    'switch',
+    'case',
+    'break',
+    'continue',
+    'new',
+    'delete',
+  };
+
+  static const Set<String> _codeLibraryWords = {
+    'cout',
+    'cin',
+    'std',
+    'endl',
+    'main',
+  };
 }
 
 class _LessonPageViewModel {
