@@ -1484,69 +1484,123 @@ class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final lineCount = max(1, widget.controller.text.split('\n').length);
-    final theme = widget.theme;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final theme = widget.theme;
+        final codeStyle = GoogleFonts.robotoMono(
+          fontSize: 13,
+          height: 1.45,
+          color: theme.colorScheme.onSurface,
+        );
+        const gutterWidth = 25.0;
+        const codeHorizontalPadding = 12.0 * 2;
+        final availableWidth = max(
+          0.0,
+          constraints.maxWidth - gutterWidth - codeHorizontalPadding,
+        );
+        final gutterLabels = _buildGutterLabels(
+          widget.controller.text,
+          codeStyle,
+          availableWidth,
+        );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: 25,
-          child: ListView.builder(
-            controller: widget.gutterScrollController,
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.only(top: 8, bottom: 8),
-            itemExtent: 19,
-            itemCount: lineCount,
-            itemBuilder: (context, index) {
-              return Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text(
-                    '${index + 1}',
-                    textAlign: TextAlign.right,
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 12,
-                      height: 1.45,
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: 0.55,
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: gutterWidth,
+              child: ListView.builder(
+                controller: widget.gutterScrollController,
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.only(top: 8, bottom: 8),
+                itemExtent: 19,
+                itemCount: gutterLabels.length,
+                itemBuilder: (context, index) {
+                  final label = gutterLabels[index];
+                  return Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text(
+                        label ?? '',
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 12,
+                          height: 1.45,
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.55),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 0),
-        Expanded(
-          child: TextField(
-            controller: widget.controller,
-            scrollController: widget.editorScrollController,
-            expands: true,
-            maxLines: null,
-            minLines: null,
-            keyboardType: TextInputType.multiline,
-            autocorrect: false,
-            enableSuggestions: false,
-            cursorColor: theme.colorScheme.primary,
-            style: GoogleFonts.robotoMono(
-              fontSize: 13,
-              height: 1.45,
-              color: theme.colorScheme.onSurface,
-            ),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                vertical: 11,
-                horizontal: 12,
+                  );
+                },
               ),
             ),
-          ),
-        ),
-      ],
+            const SizedBox(width: 0),
+            Expanded(
+              child: TextField(
+                controller: widget.controller,
+                scrollController: widget.editorScrollController,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                keyboardType: TextInputType.multiline,
+                autocorrect: false,
+                enableSuggestions: false,
+                cursorColor: theme.colorScheme.primary,
+                style: codeStyle,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(
+                    vertical: 11,
+                    horizontal: 12,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  List<String?> _buildGutterLabels(
+    String source,
+    TextStyle style,
+    double availableWidth,
+  ) {
+    final lines = source.isEmpty ? <String>[''] : source.split('\n');
+    final labels = <String?>[];
+
+    for (var index = 0; index < lines.length; index++) {
+      final visualLineCount = _countWrappedVisualLines(
+        lines[index],
+        style,
+        availableWidth,
+      );
+      labels.add('${index + 1}');
+      for (var wrappedIndex = 1; wrappedIndex < visualLineCount; wrappedIndex++) {
+        labels.add(null);
+      }
+    }
+
+    return labels.isEmpty ? <String?>[null] : labels;
+  }
+
+  int _countWrappedVisualLines(
+    String text,
+    TextStyle style,
+    double availableWidth,
+  ) {
+    if (availableWidth <= 0) return 1;
+
+    final painter = TextPainter(
+      text: TextSpan(text: text.isEmpty ? ' ' : text, style: style),
+      textDirection: TextDirection.ltr,
+      maxLines: null,
+    )..layout(maxWidth: availableWidth);
+
+    return max(1, painter.computeLineMetrics().length);
   }
 }
 

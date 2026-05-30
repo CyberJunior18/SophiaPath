@@ -568,6 +568,8 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     }
 
     final codeLines = lines.isNotEmpty ? lines : block.text.split('\n');
+    final codeText = codeLines.join('\n');
+    final canRunCode = _canRunCppSnippet(codeLines);
     final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
@@ -614,6 +616,20 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                           ),
                         ),
                       ),
+                      if (canRunCode) ...[
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: () => _openCppPlayground(
+                            context,
+                            title: language.isNotEmpty
+                                ? language.toUpperCase()
+                                : 'Code Snippet',
+                            initialCode: codeText,
+                          ),
+                          icon: const Icon(Icons.play_arrow_rounded),
+                          label: const Text('Run'),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -666,6 +682,29 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
           ),
         );
       },
+    );
+  }
+
+  bool _canRunCppSnippet(List<String> codeLines) {
+    for (final line in codeLines) {
+      final trimmed = line.trimLeft();
+      if (trimmed.isEmpty) continue;
+      return trimmed.startsWith('#include');
+    }
+    return false;
+  }
+
+  void _openCppPlayground(
+    BuildContext context, {
+    required String title,
+    required String initialCode,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            CppPlaygroundScreen(title: title, initialCode: initialCode),
+      ),
     );
   }
 
