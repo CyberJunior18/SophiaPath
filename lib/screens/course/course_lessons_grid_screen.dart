@@ -252,6 +252,9 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                       itemBuilder: (context, index) {
                         final item = filtered[index];
                         final lesson = item.lesson;
+                        final isChapterTest = lesson.title
+                            .toLowerCase()
+                            .startsWith('chapter test');
                         final chapterName = lesson.contents.isNotEmpty
                             ? lesson.contents.first.chapterName
                             : 'General';
@@ -361,6 +364,20 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 6),
+                                Icon(
+                                    isChapterTest
+                                      ? Icons.local_cafe_outlined
+                                      : lesson.questions.isNotEmpty
+                                      ? Icons.quiz_outlined
+                                      : Icons.menu_book_outlined,
+                                  size: 28,
+                                    color: isChapterTest
+                                      ? Colors.brown
+                                      : lesson.questions.isNotEmpty
+                                      ? Colors.orange
+                                      : Colors.blue,
+                                ),
+                                const SizedBox(height: 8),
                                 Text(
                                   lesson.title,
                                   maxLines: 2,
@@ -383,13 +400,17 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                 Row(
                                   children: [
                                     _Badge(
-                                      icon: Icons.menu_book_outlined,
+                                        icon: isChapterTest
+                                          ? Icons.local_cafe_outlined
+                                          : Icons.menu_book_outlined,
                                       text:
                                           '${_sectionLessonCounts[lesson.id] ?? lesson.contents.length}',
                                     ),
                                     const SizedBox(width: 8),
                                     _Badge(
-                                      icon: Icons.quiz_outlined,
+                                        icon: lesson.questions.isNotEmpty
+                                          ? Icons.quiz_outlined
+                                          : Icons.local_cafe_outlined,
                                       text:
                                           '${_sectionQuizCounts[lesson.id] ?? lesson.questions.length}',
                                     ),

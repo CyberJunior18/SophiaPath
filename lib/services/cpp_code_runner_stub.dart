@@ -14,9 +14,19 @@ class CppRunResult {
 }
 
 class CppCodeRunner {
-  Future<CppRunResult> run(String code) async {
+  Future<CppRunResult> run(String code, {String input = ''}) async {
     return CppRunResult.error(
       'Running C++ code requires a local app build with g++ or clang++ installed.',
+    );
+  }
+
+  Future<List<CppRunResult>> runBatch(String code, List<String> inputs) async {
+    return List<CppRunResult>.filled(
+      inputs.length,
+      CppRunResult.error(
+        'Running C++ code requires a local app build with g++ or clang++ installed.',
+      ),
+      growable: false,
     );
   }
 }

@@ -70,6 +70,12 @@ class _McqTestScreenState extends State<McqTestScreen> {
       return;
     }
 
+    if (question.isCodeChallenge) {
+      currentAnswers = const [];
+      currentCorrectIndex = -1;
+      return;
+    }
+
     _shuffleCurrentAnswers();
   }
 
@@ -399,7 +405,23 @@ class _McqTestScreenState extends State<McqTestScreen> {
                     ),
                     const SizedBox(height: 30),
                     if (question.hasCodeSnippet) ...[
-                      _buildCodeSnippetCard(question, theme),
+                      _buildCodeSnippetCard(
+                        context,
+                        question,
+                        theme,
+                        onRunPlayground: () async {
+                          final passed = await _openCodePlayground(question);
+                          if (passed == true &&
+                              question.isCodeChallenge &&
+                              mounted) {
+                            setState(() {
+                              answered = true;
+                              lastAnswerCorrect = true;
+                              correctAnswers++;
+                            });
+                          }
+                        },
+                      ),
                       const SizedBox(height: 22),
                     ],
                     if (question.isFillCode) ...[
@@ -425,6 +447,40 @@ class _McqTestScreenState extends State<McqTestScreen> {
                             ),
                           ),
                         ),
+                    ] else if (question.isCodeChallenge) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Open the code editor, run the visible and hidden tests, then return here when your solution passes.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: theme.textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: answered
+                              ? null
+                              : () {
+                                  setState(() {
+                                    answered = true;
+                                    lastAnswerCorrect = false;
+                                  });
+                                },
+                          icon: const Icon(Icons.skip_next_rounded),
+                          label: const Text('Skip Challenge (0 points)'),
+                        ),
+                      ),
                     ] else
                       ...List.generate(currentAnswers.length, (i) {
                         bool isSelected = i == selectedIndex;
@@ -599,13 +655,14 @@ class _McqTestScreenState extends State<McqTestScreen> {
     });
   }
 
-  void _openCodePlayground(MCQ question) {
-    Navigator.push(
+  Future<bool?> _openCodePlayground(MCQ question) {
+    return Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => CppPlaygroundScreen(
           title: question.fileName.isNotEmpty ? question.fileName : 'C++ Code',
           initialCode: _editableCodeForQuestion(question),
+          testCases: [...question.testCases, ...question.hiddenTestCases],
         ),
       ),
     );
@@ -665,7 +722,14 @@ class _McqTestScreenState extends State<McqTestScreen> {
     return lines.join('\n');
   }
 
-  Widget _buildCodeSnippetCard(MCQ question, ThemeData theme) {
+  Widget _buildCodeSnippetCard(
+    BuildContext context,
+    MCQ question,
+    ThemeData theme, {
+    Future<void> Function()? onRunPlayground,
+  }) {
+    final canRun = question.isCodeChallenge || question.isFillCode || answered;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -677,7 +741,12 @@ class _McqTestScreenState extends State<McqTestScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCodeHeader(question, theme, showPlaygroundButton: true),
+          _buildCodeHeader(
+            question,
+            theme,
+            showPlaygroundButton: canRun,
+            onRunPlayground: onRunPlayground,
+          ),
           const SizedBox(height: 10),
           ...List.generate(question.codeSnippetLines.length, (index) {
             final codeLine = question.codeSnippetLines[index].isEmpty
@@ -780,6 +849,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
     MCQ question,
     ThemeData theme, {
     bool showPlaygroundButton = false,
+    Future<void> Function()? onRunPlayground,
   }) {
     final title = question.fileName.isNotEmpty
         ? question.fileName
@@ -806,7 +876,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
           const Spacer(),
         if (showPlaygroundButton)
           TextButton.icon(
-            onPressed: () => _openCodePlayground(question),
+            onPressed: onRunPlayground == null
+                ? () => _openCodePlayground(question)
+                : () async => onRunPlayground(),
             icon: const Icon(Icons.terminal_rounded, size: 18),
             label: const Text('Run'),
             style: TextButton.styleFrom(
@@ -827,21 +899,29 @@ class _McqTestScreenState extends State<McqTestScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 28,
-            child: Text(
-              '$lineNumber',
-              textAlign: TextAlign.right,
-              style: GoogleFonts.robotoMono(
-                fontSize: 12,
-                height: 1.45,
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+            width: 22,
+            child: SizedBox(
+              height: 19,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '$lineNumber',
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: theme.textTheme.bodySmall?.color?.withValues(
+                      alpha: 0.6,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(child: child),
         ],
       ),
@@ -859,6 +939,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
           color: theme.colorScheme.onSurface,
         ),
       ),
+      softWrap: true,
+      overflow: TextOverflow.visible,
+      textWidthBasis: TextWidthBasis.parent,
     );
   }
 
@@ -903,11 +986,13 @@ class _McqTestScreenState extends State<McqTestScreen> {
 class CppPlaygroundScreen extends StatefulWidget {
   final String title;
   final String initialCode;
+  final List<CodeChallengeTestCase> testCases;
 
   const CppPlaygroundScreen({
     super.key,
     required this.title,
     required this.initialCode,
+    this.testCases = const [],
   });
 
   @override
@@ -916,46 +1001,303 @@ class CppPlaygroundScreen extends StatefulWidget {
 
 class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
   late final CppCodeController _codeController;
+  final ScrollController _editorScrollController = ScrollController();
+  final ScrollController _gutterScrollController = ScrollController();
   final CppCodeRunner _cppCodeRunner = CppCodeRunner();
   String _output = '';
   bool _hasRunError = false;
   bool _isRunning = false;
+  bool _testsPassed = false;
+  int _passedTests = 0;
+  int _totalTests = 0;
+  List<_PlaygroundTestResult> _testResults = const [];
 
   @override
   void initState() {
     super.initState();
     _codeController = CppCodeController(text: widget.initialCode);
+    _editorScrollController.addListener(_syncScrollFromEditor);
+    _gutterScrollController.addListener(_syncScrollFromGutter);
     _runCode();
   }
 
   @override
   void dispose() {
+    _editorScrollController
+      ..removeListener(_syncScrollFromEditor)
+      ..dispose();
+    _gutterScrollController
+      ..removeListener(_syncScrollFromGutter)
+      ..dispose();
     _codeController.dispose();
     super.dispose();
+  }
+
+  void _syncScrollFromEditor() {
+    if (!_gutterScrollController.hasClients ||
+        !_editorScrollController.hasClients) {
+      return;
+    }
+    if (_gutterScrollController.offset == _editorScrollController.offset)
+      return;
+    _gutterScrollController.jumpTo(_editorScrollController.offset);
+  }
+
+  void _syncScrollFromGutter() {
+    if (!_gutterScrollController.hasClients ||
+        !_editorScrollController.hasClients) {
+      return;
+    }
+    if (_editorScrollController.offset == _gutterScrollController.offset)
+      return;
+    _editorScrollController.jumpTo(_gutterScrollController.offset);
   }
 
   Future<void> _runCode() async {
     if (_isRunning) return;
 
     setState(() {
-      _output = 'Compiling and running...';
+      _output = widget.testCases.isEmpty
+          ? 'Compiling and running...'
+          : 'Compiling and running tests...';
       _hasRunError = false;
       _isRunning = true;
+      _testsPassed = false;
+      _passedTests = 0;
+      _totalTests = widget.testCases.length;
+      _testResults = const [];
     });
 
-    late final CppRunResult result;
     try {
-      result = await _cppCodeRunner.run(_codeController.text);
-    } catch (error) {
-      result = CppRunResult.error('Failed to run code: $error');
-    }
-    if (!mounted) return;
+      if (widget.testCases.isEmpty) {
+        final result = await _cppCodeRunner.run(_codeController.text);
+        if (!mounted) return;
 
-    setState(() {
-      _output = result.output;
-      _hasRunError = result.isError;
-      _isRunning = false;
-    });
+        setState(() {
+          _output = result.output;
+          _hasRunError = result.isError;
+          _isRunning = false;
+        });
+        return;
+      }
+
+      final inputs = widget.testCases
+          .map((testCase) => testCase.input)
+          .toList();
+      final runResults = await _cppCodeRunner.runBatch(
+        _codeController.text,
+        inputs,
+      );
+      if (!mounted) return;
+
+      final testResults = <_PlaygroundTestResult>[];
+      var passed = 0;
+
+      for (var index = 0; index < widget.testCases.length; index++) {
+        final testCase = widget.testCases[index];
+        final runResult = runResults[index];
+        final actual = _normalizeOutput(runResult.output);
+        final expected = _normalizeOutput(testCase.expectedOutput);
+        final isPassed = !runResult.isError && actual == expected;
+        if (isPassed) passed++;
+
+        testResults.add(
+          _PlaygroundTestResult(
+            index: index,
+            testCase: testCase,
+            runResult: runResult,
+            passed: isPassed,
+          ),
+        );
+      }
+
+      setState(() {
+        _passedTests = passed;
+        _totalTests = widget.testCases.length;
+        _testsPassed = passed == widget.testCases.length;
+        _output = 'Passed $_passedTests/$_totalTests tests.';
+        _testResults = testResults;
+        _hasRunError = !_testsPassed;
+        _isRunning = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _output = 'Failed to run code: $error';
+        _hasRunError = true;
+        _isRunning = false;
+      });
+    }
+  }
+
+  String _normalizeOutput(String text) {
+    final normalized = text.replaceAll('\r\n', '\n');
+    final lines = normalized
+        .split('\n')
+        .map((line) => line.trimRight())
+        .toList();
+
+    while (lines.isNotEmpty && lines.first.trim().isEmpty) {
+      lines.removeAt(0);
+    }
+    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
+      lines.removeLast();
+    }
+
+    return lines.join('\n').trim();
+  }
+
+  Widget _buildSplitTestResultCard(
+    ThemeData theme,
+    _PlaygroundTestResult result,
+  ) {
+    final borderColor = result.passed
+        ? Colors.green.withValues(alpha: 0.3)
+        : theme.colorScheme.error.withValues(alpha: 0.3);
+    final tintColor = result.passed
+        ? Colors.green.withValues(alpha: 0.08)
+        : theme.colorScheme.error.withValues(alpha: 0.08);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  result.label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              Icon(
+                result.passed ? Icons.check_circle : Icons.cancel,
+                color: result.passed ? Colors.green : theme.colorScheme.error,
+                size: 20,
+              ),
+            ],
+          ),
+          if (result.input.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Input',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                result.input,
+                style: GoogleFonts.robotoMono(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _buildOutputSidePanel(
+                  theme: theme,
+                  title: 'Expected',
+                  content: result.expectedOutput,
+                  backgroundColor: tintColor,
+                  borderColor: borderColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildOutputSidePanel(
+                  theme: theme,
+                  title: 'Actual',
+                  content: result.actualOutput,
+                  backgroundColor: result.passed
+                      ? Colors.green.withValues(alpha: 0.04)
+                      : theme.colorScheme.error.withValues(alpha: 0.04),
+                  borderColor: borderColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            result.passed ? 'Passed' : 'Failed',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: result.passed ? Colors.green : theme.colorScheme.error,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutputSidePanel({
+    required ThemeData theme,
+    required String title,
+    required String content,
+    required Color backgroundColor,
+    required Color borderColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            content.isEmpty ? '(no output)' : content,
+            style: GoogleFonts.robotoMono(
+              fontSize: 12.5,
+              height: 1.45,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -983,24 +1325,11 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
               flex: 3,
               child: _PlaygroundPanel(
                 title: 'Code',
-                child: TextField(
+                child: _NumberedCodeEditor(
                   controller: _codeController,
-                  expands: true,
-                  maxLines: null,
-                  minLines: null,
-                  keyboardType: TextInputType.multiline,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  cursorColor: theme.colorScheme.primary,
-                  style: GoogleFonts.robotoMono(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(12),
-                  ),
+                  editorScrollController: _editorScrollController,
+                  gutterScrollController: _gutterScrollController,
+                  theme: theme,
                 ),
               ),
             ),
@@ -1008,15 +1337,27 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isRunning ? null : _runCode,
+                onPressed: _isRunning
+                    ? null
+                    : widget.testCases.isNotEmpty && _testsPassed
+                    ? () => Navigator.pop(context, true)
+                    : _runCode,
                 icon: _isRunning
                     ? const SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
+                    : widget.testCases.isNotEmpty && _testsPassed
+                    ? const Icon(Icons.check_circle_outline)
                     : const Icon(Icons.play_arrow_rounded),
-                label: Text(_isRunning ? 'Running...' : 'Run Code'),
+                label: Text(
+                  _isRunning
+                      ? 'Running...'
+                      : widget.testCases.isNotEmpty && _testsPassed
+                      ? 'Use This Solution'
+                      : 'Run Code',
+                ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -1029,25 +1370,182 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
             Expanded(
               flex: 2,
               child: _PlaygroundPanel(
-                title: 'Output',
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    _output,
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 13,
-                      height: 1.45,
-                      color: _hasRunError
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
+                title: widget.testCases.isEmpty ? 'Output' : 'Test Results',
+                child: widget.testCases.isEmpty
+                    ? SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          _output,
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: _hasRunError
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _output,
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _testsPassed
+                                    ? Colors.green
+                                    : theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ..._testResults.map(
+                              (result) =>
+                                  _buildSplitTestResultCard(theme, result),
+                            ),
+                          ],
+                        ),
+                      ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PlaygroundTestResult {
+  final int index;
+  final CodeChallengeTestCase testCase;
+  final CppRunResult runResult;
+  final bool passed;
+
+  const _PlaygroundTestResult({
+    required this.index,
+    required this.testCase,
+    required this.runResult,
+    required this.passed,
+  });
+
+  String get label =>
+      testCase.hidden ? 'Hidden Test ${index + 1}' : 'Test ${index + 1}';
+
+  String get input => testCase.input;
+
+  String get expectedOutput => testCase.expectedOutput;
+
+  String get actualOutput => runResult.output;
+}
+
+class _NumberedCodeEditor extends StatefulWidget {
+  final CppCodeController controller;
+  final ScrollController editorScrollController;
+  final ScrollController gutterScrollController;
+  final ThemeData theme;
+
+  const _NumberedCodeEditor({
+    required this.controller,
+    required this.editorScrollController,
+    required this.gutterScrollController,
+    required this.theme,
+  });
+
+  @override
+  State<_NumberedCodeEditor> createState() => _NumberedCodeEditorState();
+}
+
+class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
+  late final VoidCallback _listener;
+
+  @override
+  void initState() {
+    super.initState();
+    _listener = () => setState(() {});
+    widget.controller.addListener(_listener);
+  }
+
+  @override
+  void didUpdateWidget(covariant _NumberedCodeEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_listener);
+      widget.controller.addListener(_listener);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_listener);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lineCount = max(1, widget.controller.text.split('\n').length);
+    final theme = widget.theme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 25,
+          child: ListView.builder(
+            controller: widget.gutterScrollController,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            itemExtent: 19,
+            itemCount: lineCount,
+            itemBuilder: (context, index) {
+              return Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    '${index + 1}',
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 0),
+        Expanded(
+          child: TextField(
+            controller: widget.controller,
+            scrollController: widget.editorScrollController,
+            expands: true,
+            maxLines: null,
+            minLines: null,
+            keyboardType: TextInputType.multiline,
+            autocorrect: false,
+            enableSuggestions: false,
+            cursorColor: theme.colorScheme.primary,
+            style: GoogleFonts.robotoMono(
+              fontSize: 13,
+              height: 1.45,
+              color: theme.colorScheme.onSurface,
+            ),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                vertical: 11,
+                horizontal: 12,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

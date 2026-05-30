@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
+import '../../widgets/inline_code_text.dart';
 import '../authentication/authService.dart';
+import '../Lessons/mcq_test_screen.dart';
 
 class LessonContentScreen extends StatefulWidget {
   final lesson_model.Section lesson;
@@ -342,6 +344,9 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
       case 'normal_code':
         return _buildNormalCodeBlock(context, block);
 
+      case 'code_challenge':
+        return _buildCodeChallengeBlock(context, block);
+
       default:
         return Container(
           width: double.infinity,
@@ -612,43 +617,48 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                     ],
                   ),
                 ),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: List.generate(codeLines.length, (index) {
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index == codeLines.length - 1 ? 0 : 6,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                child: Text(
-                                  '${index + 1}',
-                                  textAlign: TextAlign.right,
-                                  style: GoogleFonts.robotoMono(
-                                    fontSize: 12,
-                                    height: 1.5,
-                                    color: colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.75),
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(codeLines.length, (index) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == codeLines.length - 1 ? 0 : 6,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 22,
+                              child: SizedBox(
+                                height: 19,
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    '${index + 1}',
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.robotoMono(
+                                      fontSize: 12,
+                                      height: 1.5,
+                                      color: colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.75),
+                                    ),
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              _buildHighlightedCodeText(
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: _buildHighlightedCodeText(
                                 context,
                                 codeLines[index],
                               ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
                 ),
               ],
@@ -656,6 +666,267 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCodeChallengeBlock(
+    BuildContext context,
+    lesson_content_model.LessonBlock block,
+  ) {
+    final rawStarterCode = block.raw['starterCode'];
+    final starterCode = rawStarterCode is Map
+        ? Map<String, dynamic>.from(rawStarterCode)
+        : const <String, dynamic>{};
+    final language = (starterCode['language'] ?? '').toString().trim();
+    final rawLines = starterCode['lines'];
+    final starterLines = rawLines is List
+        ? rawLines.map((line) => line.toString()).toList()
+        : const <String>[];
+    final starterCodeText = starterLines.join('\n');
+    final colorScheme = Theme.of(context).colorScheme;
+
+    List<lesson_content_model.CodeChallengeTestCase> parseCases(
+      dynamic rawCases, {
+      bool hidden = false,
+    }) {
+      if (rawCases is! List) return const [];
+
+      return rawCases
+          .whereType<Map>()
+          .map(
+            (item) => lesson_content_model.CodeChallengeTestCase.fromMap(
+              Map<String, dynamic>.from(item),
+              hidden: hidden,
+            ),
+          )
+          .where(
+            (testCase) =>
+                testCase.input.isNotEmpty || testCase.expectedOutput.isNotEmpty,
+          )
+          .toList();
+    }
+
+    final testCases = [
+      ...parseCases(block.raw['testCases']),
+      ...parseCases(block.raw['hiddenTestCases'], hidden: true),
+    ];
+
+    Widget section(String title, String body) {
+      if (body.trim().isEmpty) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            InlineCodeText(
+              body,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                height: 1.5,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final example = block.raw['example'];
+    final exampleMap = example is Map
+        ? Map<String, dynamic>.from(example)
+        : const <String, dynamic>{};
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_cafe_outlined, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Code Challenge',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: starterCodeText.isEmpty
+                    ? null
+                    : () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CppPlaygroundScreen(
+                              title:
+                                  block.raw['problem']?.toString().isNotEmpty ==
+                                      true
+                                  ? block.raw['problem'].toString()
+                                  : 'Code Challenge',
+                              initialCode: starterCodeText,
+                              testCases: testCases,
+                            ),
+                          ),
+                        );
+                      },
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Run'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          section('Problem', block.raw['problem']?.toString() ?? ''),
+          section('Input format', block.raw['inputFormat']?.toString() ?? ''),
+          section('Output format', block.raw['outputFormat']?.toString() ?? ''),
+          section('Constraints', block.raw['constraints']?.toString() ?? ''),
+          if (exampleMap.isNotEmpty) ...[
+            Text(
+              'Example',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            if ((exampleMap['input'] ?? '').toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: InlineCodeText(
+                  'Input: ${exampleMap['input']}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            if ((exampleMap['output'] ?? '').toString().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: InlineCodeText(
+                  'Output: ${exampleMap['output']}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            if ((exampleMap['explanation'] ?? '').toString().isNotEmpty)
+              InlineCodeText(
+                'Explanation: ${exampleMap['explanation']}',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            const SizedBox(height: 16),
+          ],
+          if (language.isNotEmpty || starterCodeText.isNotEmpty) ...[
+            Text(
+              'Starter Code',
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (language.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        language.toUpperCase(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ...starterLines.asMap().entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            child: Text(
+                              '${entry.key + 1}',
+                              textAlign: TextAlign.right,
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 12,
+                                height: 1.45,
+                                color: colorScheme.onSurfaceVariant.withValues(
+                                  alpha: 0.75,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.robotoMono(
+                                  fontSize: 13,
+                                  height: 1.45,
+                                  color: colorScheme.onSurface,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: entry.value.isEmpty
+                                        ? ' '
+                                        : entry.value,
+                                  ),
+                                ],
+                              ),
+                              softWrap: true,
+                              overflow: TextOverflow.visible,
+                              textWidthBasis: TextWidthBasis.parent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -672,7 +943,9 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
           color: theme.colorScheme.onSurface,
         ),
       ),
-      softWrap: false,
+      softWrap: true,
+      overflow: TextOverflow.visible,
+      textWidthBasis: TextWidthBasis.parent,
     );
   }
 

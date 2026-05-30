@@ -180,6 +180,9 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                               final category = (lessonMap['category'] ?? '')
                                   .toString()
                                   .toLowerCase();
+                                final isChapterTest = title
+                                  .toLowerCase()
+                                  .startsWith('chapter test');
 
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
@@ -203,13 +206,17 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                                       child: Row(
                                         children: [
                                           Icon(
-                                            category == 'exercise' ||
+                                            isChapterTest
+                                              ? Icons.local_cafe_outlined
+                                                : category == 'exercise' ||
                                                     category == 'mcq'
                                                 ? Icons.quiz_outlined
                                                 : Icons.menu_book_outlined,
                                             size: 20,
                                             color:
-                                                category == 'exercise' ||
+                                                isChapterTest
+                                                ? Colors.brown
+                                                : category == 'exercise' ||
                                                     category == 'mcq'
                                                 ? Colors.orange
                                                 : Colors.blue,

@@ -21,6 +21,7 @@ Map<String, LessonContentType> stringToLessonContentType = {
   'image': LessonContentType.IMAGE,
   'mcq': LessonContentType.MCQ,
   'fillblank': LessonContentType.FILLBLANK,
+  'code_challenge': LessonContentType.MCQ,
 };
 
 Map<String, LessonContentCategory> stringToLessonContentCategory = {
@@ -36,6 +37,29 @@ Map<LessonContentCategory, String> LessonContentCategoryToString = {
 class TextLearningContent {
   String text;
   TextLearningContent({required this.text});
+}
+
+class CodeChallengeTestCase {
+  final String input;
+  final String expectedOutput;
+  final bool hidden;
+
+  const CodeChallengeTestCase({
+    required this.input,
+    required this.expectedOutput,
+    this.hidden = false,
+  });
+
+  factory CodeChallengeTestCase.fromMap(
+    Map<String, dynamic> map, {
+    bool hidden = false,
+  }) {
+    return CodeChallengeTestCase(
+      input: (map['input'] ?? '').toString(),
+      expectedOutput: (map['expectedOutput'] ?? '').toString(),
+      hidden: hidden,
+    );
+  }
 }
 
 class LessonPage {
@@ -177,6 +201,8 @@ class LessonContent {
         for (final blockItem in rawBlocks.whereType<Map>()) {
           final block = Map<String, dynamic>.from(blockItem);
           final blockType = (block['type'] ?? '').toString().toLowerCase();
+          // Only classify as MCQ if it's an actual MCQ exercise type, not code_challenge
+          // code_challenge blocks are displayed as part of learning content
           if (blockType == 'mcq' ||
               blockType == 'fill_code' ||
               blockType == 'find_error') {
@@ -309,6 +335,18 @@ class LessonContent {
 
     return questions;
   }
+
+  bool get hasCodeChallengeBlocks {
+    for (final page in pages) {
+      for (final block in page.blocks) {
+        if (block.type == 'code_challenge') {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
 }
 
 bool _isTypeAllowedForCategory({
@@ -338,6 +376,8 @@ class MCQ {
   final String codeLanguage;
   final List<CodeTemplateLine> codeTemplateLines;
   final List<String> codeSnippetLines;
+  final List<CodeChallengeTestCase> testCases;
+  final List<CodeChallengeTestCase> hiddenTestCases;
 
   MCQ({
     required this.question,
@@ -351,12 +391,17 @@ class MCQ {
     this.codeLanguage = '',
     this.codeTemplateLines = const [],
     this.codeSnippetLines = const [],
+    this.testCases = const [],
+    this.hiddenTestCases = const [],
   });
 
   String get answerComment => 'Tip: $answeredTip';
 
   bool get isFillCode => exerciseType == 'fill_code';
+  bool get isCodeChallenge => exerciseType == 'code_challenge';
   bool get hasCodeSnippet => codeSnippetLines.isNotEmpty;
+  bool get hasCodeChallengeTests =>
+      testCases.isNotEmpty || hiddenTestCases.isNotEmpty;
 
   List<CodeTemplateLine> get inputLines =>
       codeTemplateLines.where((line) => line.type == 'input').toList();
@@ -429,6 +474,59 @@ class MCQ {
         fileName: (map['fileName'] ?? '').toString(),
         codeLanguage: (template['language'] ?? '').toString(),
         codeTemplateLines: codeLines,
+      );
+    }
+
+    if (type == 'code_challenge') {
+      List<CodeChallengeTestCase> parseTestCases(
+        dynamic rawCases, {
+        bool hidden = false,
+      }) {
+        if (rawCases is! List) return const [];
+
+        return rawCases
+            .whereType<Map>()
+            .map(
+              (item) => CodeChallengeTestCase.fromMap(
+                Map<String, dynamic>.from(item),
+                hidden: hidden,
+              ),
+            )
+            .where(
+              (testCase) =>
+                  testCase.input.isNotEmpty ||
+                  testCase.expectedOutput.isNotEmpty,
+            )
+            .toList();
+      }
+
+      final rawStarter = map['starterCode'];
+      final starter = rawStarter is Map
+          ? Map<String, dynamic>.from(rawStarter)
+          : <String, dynamic>{};
+      final rawStarterLines = starter['lines'];
+      final starterLines = rawStarterLines is List
+          ? rawStarterLines.map((line) => line.toString()).toList()
+          : const <String>[];
+
+      final prompt = (map['problem'] ?? map['question'] ?? fallbackTitle)
+          .toString();
+
+      if (prompt.isEmpty) return null;
+
+      return MCQ(
+        question: prompt,
+        options: const [],
+        correctAnswerIndex: 0,
+        exerciseType: 'code_challenge',
+        instruction: prompt,
+        fileName: 'Code Challenge',
+        codeLanguage: (starter['language'] ?? '').toString(),
+        codeSnippetLines: starterLines,
+        testCases: parseTestCases(map['testCases']),
+        hiddenTestCases: parseTestCases(map['hiddenTestCases'], hidden: true),
+        answeredTip:
+            'Run your code and verify it against the challenge requirements.',
       );
     }
 

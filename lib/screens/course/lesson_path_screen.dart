@@ -105,8 +105,15 @@ class _LessonNodeData {
   }
 }
 
-IconData _lessonCategoryIcon(String category) {
+IconData _lessonCategoryIcon(String category, [String title = '']) {
   final normalized = category.trim().toLowerCase();
+  final normalizedTitle = title.trim().toLowerCase();
+
+  final isTestTitle = normalizedTitle.startsWith('chapter test');
+
+  if (isTestTitle) {
+    return Icons.emoji_events;
+  }
 
   if (normalized == 'exercise' || normalized == 'quiz' || normalized == 'mcq') {
     return Icons.fitness_center_rounded;
@@ -366,7 +373,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         newPercents[lessonId] = percent;
 
         Color nodeColor = Theme.of(context).cardColor;
-        if (percent >= 80) {
+        if (percent >= 70) {
           nodeColor = Colors.green[700]!;
         } else if (percent >= 50) {
           nodeColor = Colors.amber.withOpacity(0.18);
@@ -614,7 +621,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         if (lesson.id > 0) {
           final double percent = score.toDouble();
           Color nodeColor = Theme.of(context).cardColor;
-          if (percent >= 80) {
+          if (percent >= 70) {
             nodeColor = Colors.green[700]!;
           } else if (percent >= 50) {
             nodeColor = Colors.amber.withOpacity(0.18);
@@ -773,7 +780,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _lessonCategoryIcon(lesson.category),
+                        _lessonCategoryIcon(lesson.category, lesson.title),
                         color: Colors.white,
                         size: 30,
                       ),
@@ -1262,7 +1269,7 @@ class _CourseNodeState extends State<CourseNode> {
                   child: widget.locked
                       ? Icon(Icons.lock, color: textColor, size: 24)
                       : Icon(
-                          _lessonCategoryIcon(widget.category),
+                          _lessonCategoryIcon(widget.category, widget.title),
                           color: Colors.white,
                           size: 32,
                         ),

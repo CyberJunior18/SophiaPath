@@ -40,6 +40,7 @@ class LessonContentsListScreen extends StatelessWidget {
     lesson_content_model.Lesson content,
   ) async {
     final questions = content.extractQuestions();
+
     if (questions.isNotEmpty) {
       await Navigator.push<int>(
         context,
@@ -68,7 +69,7 @@ class LessonContentsListScreen extends StatelessWidget {
             title: content.partTitle.isNotEmpty
                 ? content.partTitle
                 : lesson.title,
-            questions: const [],
+            questions: questions,
             contents: [content],
             done: lesson.done,
             description: lesson.description,
@@ -144,7 +145,7 @@ class LessonContentsListScreen extends StatelessWidget {
                     children: [
                       for (final content in group.contents)
                         ListTile(
-                          leading: const Icon(Icons.menu_book_outlined),
+                          leading: _buildContentIcon(content),
                           title: Text(
                             content.partTitle.isNotEmpty
                                 ? content.partTitle
@@ -178,4 +179,21 @@ class _ChapterGroup {
   final List<lesson_content_model.Lesson> contents;
 
   const _ChapterGroup({required this.chapterName, required this.contents});
+}
+
+Widget _buildContentIcon(lesson_content_model.Lesson content) {
+  final title = content.partTitle.toLowerCase();
+  final isTest =
+      content.category == lesson_content_model.LessonContentCategory.EXERCISE &&
+      title.startsWith('chapter test');
+
+  if (isTest) {
+    return const Icon(Icons.local_cafe_outlined, color: Colors.brown);
+  }
+
+  if (content.category == lesson_content_model.LessonContentCategory.EXERCISE) {
+    return const Icon(Icons.fitness_center_rounded);
+  }
+
+  return const Icon(Icons.menu_book_outlined);
 }
