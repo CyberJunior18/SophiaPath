@@ -363,20 +363,20 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 6),
-                                Icon(
-                                    isChapterTest
-                                      ? Icons.local_cafe_outlined
-                                      : lesson.questions.isNotEmpty
-                                      ? Icons.quiz_outlined
-                                      : Icons.menu_book_outlined,
-                                  size: 28,
-                                    color: isChapterTest
-                                      ? Colors.brown
-                                      : lesson.questions.isNotEmpty
-                                      ? Colors.orange
-                                      : Colors.blue,
-                                ),
+                                // const SizedBox(height: 6),
+                                // Icon(
+                                //     isChapterTest
+                                //       ? Icons.local_cafe_outlined
+                                //       : lesson.questions.isNotEmpty
+                                //       ? Icons.quiz_outlined
+                                //       : Icons.menu_book_outlined,
+                                //   size: 28,
+                                //     color: isChapterTest
+                                //       ? Colors.brown
+                                //       : lesson.questions.isNotEmpty
+                                //       ? Colors.orange
+                                //       : Colors.blue,
+                                // ),
                                 const SizedBox(height: 8),
                                 Text(
                                   lesson.title,
@@ -384,7 +384,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.w600,
-                                    fontSize: 20,
+                                    fontSize: 25,
                                   ),
                                 ),
                                 const Spacer(),
@@ -400,7 +400,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                 Row(
                                   children: [
                                     _Badge(
-                                        icon: isChapterTest
+                                      icon: isChapterTest
                                           ? Icons.local_cafe_outlined
                                           : Icons.menu_book_outlined,
                                       text:
@@ -408,7 +408,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     _Badge(
-                                        icon: lesson.questions.isNotEmpty
+                                      icon: lesson.questions.isNotEmpty
                                           ? Icons.quiz_outlined
                                           : Icons.local_cafe_outlined,
                                       text:

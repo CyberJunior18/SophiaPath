@@ -38,6 +38,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
   bool? lastAnswerCorrect;
   late List<Answer> currentAnswers;
   final Map<int, List<TextEditingController>> _fillCodeControllers = {};
+  final CppCodeRunner _cppCodeRunner = CppCodeRunner();
   final UserStatsService _statsService = UserStatsService();
 
   @override
@@ -439,7 +440,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
                               ),
                             ),
                             child: Text(
-                              'Check Answer',
+                              question.exerciseType == 'write_line'
+                                  ? 'Check Output'
+                                  : 'Check Answer',
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -636,16 +639,50 @@ class _McqTestScreenState extends State<McqTestScreen> {
     });
   }
 
-  void _checkFillCodeAnswer() {
+  Future<void> _checkFillCodeAnswer() async {
     final question = widget.questions[currentIndex];
+
+    if (question.exerciseType == 'write_line') {
+      final passed = await _checkWriteLineAnswer(question);
+      if (!mounted) return;
+
+      setState(() {
+        answered = true;
+        lastAnswerCorrect = passed;
+        if (passed == true) correctAnswers++;
+      });
+      return;
+    }
     final controllers = _fillCodeControllers[currentIndex] ?? const [];
     final expectedInputs = question.inputLines;
+
+    String normalizeInput(String value, {required bool multiline}) {
+      if (!multiline) {
+        return value.trim();
+      }
+
+      return value
+          .replaceAll('\r\n', '\n')
+          .split('\n')
+          .map((line) => line.trimRight())
+          .join('\n')
+          .trim();
+    }
 
     final isCorrect =
         controllers.length == expectedInputs.length &&
         List.generate(controllers.length, (index) {
-          return controllers[index].text.trim() ==
-              expectedInputs[index].expectedAnswer.trim();
+          final expected = expectedInputs[index];
+          final typed = normalizeInput(
+            controllers[index].text,
+            multiline: expected.multiline,
+          );
+          final expectedAnswer = normalizeInput(
+            expected.expectedAnswer,
+            multiline: expected.multiline,
+          );
+
+          return typed == expectedAnswer;
         }).every((matches) => matches);
 
     setState(() {
@@ -653,6 +690,48 @@ class _McqTestScreenState extends State<McqTestScreen> {
       lastAnswerCorrect = isCorrect;
       if (isCorrect) correctAnswers++;
     });
+  }
+
+  Future<bool> _checkWriteLineAnswer(MCQ question) async {
+    final testCases = [...question.testCases, ...question.hiddenTestCases];
+    if (testCases.isEmpty) {
+      final result = await _cppCodeRunner.run(_editableCodeForQuestion(question));
+      return !result.isError && result.output.trim().isNotEmpty;
+    }
+
+    final runResults = await _cppCodeRunner.runBatch(
+      _editableCodeForQuestion(question),
+      testCases.map((testCase) => testCase.input).toList(),
+    );
+
+    if (runResults.length != testCases.length) return false;
+
+    for (var index = 0; index < testCases.length; index++) {
+      final actual = _normalizeOutput(runResults[index].output);
+      final expected = _normalizeOutput(testCases[index].expectedOutput);
+      if (runResults[index].isError || actual != expected) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String _normalizeOutput(String text) {
+    final normalized = text.replaceAll('\r\n', '\n');
+    final lines = normalized
+        .split('\n')
+        .map((line) => line.trimRight())
+        .toList();
+
+    while (lines.isNotEmpty && lines.first.trim().isEmpty) {
+      lines.removeAt(0);
+    }
+    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
+      lines.removeLast();
+    }
+
+    return lines.join('\n').trim();
   }
 
   Future<bool?> _openCodePlayground(MCQ question) {
@@ -680,7 +759,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
 
     String inputAnswer(CodeTemplateLine line) {
       final typedAnswer = inputIndex < controllers.length
-          ? controllers[inputIndex].text.trim()
+          ? line.multiline
+            ? controllers[inputIndex].text
+            : controllers[inputIndex].text.trim()
           : '';
       inputIndex++;
       return typedAnswer.isNotEmpty ? typedAnswer : line.expectedAnswer;
@@ -783,6 +864,50 @@ class _McqTestScreenState extends State<McqTestScreen> {
           const SizedBox(height: 10),
           ...List.generate(rows.length, (rowIndex) {
             final row = rows[rowIndex];
+
+            if (row.length == 1 &&
+                row.first.type == 'input' &&
+                row.first.multiline) {
+              final line = row.first;
+              final hasController = inputIndex < controllers.length;
+              final controller = hasController ? controllers[inputIndex] : null;
+              final expected = line.expectedAnswer;
+              final isCorrect =
+                  hasController && controller?.text.trim() == expected.trim();
+              inputIndex++;
+
+              return _buildCodeTextLine(
+                lineNumber: rowIndex + 1,
+                child: TextField(
+                  controller: controller,
+                  enabled: !answered && hasController,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  minLines: 8,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor: answered
+                        ? (isCorrect
+                              ? Colors.green.withValues(alpha: 0.12)
+                              : Colors.red.withValues(alpha: 0.12))
+                        : theme.colorScheme.surface,
+                    contentPadding: const EdgeInsets.all(10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                theme: theme,
+              );
+            }
+
             return _buildCodeTextLine(
               lineNumber: rowIndex + 1,
               child: Wrap(
@@ -954,11 +1079,13 @@ class _McqTestScreenState extends State<McqTestScreen> {
 
       if (current.type == 'code' &&
           index + 1 < question.codeTemplateLines.length &&
-          question.codeTemplateLines[index + 1].type == 'input') {
+          question.codeTemplateLines[index + 1].type == 'input' &&
+          !question.codeTemplateLines[index + 1].multiline) {
         final row = <CodeTemplateLine>[current];
         index++;
         while (index < question.codeTemplateLines.length &&
-            question.codeTemplateLines[index].type == 'input') {
+            question.codeTemplateLines[index].type == 'input' &&
+            !question.codeTemplateLines[index].multiline) {
           row.add(question.codeTemplateLines[index]);
           index++;
         }
@@ -1527,8 +1654,9 @@ class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
                         style: GoogleFonts.robotoMono(
                           fontSize: 12,
                           height: 1.45,
-                          color: theme.colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.55),
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.55,
+                          ),
                         ),
                       ),
                     ),
@@ -1579,7 +1707,11 @@ class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
         availableWidth,
       );
       labels.add('${index + 1}');
-      for (var wrappedIndex = 1; wrappedIndex < visualLineCount; wrappedIndex++) {
+      for (
+        var wrappedIndex = 1;
+        wrappedIndex < visualLineCount;
+        wrappedIndex++
+      ) {
         labels.add(null);
       }
     }

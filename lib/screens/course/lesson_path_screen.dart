@@ -12,6 +12,8 @@ import '../../services/course/user_stats_service.dart';
 
 class _LessonNodeData {
   final int id;
+  final int? learningId;
+  final int? practiceId;
   final String title;
   final String category;
   final String description;
@@ -21,6 +23,8 @@ class _LessonNodeData {
 
   const _LessonNodeData({
     required this.id,
+    this.learningId,
+    this.practiceId,
     required this.title,
     required this.category,
     required this.description,
@@ -62,6 +66,25 @@ class _LessonNodeData {
     return total > 0 ? total : value.length;
   }
 
+  bool get hasLearning => learningId != null;
+
+  bool get hasPractice => practiceId != null;
+
+  bool get hasCombinedAction => hasLearning && hasPractice;
+
+  int get launchLessonId => learningId ?? practiceId ?? id;
+
+  int get scoreLessonId => practiceId ?? learningId ?? id;
+
+  bool isCompleted(Set<int> doneLessonIds) {
+    if (hasCombinedAction) {
+      return doneLessonIds.contains(learningId) &&
+          doneLessonIds.contains(practiceId);
+    }
+
+    return doneLessonIds.contains(id);
+  }
+
   factory _LessonNodeData.fromMap(Map<String, dynamic> map) {
     final directPageCount = _asInt(
       map['pageCount'] ?? map['pagesCount'] ?? map['numberOfPages'],
@@ -71,6 +94,7 @@ class _LessonNodeData {
 
     return _LessonNodeData(
       id: _asInt(map['id'] ?? map['lessonId']),
+      learningId: _asInt(map['id'] ?? map['lessonId']),
       title: (map['title'] ?? '').toString(),
       category: (map['category'] ?? '').toString().toLowerCase(),
       description: (map['description'] ?? '').toString(),
@@ -90,6 +114,7 @@ class _LessonNodeData {
   }) {
     return _LessonNodeData(
       id: lesson.id ?? 0,
+      learningId: lesson.id ?? 0,
       title: lesson.title,
       category: lesson.questions.isNotEmpty ? 'exercise' : 'learning',
       description: lesson.description,
@@ -103,6 +128,26 @@ class _LessonNodeData {
       orderIndex: orderIndex,
     );
   }
+}
+
+enum _LessonAction { learning, practice }
+
+String _normalizeGroupedLessonTitle(String title) {
+  final stripped = title.trim().replaceFirst(
+    RegExp(r'^(?:exercises?|practice)\s*:\s*', caseSensitive: false),
+    '',
+  );
+
+  return stripped.trim().toLowerCase();
+}
+
+String _displayGroupedLessonTitle(String title) {
+  final stripped = title.trim().replaceFirst(
+    RegExp(r'^(?:exercises?|practice)\s*:\s*', caseSensitive: false),
+    '',
+  );
+
+  return stripped.trim().isEmpty ? title.trim() : stripped.trim();
 }
 
 IconData _lessonCategoryIcon(String category, [String title = '']) {
@@ -242,6 +287,80 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         (index) => base.length + index <= _completedLessons,
       ),
     ];
+  }
+
+  bool _isExerciseLike(_LessonNodeData lesson) {
+    final normalizedCategory = lesson.category.trim().toLowerCase();
+    if (normalizedCategory == 'exercise' ||
+        normalizedCategory == 'quiz' ||
+        normalizedCategory == 'mcq') {
+      return true;
+    }
+
+    final normalizedTitle = lesson.title.trim().toLowerCase();
+    return normalizedTitle.startsWith('exercise:') ||
+        normalizedTitle.startsWith('exercises:') ||
+        normalizedTitle.startsWith('practice:');
+  }
+
+  bool _shouldGroupLessonNodes(
+    _LessonNodeData learningLesson,
+    _LessonNodeData practiceLesson,
+  ) {
+    return !_isExerciseLike(learningLesson) &&
+        _isExerciseLike(practiceLesson) &&
+        _normalizeGroupedLessonTitle(learningLesson.title) ==
+            _normalizeGroupedLessonTitle(practiceLesson.title);
+  }
+
+  bool _isPracticeLocked(_LessonNodeData lesson) {
+    return lesson.hasCombinedAction &&
+        !(_doneLessonIds.contains(lesson.learningId));
+  }
+
+  bool _isPracticeAction(_LessonNodeData lesson) {
+    return lesson.hasCombinedAction || _isExerciseLike(lesson);
+  }
+
+  List<_LessonNodeData> _groupLessonNodes(List<_LessonNodeData> rawLessons) {
+    if (rawLessons.length < 2) return rawLessons;
+
+    final groupedLessons = <_LessonNodeData>[];
+    var index = 0;
+
+    while (index < rawLessons.length) {
+      final currentLesson = rawLessons[index];
+
+      if (index + 1 < rawLessons.length) {
+        final nextLesson = rawLessons[index + 1];
+        if (_shouldGroupLessonNodes(currentLesson, nextLesson)) {
+          groupedLessons.add(
+            _LessonNodeData(
+              id: currentLesson.id,
+              learningId: currentLesson.launchLessonId,
+              practiceId: nextLesson.launchLessonId,
+              title: _displayGroupedLessonTitle(currentLesson.title),
+              category: 'mixed',
+              description: currentLesson.description.isNotEmpty
+                  ? currentLesson.description
+                  : nextLesson.description,
+              pageCount: currentLesson.pageCount + nextLesson.pageCount,
+              chapterName: currentLesson.chapterName.isNotEmpty
+                  ? currentLesson.chapterName
+                  : nextLesson.chapterName,
+              orderIndex: currentLesson.orderIndex,
+            ),
+          );
+          index += 2;
+          continue;
+        }
+      }
+
+      groupedLessons.add(currentLesson);
+      index += 1;
+    }
+
+    return groupedLessons;
   }
 
   Future<void> _loadScores() async {
@@ -398,7 +517,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     var completed = 0;
 
     for (final lesson in lessons) {
-      if (!_doneLessonIds.contains(lesson.id)) {
+      if (!lesson.isCompleted(_doneLessonIds)) {
         break;
       }
       completed += 1;
@@ -419,10 +538,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     );
 
     if (sectionLessons.isNotEmpty) {
-      return sectionLessons
+      final rawLessons = sectionLessons
           .map(_LessonNodeData.fromMap)
           .where((lesson) => lesson.id > 0 || lesson.title.isNotEmpty)
           .toList();
+
+      return _groupLessonNodes(rawLessons);
     }
 
     return _fallbackLessonNodes();
@@ -430,23 +551,27 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
   List<_LessonNodeData> _fallbackLessonNodes() {
     if (widget.originalCourse?.sections.isNotEmpty == true) {
-      return List<_LessonNodeData>.generate(
+      final rawLessons = List<_LessonNodeData>.generate(
         widget.originalCourse!.sections.length,
         (index) => _LessonNodeData.fromLesson(
           widget.originalCourse!.sections[index],
           orderIndex: index,
         ),
       );
+
+      return _groupLessonNodes(rawLessons);
     }
 
     if (widget.course.sections.isNotEmpty) {
-      return List<_LessonNodeData>.generate(
+      final rawLessons = List<_LessonNodeData>.generate(
         widget.course.sections.length,
         (index) => _LessonNodeData.fromLesson(
           widget.course.sections[index],
           orderIndex: index,
         ),
       );
+
+      return _groupLessonNodes(rawLessons);
     }
 
     return const [];
@@ -474,7 +599,11 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
   }
 
-  Future<void> startTest(_LessonNodeData lesson, int pageIndex) async {
+  Future<void> startTest(
+    _LessonNodeData lesson,
+    int pageIndex, {
+    bool practice = false,
+  }) async {
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final currentScores = _normalizedScores(currentPageLessons.length);
     final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
@@ -497,13 +626,21 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     if (isFirstLessonOfFirstCourse) {
       startTime = DateTime.now();
     }
-    if (widget.course.id == null || lesson.id <= 0) {
+    if (widget.course.id == null) {
       return;
     }
 
-    final isExercise = lesson.category == 'exercise';
+    final isExercise = practice || lesson.category == 'exercise';
+    final targetLessonId = practice
+        ? (lesson.practiceId ?? lesson.launchLessonId)
+        : lesson.launchLessonId;
+
+    if (targetLessonId <= 0) {
+      return;
+    }
+
     lesson_model.Section fullLesson = lesson_model.Section(
-      id: lesson.id,
+      id: targetLessonId,
       title: lesson.title,
       questions: const [],
       contents: const [],
@@ -516,7 +653,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         fullLesson = await _authService.getLessonById(
           courseId: widget.course.id!,
           sectionId: widget.sectionId,
-          lessonId: lesson.id,
+          lessonId: targetLessonId,
         );
       } catch (e) {
         if (!mounted) return;
@@ -542,14 +679,14 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 questions: fullLesson.questions,
                 courseId: courseIndex,
                 totalLessons: lessons.length,
-                lessonId: lesson.id,
+                lessonId: targetLessonId,
                 onTestCompleted: () {},
               )
             : LessonContentScreen(
                 lesson: fullLesson,
                 courseId: widget.course.id,
                 sectionId: widget.sectionId,
-                lessonId: lesson.id,
+                lessonId: targetLessonId,
               ),
       ),
     );
@@ -566,7 +703,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       setState(() {
         courseScores = updatedScores;
-        _doneLessonIds.add(lesson.id);
+        _doneLessonIds.add(targetLessonId);
 
         if (shouldUnlockNext) {
           final updatedUnlocked = List<bool>.from(currentUnlocked);
@@ -618,7 +755,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           await _updateCourseProgress(_completedLessons);
         }
         // update UI with the latest score percentage and node color for this lesson
-        if (lesson.id > 0) {
+        if (targetLessonId > 0) {
           final double percent = score.toDouble();
           Color nodeColor = Theme.of(context).cardColor;
           if (percent >= 70) {
@@ -631,8 +768,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
           if (mounted) {
             setState(() {
-              _lessonPercent[lesson.id] = percent;
-              _lessonNodeColors[lesson.id] = nodeColor;
+              _lessonPercent[targetLessonId] = percent;
+              _lessonNodeColors[targetLessonId] = nodeColor;
             });
           }
         }
@@ -683,7 +820,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   Future<void> _showLessonPreview(_LessonNodeData lesson, int pageIndex) async {
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
-    final isLessonDone = _doneLessonIds.contains(lesson.id);
+    final isLessonDone = lesson.isCompleted(_doneLessonIds);
 
     if (pageIndex < 0 ||
         pageIndex >= currentUnlocked.length ||
@@ -694,8 +831,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final description = lesson.description.trim().isEmpty
         ? 'Start this lesson when you are ready.'
         : lesson.description.trim();
+    final practiceLocked = _isPracticeLocked(lesson);
 
-    final shouldStart = await showDialog<bool>(
+    final selectedAction = await showDialog<_LessonAction>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
       builder: (dialogContext) {
@@ -704,9 +842,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         final accentColor = isLessonDone
             ? const Color(0xFF58CC02)
             : const Color.fromARGB(255, 39, 156, 0);
-        final buttonLabel = isLessonDone
-            ? 'RETAKE THE LESSON'
-            : 'START THE LESSON';
+        final hasBothActions = lesson.hasCombinedAction;
+        final categoryLabel = hasBothActions
+            ? 'Learning + Practice'
+            : (_isPracticeAction(lesson) ? 'Practice' : 'Learning');
 
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 28),
@@ -748,7 +887,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isLessonDone ? 'Completed lesson' : lesson.category,
+                            isLessonDone ? 'Completed lesson' : categoryLabel,
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -821,28 +960,111 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 // const SizedBox(height: 18),
                 const SizedBox(height: 18),
 
-                SizedBox(
-                  width: 300,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(dialogContext, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accentColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                if (hasBothActions)
+                  SizedBox(
+                    height: 60,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          height: 50,
+                          width: 150,
+                          child: Expanded(
+                            child: FilledButton(
+                              onPressed: () => Navigator.pop(
+                                dialogContext,
+                                _LessonAction.learning,
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: accentColor,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Text(
+                                'Learning',
+                                style: GoogleFonts.nunito(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          height: 50,
+                          width: 150,
+                          child: Expanded(
+                            child: OutlinedButton(
+                              onPressed: practiceLocked
+                                  ? null
+                                  : () => Navigator.pop(
+                                      dialogContext,
+                                      _LessonAction.practice,
+                                    ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: practiceLocked
+                                    ? theme.disabledColor
+                                    : accentColor,
+                                side: BorderSide(
+                                  color: practiceLocked
+                                      ? theme.disabledColor
+                                      : accentColor,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Text(
+                                practiceLocked ? 'Exercise Locked' : 'Exercise',
+                                style: GoogleFonts.nunito(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      buttonLabel,
-                      style: GoogleFonts.nunito(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
+                  )
+                else
+                  SizedBox(
+                    width: 300,
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(
+                        dialogContext,
+                        _isPracticeAction(lesson)
+                            ? _LessonAction.practice
+                            : _LessonAction.learning,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accentColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        _isPracticeAction(lesson)
+                            ? 'START PRACTICE'
+                            : 'START THE LESSON',
+                        style: GoogleFonts.nunito(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -850,9 +1072,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       },
     );
 
-    if (shouldStart == true && mounted) {
-      await startTest(lesson, pageIndex);
+    if (selectedAction == null || !mounted) {
+      return;
     }
+
+    if (selectedAction == _LessonAction.practice) {
+      await startTest(lesson, pageIndex, practice: true);
+      return;
+    }
+
+    await startTest(lesson, pageIndex);
   }
 
   @override
@@ -1007,15 +1236,18 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             title: currentPageLessons[i].title,
             index: i + 1,
             locked: !currentUnlocked[i],
-            percentage: currentPageLessons[i].category == 'exercise'
-                ? (_lessonPercent[currentPageLessons[i].id] != null
-                      ? _lessonPercent[currentPageLessons[i].id]!.round()
+            percentage:
+                (_isExerciseLike(currentPageLessons[i]) ||
+                    currentPageLessons[i].hasPractice)
+                ? (_lessonPercent[currentPageLessons[i].scoreLessonId] != null
+                      ? _lessonPercent[currentPageLessons[i].scoreLessonId]!
+                            .round()
                       : currentScores[i])
                 : 0,
-            isCompleted: _doneLessonIds.contains(currentPageLessons[i].id),
+            isCompleted: currentPageLessons[i].isCompleted(_doneLessonIds),
             category: currentPageLessons[i].category,
             theme: theme,
-            nodeColor: _lessonNodeColors[currentPageLessons[i].id],
+            nodeColor: _lessonNodeColors[currentPageLessons[i].scoreLessonId],
             enabled: currentUnlocked[i],
             onTap: () => _showLessonPreview(currentPageLessons[i], i),
           ),

@@ -340,7 +340,10 @@ class AuthService {
         for (final block in blocks.whereType<Map>()) {
           final blockMap = Map<String, dynamic>.from(block);
           final type = (blockMap['type'] ?? '').toString().toLowerCase();
-          if (type == 'mcq' || type == 'fill_code' || type == 'find_error') {
+          if (type == 'mcq' ||
+              type == 'fill_code' ||
+              type == 'write_line' ||
+              type == 'find_error') {
             return true;
           }
         }

@@ -205,6 +205,7 @@ class LessonContent {
           // code_challenge blocks are displayed as part of learning content
           if (blockType == 'mcq' ||
               blockType == 'fill_code' ||
+              blockType == 'write_line' ||
               blockType == 'find_error') {
             return LessonContentType.MCQ;
           }
@@ -397,7 +398,8 @@ class MCQ {
 
   String get answerComment => 'Tip: $answeredTip';
 
-  bool get isFillCode => exerciseType == 'fill_code';
+  bool get isFillCode =>
+      exerciseType == 'fill_code' || exerciseType == 'write_line';
   bool get isCodeChallenge => exerciseType == 'code_challenge';
   bool get hasCodeSnippet => codeSnippetLines.isNotEmpty;
   bool get hasCodeChallengeTests =>
@@ -411,6 +413,7 @@ class MCQ {
     required String fileName,
     required String codeLanguage,
     required List<CodeTemplateLine> codeTemplateLines,
+    String exerciseType = 'fill_code',
   }) {
     return MCQ(
       question: instruction,
@@ -419,7 +422,7 @@ class MCQ {
       fileName: fileName,
       codeLanguage: codeLanguage,
       codeTemplateLines: codeTemplateLines,
-      exerciseType: 'fill_code',
+      exerciseType: exerciseType,
       answeredTip: 'Compare each blank with the surrounding code.',
     );
   }
@@ -451,7 +454,7 @@ class MCQ {
           .toList();
     }
 
-    if (type == 'fill_code') {
+    if (type == 'fill_code' || type == 'write_line') {
       final rawTemplate = map['codeTemplate'];
       final template = rawTemplate is Map
           ? Map<String, dynamic>.from(rawTemplate)
@@ -474,6 +477,7 @@ class MCQ {
         fileName: (map['fileName'] ?? '').toString(),
         codeLanguage: (template['language'] ?? '').toString(),
         codeTemplateLines: codeLines,
+        exerciseType: type,
       );
     }
 
@@ -574,12 +578,14 @@ class CodeTemplateLine {
   final String content;
   final int width;
   final String expectedAnswer;
+  final bool multiline;
 
   const CodeTemplateLine({
     required this.type,
     this.content = '',
     this.width = 6,
     this.expectedAnswer = '',
+    this.multiline = false,
   });
 
   factory CodeTemplateLine.fromMap(Map<String, dynamic> map) {
@@ -594,6 +600,7 @@ class CodeTemplateLine {
       content: (map['content'] ?? '').toString(),
       width: asInt(map['width']) > 0 ? asInt(map['width']) : 6,
       expectedAnswer: (map['expectedAnswer'] ?? '').toString(),
+      multiline: map['multiline'] == true,
     );
   }
 }
