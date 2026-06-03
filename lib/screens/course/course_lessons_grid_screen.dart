@@ -255,9 +255,9 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                         final isChapterTest = lesson.title
                             .toLowerCase()
                             .startsWith('chapter test');
-                        final chapterName = lesson.contents.isNotEmpty
-                            ? lesson.contents.first.chapterName
-                            : 'General';
+                        // final chapterName = lesson.contents.isNotEmpty
+                        //     ? lesson.contents.first.chapterName
+                        //     : 'General';
 
                         return InkWell(
                           borderRadius: BorderRadius.circular(14),
@@ -388,15 +388,15 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                   ),
                                 ),
                                 const Spacer(),
-                                Text(
-                                  chapterName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.grey,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                                // Text(
+                                //   chapterName,
+                                //   maxLines: 1,
+                                //   overflow: TextOverflow.ellipsis,
+                                //   style: GoogleFonts.poppins(
+                                //     color: Colors.grey,
+                                //     fontSize: 12,
+                                //   ),
+                                // ),
                                 Row(
                                   children: [
                                     _Badge(

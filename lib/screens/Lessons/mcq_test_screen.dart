@@ -695,7 +695,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
   Future<bool> _checkWriteLineAnswer(MCQ question) async {
     final testCases = [...question.testCases, ...question.hiddenTestCases];
     if (testCases.isEmpty) {
-      final result = await _cppCodeRunner.run(_editableCodeForQuestion(question));
+      final result = await _cppCodeRunner.run(
+        _editableCodeForQuestion(question),
+      );
       return !result.isError && result.output.trim().isNotEmpty;
     }
 
@@ -760,8 +762,8 @@ class _McqTestScreenState extends State<McqTestScreen> {
     String inputAnswer(CodeTemplateLine line) {
       final typedAnswer = inputIndex < controllers.length
           ? line.multiline
-            ? controllers[inputIndex].text
-            : controllers[inputIndex].text.trim()
+                ? controllers[inputIndex].text
+                : controllers[inputIndex].text.trim()
           : '';
       inputIndex++;
       return typedAnswer.isNotEmpty ? typedAnswer : line.expectedAnswer;
@@ -810,6 +812,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
     Future<void> Function()? onRunPlayground,
   }) {
     final canRun = question.isCodeChallenge || question.isFillCode || answered;
+    final hideBlockLineNumbers = question.codeTemplateLines.any(
+      (l) => l.type == 'input' && l.multiline,
+    );
 
     return Container(
       width: double.infinity,
@@ -834,7 +839,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
                 ? ' '
                 : question.codeSnippetLines[index];
             return _buildCodeTextLine(
-              lineNumber: index + 1,
+              lineNumber: hideBlockLineNumbers ? null : index + 1,
               child: _buildHighlightedCodeText(codeLine, theme),
               theme: theme,
             );
@@ -847,6 +852,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
   Widget _buildFillCodeCard(MCQ question, ThemeData theme) {
     final controllers = _fillCodeControllers[currentIndex] ?? const [];
     final rows = _codeTemplateRows(question);
+    final hideBlockLineNumbers = question.codeTemplateLines.any(
+      (l) => l.type == 'input' && l.multiline,
+    );
     var inputIndex = 0;
 
     return Container(
@@ -877,7 +885,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
               inputIndex++;
 
               return _buildCodeTextLine(
-                lineNumber: rowIndex + 1,
+                lineNumber: hideBlockLineNumbers ? null : rowIndex + 1,
                 child: TextField(
                   controller: controller,
                   enabled: !answered && hasController,
@@ -909,7 +917,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
             }
 
             return _buildCodeTextLine(
-              lineNumber: rowIndex + 1,
+              lineNumber: hideBlockLineNumbers ? null : rowIndex + 1,
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: row.map((line) {
@@ -1017,7 +1025,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
   }
 
   Widget _buildCodeTextLine({
-    required int lineNumber,
+    int? lineNumber,
     required Widget child,
     required ThemeData theme,
   }) {
@@ -1026,27 +1034,29 @@ class _McqTestScreenState extends State<McqTestScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 22,
-            child: SizedBox(
-              height: 19,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  '$lineNumber',
-                  textAlign: TextAlign.right,
-                  style: GoogleFonts.robotoMono(
-                    fontSize: 12,
-                    height: 1.45,
-                    color: theme.textTheme.bodySmall?.color?.withValues(
-                      alpha: 0.6,
+          if (lineNumber != null) ...[
+            SizedBox(
+              width: 22,
+              child: SizedBox(
+                height: 19,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    '$lineNumber',
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 12,
+                      height: 1.45,
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.6,
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
+            const SizedBox(width: 8),
+          ],
           Expanded(child: child),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/course/lesson.dart' as lesson_model;
+import '../../models/course/lessonContent.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
@@ -66,6 +67,39 @@ class _LessonNodeData {
     return total > 0 ? total : value.length;
   }
 
+  static Map<String, dynamic>? _firstNestedLessonMap(Map<String, dynamic> map) {
+    for (final key in const ['contents', 'lessons']) {
+      final value = map[key];
+      if (value is List) {
+        for (final item in value.whereType<Map>()) {
+          return Map<String, dynamic>.from(item);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  static String _readString(
+    Map<String, dynamic> map,
+    List<String> keys, {
+    Map<String, dynamic>? fallbackMap,
+  }) {
+    for (final key in keys) {
+      final value = map[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+
+    if (fallbackMap != null) {
+      for (final key in keys) {
+        final value = fallbackMap[key]?.toString().trim();
+        if (value != null && value.isNotEmpty) return value;
+      }
+    }
+
+    return '';
+  }
+
   bool get hasLearning => learningId != null;
 
   bool get hasPractice => practiceId != null;
@@ -86,25 +120,37 @@ class _LessonNodeData {
   }
 
   factory _LessonNodeData.fromMap(Map<String, dynamic> map) {
+    final nestedLessonMap = _firstNestedLessonMap(map);
     final directPageCount = _asInt(
       map['pageCount'] ?? map['pagesCount'] ?? map['numberOfPages'],
     );
     final nestedPages = _countPagesFromValue(map['contents'] ?? map['lessons']);
     final rawPages = _countPagesFromValue(map['pages']);
+    final id = _asInt(map['id'] ?? map['lessonId'] ?? nestedLessonMap?['id']);
 
     return _LessonNodeData(
-      id: _asInt(map['id'] ?? map['lessonId']),
-      learningId: _asInt(map['id'] ?? map['lessonId']),
-      title: (map['title'] ?? '').toString(),
-      category: (map['category'] ?? '').toString().toLowerCase(),
-      description: (map['description'] ?? '').toString(),
+      id: id,
+      learningId: id,
+      title: _readString(map, const [
+        'title',
+        'name',
+        'partTitle',
+      ], fallbackMap: nestedLessonMap),
+      category: _readString(map, const [
+        'category',
+      ], fallbackMap: nestedLessonMap).toLowerCase(),
+      description: _readString(map, const [
+        'description',
+      ], fallbackMap: nestedLessonMap),
       pageCount: directPageCount > 0
           ? directPageCount
           : nestedPages > 0
           ? nestedPages
           : rawPages,
-      chapterName: (map['chapterName'] ?? '').toString(),
-      orderIndex: _asInt(map['orderIndex']),
+      chapterName: _readString(map, const [
+        'chapterName',
+      ], fallbackMap: nestedLessonMap),
+      orderIndex: _asInt(map['orderIndex'] ?? nestedLessonMap?['orderIndex']),
     );
   }
 
@@ -112,11 +158,22 @@ class _LessonNodeData {
     lesson_model.Section lesson, {
     required int orderIndex,
   }) {
+    final firstContentTitle = lesson.contents.isNotEmpty
+        ? lesson.contents.first.partTitle.trim()
+        : '';
+    final firstContentCategory = lesson.contents.isNotEmpty
+        ? LessonContentCategoryToString[lesson.contents.first.category] ?? ''
+        : '';
+
     return _LessonNodeData(
       id: lesson.id ?? 0,
       learningId: lesson.id ?? 0,
-      title: lesson.title,
-      category: lesson.questions.isNotEmpty ? 'exercise' : 'learning',
+      title: lesson.title.trim().isNotEmpty ? lesson.title : firstContentTitle,
+      category: lesson.questions.isNotEmpty
+          ? 'exercise'
+          : (firstContentCategory.isNotEmpty
+                ? firstContentCategory
+                : 'learning'),
       description: lesson.description,
       pageCount: lesson.contents.fold<int>(
         0,
@@ -148,6 +205,10 @@ String _displayGroupedLessonTitle(String title) {
   );
 
   return stripped.trim().isEmpty ? title.trim() : stripped.trim();
+}
+
+bool _isCheatsheetLesson(_LessonNodeData lesson) {
+  return lesson.title.trim().toLowerCase().startsWith('cheatsheet:');
 }
 
 IconData _lessonCategoryIcon(String category, [String title = '']) {
@@ -204,6 +265,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   final Set<int> _doneLessonIds = <int>{};
   final Map<int, double> _lessonPercent = {};
   final Map<int, Color> _lessonNodeColors = {};
+  _LessonNodeData? _cheatsheetLesson;
   int _currentLessonPageIndex = 0;
   String? _firestoreCourseId;
   int _completedLessons = 0;
@@ -361,6 +423,24 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
 
     return groupedLessons;
+  }
+
+  List<_LessonNodeData> _separateCheatsheetLessons(
+    List<_LessonNodeData> rawLessons,
+  ) {
+    _cheatsheetLesson = null;
+
+    final pathLessons = <_LessonNodeData>[];
+    for (final lesson in rawLessons) {
+      if (_isCheatsheetLesson(lesson)) {
+        _cheatsheetLesson ??= lesson;
+        continue;
+      }
+
+      pathLessons.add(lesson);
+    }
+
+    return pathLessons;
   }
 
   Future<void> _loadScores() async {
@@ -543,7 +623,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           .where((lesson) => lesson.id > 0 || lesson.title.isNotEmpty)
           .toList();
 
-      return _groupLessonNodes(rawLessons);
+      return _groupLessonNodes(_separateCheatsheetLessons(rawLessons));
     }
 
     return _fallbackLessonNodes();
@@ -559,7 +639,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         ),
       );
 
-      return _groupLessonNodes(rawLessons);
+      return _groupLessonNodes(_separateCheatsheetLessons(rawLessons));
     }
 
     if (widget.course.sections.isNotEmpty) {
@@ -571,10 +651,74 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         ),
       );
 
-      return _groupLessonNodes(rawLessons);
+      return _groupLessonNodes(_separateCheatsheetLessons(rawLessons));
     }
 
+    _cheatsheetLesson = null;
     return const [];
+  }
+
+  Future<void> _openCheatsheetLesson() async {
+    final cheatsheet = _cheatsheetLesson;
+    final courseId = widget.course.id;
+    if (cheatsheet == null || courseId == null || courseId <= 0) return;
+
+    final targetLessonId = cheatsheet.launchLessonId;
+    if (targetLessonId <= 0) return;
+
+    final lesson = lesson_model.Section(
+      id: targetLessonId,
+      title: cheatsheet.title,
+      questions: const [],
+      contents: const [],
+      done: false,
+      description: cheatsheet.description,
+    );
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonContentScreen(
+          lesson: lesson,
+          courseId: courseId,
+          sectionId: widget.sectionId,
+          lessonId: targetLessonId,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildAppBarActions({int? totalNodesInPage}) {
+    return [
+      if (_cheatsheetLesson != null)
+        IconButton(
+          icon: const Icon(Icons.article_outlined),
+          tooltip: 'Cheatsheet',
+          onPressed: _openCheatsheetLesson,
+        ),
+      SizedBox(width: 20),
+      if (totalNodesInPage != null)
+        Padding(
+          padding: const EdgeInsets.only(right: 16.0),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$_completedLessons/$totalNodesInPage',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ),
+    ];
   }
 
   Future<void> _findDatabaseCourse() async {
@@ -1097,7 +1241,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     if (lessonsByPages.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.sectionTitle ?? widget.course.title)),
+        appBar: AppBar(
+          title: Text(widget.sectionTitle ?? widget.course.title),
+          actions: _buildAppBarActions(),
+        ),
         body: const Center(child: Text('No lessons found in this section.')),
       );
     }
@@ -1123,7 +1270,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     double extraGap = 0;
     const double nodeSize = 80.0;
     double contentHeight = 0;
-
     for (int i = 0; i < totalNodesInPage; i++) {
       final chapterName = currentPageLessons[i].chapterName.isNotEmpty
           ? currentPageLessons[i].chapterName
@@ -1268,39 +1414,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         ),
         backgroundColor: const Color(0xFF3D5CFF),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.sync),
-            onPressed: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Progress synced to cloud!')),
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '$_completedLessons/$totalNodesInPage',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        actions: _buildAppBarActions(totalNodesInPage: totalNodesInPage),
       ),
 
       body: Column(
