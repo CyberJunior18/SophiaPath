@@ -618,10 +618,29 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     );
 
     if (sectionLessons.isNotEmpty) {
-      final rawLessons = sectionLessons
-          .map(_LessonNodeData.fromMap)
-          .where((lesson) => lesson.id > 0 || lesson.title.isNotEmpty)
-          .toList();
+      final rawLessons = <_LessonNodeData>[];
+
+      for (var index = 0; index < sectionLessons.length; index++) {
+        final summaryNode = _LessonNodeData.fromMap(sectionLessons[index]);
+        var node = summaryNode;
+
+        if (summaryNode.id > 0) {
+          try {
+            final fullLesson = await _authService.getLessonById(
+              courseId: courseId,
+              sectionId: widget.sectionId,
+              lessonId: summaryNode.id,
+            );
+            node = _LessonNodeData.fromLesson(fullLesson, orderIndex: index);
+          } catch (_) {
+            node = summaryNode;
+          }
+        }
+
+        if (node.id > 0 || node.title.isNotEmpty) {
+          rawLessons.add(node);
+        }
+      }
 
       return _groupLessonNodes(_separateCheatsheetLessons(rawLessons));
     }
