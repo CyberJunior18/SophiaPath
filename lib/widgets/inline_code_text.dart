@@ -10,19 +10,20 @@ class InlineCodeText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final normalizedText = text.replaceAll(r'\n', '\n');
     final baseStyle =
         style ??
         GoogleFonts.poppins(fontSize: 14, color: theme.colorScheme.onSurface);
 
     final spans = <InlineSpan>[];
-    final pattern = RegExp(r'<code>(.*?)</code>');
+    final pattern = RegExp(r'<code>(.*?)</code>', dotAll: true);
     var lastEnd = 0;
 
-    for (final match in pattern.allMatches(text)) {
+    for (final match in pattern.allMatches(normalizedText)) {
       if (match.start > lastEnd) {
         spans.add(
           TextSpan(
-            text: text.substring(lastEnd, match.start),
+            text: normalizedText.substring(lastEnd, match.start),
             style: baseStyle,
           ),
         );
@@ -58,8 +59,10 @@ class InlineCodeText extends StatelessWidget {
       lastEnd = match.end;
     }
 
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastEnd), style: baseStyle));
+    if (lastEnd < normalizedText.length) {
+      spans.add(
+        TextSpan(text: normalizedText.substring(lastEnd), style: baseStyle),
+      );
     }
 
     return RichText(text: TextSpan(children: spans));

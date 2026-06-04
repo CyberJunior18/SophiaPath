@@ -880,8 +880,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
               final hasController = inputIndex < controllers.length;
               final controller = hasController ? controllers[inputIndex] : null;
               final expected = line.expectedAnswer;
-              final isCorrect =
-                  hasController && controller?.text.trim() == expected.trim();
+              final isCorrect = question.exerciseType == 'write_line'
+                  ? lastAnswerCorrect == true
+                  : hasController && controller?.text.trim() == expected.trim();
               inputIndex++;
 
               return _buildCodeTextLine(
@@ -927,9 +928,10 @@ class _McqTestScreenState extends State<McqTestScreen> {
                         ? controllers[inputIndex]
                         : null;
                     final expected = line.expectedAnswer;
-                    final isCorrect =
-                        hasController &&
-                        controller?.text.trim() == expected.trim();
+                    final isCorrect = question.exerciseType == 'write_line'
+                        ? lastAnswerCorrect == true
+                        : hasController &&
+                              controller?.text.trim() == expected.trim();
                     inputIndex++;
 
                     return SizedBox(
