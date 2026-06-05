@@ -693,16 +693,24 @@ class _McqTestScreenState extends State<McqTestScreen> {
   }
 
   Future<bool> _checkWriteLineAnswer(MCQ question) async {
+    final controllers = _fillCodeControllers[currentIndex] ?? const [];
+    if (controllers.any((controller) => controller.text.trim().isEmpty)) {
+      return false;
+    }
+
     final testCases = [...question.testCases, ...question.hiddenTestCases];
+    final submittedCode = _editableCodeForQuestion(
+      question,
+      useExpectedAnswerFallback: false,
+    );
+
     if (testCases.isEmpty) {
-      final result = await _cppCodeRunner.run(
-        _editableCodeForQuestion(question),
-      );
+      final result = await _cppCodeRunner.run(submittedCode);
       return !result.isError && result.output.trim().isNotEmpty;
     }
 
     final runResults = await _cppCodeRunner.runBatch(
-      _editableCodeForQuestion(question),
+      submittedCode,
       testCases.map((testCase) => testCase.input).toList(),
     );
 
@@ -749,7 +757,10 @@ class _McqTestScreenState extends State<McqTestScreen> {
     );
   }
 
-  String _editableCodeForQuestion(MCQ question) {
+  String _editableCodeForQuestion(
+    MCQ question, {
+    bool useExpectedAnswerFallback = true,
+  }) {
     if (question.codeSnippetLines.isNotEmpty) {
       return question.codeSnippetLines.join('\n');
     }
@@ -766,7 +777,10 @@ class _McqTestScreenState extends State<McqTestScreen> {
                 : controllers[inputIndex].text.trim()
           : '';
       inputIndex++;
-      return typedAnswer.isNotEmpty ? typedAnswer : line.expectedAnswer;
+      if (typedAnswer.isNotEmpty || !useExpectedAnswerFallback) {
+        return typedAnswer;
+      }
+      return line.expectedAnswer;
     }
 
     while (lineIndex < question.codeTemplateLines.length) {
@@ -1140,6 +1154,7 @@ class CppPlaygroundScreen extends StatefulWidget {
 
 class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
   late final CppCodeController _codeController;
+  final TextEditingController _stdinController = TextEditingController();
   final ScrollController _editorScrollController = ScrollController();
   final ScrollController _gutterScrollController = ScrollController();
   final CppCodeRunner _cppCodeRunner = CppCodeRunner();
@@ -1169,6 +1184,7 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
       ..removeListener(_syncScrollFromGutter)
       ..dispose();
     _codeController.dispose();
+    _stdinController.dispose();
     super.dispose();
   }
 
@@ -1209,7 +1225,10 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
 
     try {
       if (widget.testCases.isEmpty) {
-        final result = await _cppCodeRunner.run(_codeController.text);
+        final result = await _cppCodeRunner.run(
+          _codeController.text,
+          input: _stdinController.text,
+        );
         if (!mounted) return;
 
         setState(() {
@@ -1505,26 +1524,73 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
                 ),
               ),
             ),
+
             const SizedBox(height: 12),
             Expanded(
               flex: 2,
-              child: _PlaygroundPanel(
-                title: widget.testCases.isEmpty ? 'Output' : 'Test Results',
-                child: widget.testCases.isEmpty
-                    ? SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          _output,
-                          style: GoogleFonts.robotoMono(
-                            fontSize: 13,
-                            height: 1.45,
-                            color: _hasRunError
-                                ? theme.colorScheme.error
-                                : theme.colorScheme.onSurface,
+              child: widget.testCases.isEmpty
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: _PlaygroundPanel(
+                            title: 'Output',
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                _output,
+                                style: GoogleFonts.robotoMono(
+                                  fontSize: 13,
+                                  height: 1.45,
+                                  color: _hasRunError
+                                      ? theme.colorScheme.error
+                                      : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                    : SingleChildScrollView(
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: _PlaygroundPanel(
+                            title: 'Input',
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                              child: TextField(
+                                controller: _stdinController,
+                                enabled: !_isRunning,
+                                expands: true,
+                                maxLines: null,
+                                minLines: null,
+                                keyboardType: TextInputType.multiline,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                style: GoogleFonts.robotoMono(
+                                  fontSize: 13,
+                                  height: 1.45,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'stdin',
+                                  hintStyle: GoogleFonts.robotoMono(
+                                    fontSize: 13,
+                                    color: theme.colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.65),
+                                  ),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : _PlaygroundPanel(
+                      title: 'Test Results',
+                      child: SingleChildScrollView(
                         padding: const EdgeInsets.all(12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1547,7 +1613,7 @@ class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
                           ],
                         ),
                       ),
-              ),
+                    ),
             ),
           ],
         ),

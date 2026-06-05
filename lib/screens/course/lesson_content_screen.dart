@@ -643,7 +643,7 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                           bottom: index == codeLines.length - 1 ? 0 : 6,
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             SizedBox(
                               width: 22,
@@ -922,14 +922,19 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                         children: [
                           SizedBox(
                             width: 28,
-                            child: Text(
-                              '${entry.key + 1}',
-                              textAlign: TextAlign.right,
-                              style: GoogleFonts.robotoMono(
-                                fontSize: 12,
-                                height: 1.45,
-                                color: colorScheme.onSurfaceVariant.withValues(
-                                  alpha: 0.75,
+                            child: SizedBox(
+                              height: 19,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '${entry.key + 1}',
+                                  textAlign: TextAlign.right,
+                                  style: GoogleFonts.robotoMono(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: colorScheme.onSurfaceVariant
+                                        .withValues(alpha: 0.75),
+                                  ),
                                 ),
                               ),
                             ),
