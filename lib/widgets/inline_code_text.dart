@@ -55,7 +55,7 @@ class InlineCodeText extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: 5),
               ],
             ),
           ),
