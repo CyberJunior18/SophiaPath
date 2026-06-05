@@ -44,13 +44,19 @@ class InlineCodeText extends StatelessWidget {
               //   color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
               // ),
             ),
-            child: Text(
-              code,
-              style: GoogleFonts.robotoMono(
-                fontSize: (baseStyle.fontSize ?? 14) - 1,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  code,
+                  style: GoogleFonts.robotoMono(
+                    fontSize: (baseStyle.fontSize ?? 14) - 1,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                SizedBox(height: 4),
+              ],
             ),
           ),
         ),
