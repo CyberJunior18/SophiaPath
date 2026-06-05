@@ -16,10 +16,18 @@ class InlineCodeText extends StatelessWidget {
         GoogleFonts.poppins(fontSize: 14, color: theme.colorScheme.onSurface);
 
     final spans = <InlineSpan>[];
-    final pattern = RegExp(r'<code>(.*?)</code>', dotAll: true);
+    final pattern1 = RegExp(
+      r'<code>(.*?)</code>',
+      dotAll: true,
+    ); // to make text code-ish
+
+    final pattern2 = RegExp(
+      r'<b>(.*?)</b>',
+      dotAll: true,
+    ); // to make text borld-ish
     var lastEnd = 0;
 
-    for (final match in pattern.allMatches(normalizedText)) {
+    for (final match in pattern1.allMatches(normalizedText)) {
       if (match.start > lastEnd) {
         spans.add(
           TextSpan(
@@ -56,6 +64,51 @@ class InlineCodeText extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 5),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      lastEnd = match.end;
+    }
+    for (final match in pattern2.allMatches(normalizedText)) {
+      if (match.start > lastEnd) {
+        spans.add(
+          TextSpan(
+            text: normalizedText.substring(lastEnd, match.start),
+            style: baseStyle,
+          ),
+        );
+      }
+
+      final code = match.group(1) ?? '';
+
+      spans.add(
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+              // border: Border.all(
+              //   color: theme.colorScheme.outlineVariant.withValues(alpha: 0.7),
+              // ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  code,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 2),
               ],
             ),
           ),
