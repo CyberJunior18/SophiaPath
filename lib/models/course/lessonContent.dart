@@ -121,6 +121,21 @@ class LessonBlock {
     return int.tryParse(value?.toString() ?? '') ?? 1;
   }
 
+  double get width {
+    final value = raw['width'];
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 100;
+  }
+
+  double get height {
+    final value = raw['height'];
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 100;
+  }
+
+  String get url => (raw['url'] ?? '').toString();
   String get variant => (raw['variant'] ?? '').toString().toLowerCase();
 
   List<Map<String, dynamic>> get items {

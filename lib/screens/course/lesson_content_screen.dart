@@ -331,7 +331,12 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         );
-
+      case 'image':
+        return Image.network(
+          block.url,
+          width: block.width,
+          height: block.height,
+        );
       case 'bullet_list':
         return _buildBulletList(context, block.items);
 

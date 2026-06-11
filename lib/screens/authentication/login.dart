@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       // backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 50),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -361,8 +361,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 30),
 
               // Don't have an account?
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
                     "Don't have an account? ",
@@ -412,11 +413,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Demo Credentials',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue.shade700,
+                        Expanded(
+                          child: Text(
+                            'Demo Credentials',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue.shade700,
+                            ),
                           ),
                         ),
                       ],
