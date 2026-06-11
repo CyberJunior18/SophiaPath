@@ -1128,10 +1128,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                     height: 60,
                     child: Row(
                       children: [
-                        SizedBox(
-                          height: 50,
-                          width: 150,
-                          child: Expanded(
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
                             child: FilledButton(
                               onPressed: () => Navigator.pop(
                                 dialogContext,
@@ -1158,10 +1157,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        SizedBox(
-                          height: 50,
-                          width: 150,
-                          child: Expanded(
+                        Expanded(
+                          child: SizedBox(
+                            height: 50,
                             child: OutlinedButton(
                               onPressed: practiceLocked
                                   ? null
@@ -1320,6 +1318,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 ),
                 child: Text(
                   chapterName,
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
