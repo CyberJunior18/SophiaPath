@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
+import 'package:google_fonts/google_fonts.dart'; // Add this line
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../../widgets/inline_code_text.dart';
 import '../authentication/authService.dart';
 import '../Lessons/mcq_test_screen.dart';
+import '../code_playground_screen.dart';
 
 class LessonContentScreen extends StatefulWidget {
   final lesson_model.Section lesson;
@@ -574,9 +574,9 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 
     final codeLines = lines.isNotEmpty ? lines : block.text.split('\n');
     final codeText = codeLines.join('\n');
-    final canRunCode = _canRunCppSnippet(codeLines);
     final colorScheme = Theme.of(context).colorScheme;
-
+    final canRunCode = _canRunCode(codeLines);
+    final detectedLanguage = _detectLanguage(codeLines);
     return LayoutBuilder(
       builder: (context, constraints) {
         return ConstrainedBox(
@@ -624,12 +624,15 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                       if (canRunCode) ...[
                         const SizedBox(width: 12),
                         FilledButton.icon(
-                          onPressed: () => _openCppPlayground(
+                          onPressed: () => _openCodePlayground(
                             context,
                             title: language.isNotEmpty
                                 ? language.toUpperCase()
                                 : 'Code Snippet',
                             initialCode: codeText,
+                            detectedLanguage: detectedLanguage,
+                            specifiedLanguage:
+                                language, // The language from the code snippet metadata
                           ),
                           icon: const Icon(Icons.play_arrow_rounded),
                           label: const Text('Run'),
@@ -690,27 +693,63 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     );
   }
 
-  bool _canRunCppSnippet(List<String> codeLines) {
+  String _detectLanguage(List<String> codeLines) {
     for (final line in codeLines) {
       final trimmed = line.trimLeft();
       if (trimmed.isEmpty) continue;
-      return trimmed.startsWith('#include');
+
+      // Check for C++ indicators
+      if (trimmed.startsWith('#include') ||
+          trimmed.contains('std::') ||
+          trimmed.contains('cout') ||
+          trimmed.contains('cin')) {
+        return 'cpp';
+      }
+
+      // Check for Java indicators
+      if (trimmed.contains('public class') ||
+          trimmed.contains('System.out') ||
+          trimmed.contains('import java.') ||
+          trimmed.contains('String[] args')) {
+        return 'java';
+      }
     }
-    return false;
+    return 'unknown';
   }
 
-  void _openCppPlayground(
+  bool _canRunCode(List<String> codeLines) {
+    return _detectLanguage(codeLines) != 'unknown';
+  }
+
+  void _openCodePlayground(
     BuildContext context, {
     required String title,
     required String initialCode,
+    required String detectedLanguage,
+    required String specifiedLanguage,
   }) {
+    // Use specified language if provided, otherwise use detected language
+    final finalLanguage = specifiedLanguage.isNotEmpty
+        ? specifiedLanguage
+        : detectedLanguage;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            CppPlaygroundScreen(title: title, initialCode: initialCode),
+        builder: (_) => CodePlaygroundScreen(
+          title: title,
+          initialCode: initialCode,
+          language: finalLanguage,
+        ),
       ),
     );
+  }
+
+  // Helper method to extract language from the current block
+  String? _extractLanguageFromSnippet() {
+    // You'll need to pass the language from the block
+    // For now, return null to use detected language
+    return null;
   }
 
   Widget _buildCodeChallengeBlock(
@@ -819,16 +858,22 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                 onPressed: starterCodeText.isEmpty
                     ? null
                     : () {
+                        final detectedLang = _detectLanguage(starterLines);
+                        final finalLanguage = language.isNotEmpty
+                            ? language
+                            : detectedLang;
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CppPlaygroundScreen(
+                            builder: (_) => CodePlaygroundScreen(
                               title:
                                   block.raw['problem']?.toString().isNotEmpty ==
                                       true
                                   ? block.raw['problem'].toString()
                                   : 'Code Challenge',
                               initialCode: starterCodeText,
+                              language: finalLanguage,
                               testCases: testCases,
                             ),
                           ),

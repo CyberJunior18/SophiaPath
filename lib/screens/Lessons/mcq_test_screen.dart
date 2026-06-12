@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/inline_code_text.dart';
 import '../../models/course/lessonContent.dart';
 import '../authentication/authService.dart';
-import '../../services/cpp_code_runner.dart';
+import '../../services/code_execution_service.dart';
+import '../code_playground_screen.dart';
 import '../../services/course/user_stats_service.dart';
 
 class McqTestScreen extends StatefulWidget {
@@ -38,8 +39,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
   bool? lastAnswerCorrect;
   late List<Answer> currentAnswers;
   final Map<int, List<TextEditingController>> _fillCodeControllers = {};
-  final CppCodeRunner _cppCodeRunner = CppCodeRunner();
+  final CodeExecutionService _codeExecutionService = CodeExecutionService();
   final UserStatsService _statsService = UserStatsService();
+  String _lastWriteLineError = '';
 
   @override
   void initState() {
@@ -550,26 +552,67 @@ class _McqTestScreenState extends State<McqTestScreen> {
                       }),
 
                     if (answered)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.08,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_lastWriteLineError.isNotEmpty &&
+                              question.exerciseType == 'write_line')
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Compilation failed:',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _lastWriteLineError,
+                                    style: GoogleFonts.robotoMono(
+                                      fontSize: 12,
+                                      height: 1.45,
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            question.answerComment,
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: theme.textTheme.bodyMedium?.color,
+                          if (_lastWriteLineError.isEmpty ||
+                              question.exerciseType != 'write_line')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  question.answerComment,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.textTheme.bodyMedium?.color,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
                       ),
                   ],
                 ),
@@ -695,6 +738,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
   Future<bool> _checkWriteLineAnswer(MCQ question) async {
     final controllers = _fillCodeControllers[currentIndex] ?? const [];
     if (controllers.any((controller) => controller.text.trim().isEmpty)) {
+      _lastWriteLineError = 'Some input fields are empty.';
       return false;
     }
 
@@ -704,26 +748,52 @@ class _McqTestScreenState extends State<McqTestScreen> {
       useExpectedAnswerFallback: false,
     );
 
+    final language = question.codeLanguage.isNotEmpty
+        ? question.codeLanguage
+        : 'cpp';
+
     if (testCases.isEmpty) {
-      final result = await _cppCodeRunner.run(submittedCode);
-      return !result.isError && result.output.trim().isNotEmpty;
+      final result = await _codeExecutionService.executeCode(
+        language: language,
+        lines: submittedCode.split('\n'),
+      );
+      if (result['success'] != true) {
+        _lastWriteLineError =
+            result['output']?.toString() ?? 'Compilation failed.';
+        return false;
+      }
+      _lastWriteLineError = '';
+      return result['output']?.toString().trim().isNotEmpty ?? false;
     }
 
-    final runResults = await _cppCodeRunner.runBatch(
-      submittedCode,
-      testCases.map((testCase) => testCase.input).toList(),
+    final batchResult = await _codeExecutionService.executeBatch(
+      language: language,
+      lines: submittedCode.split('\n'),
+      inputs: testCases.map((testCase) => testCase.input).toList(),
     );
 
+    if (batchResult['success'] != true) {
+      _lastWriteLineError =
+          batchResult['error']?.toString() ?? 'Compilation failed.';
+      return false;
+    }
+
+    final runResults = batchResult['results'] as List<dynamic>;
     if (runResults.length != testCases.length) return false;
 
     for (var index = 0; index < testCases.length; index++) {
-      final actual = _normalizeOutput(runResults[index].output);
+      final runResult = runResults[index] as Map<String, dynamic>;
+      final actual = _normalizeOutput((runResult['output'] ?? '').toString());
       final expected = _normalizeOutput(testCases[index].expectedOutput);
-      if (runResults[index].isError || actual != expected) {
+      if (runResult['isError'] == true || actual != expected) {
+        _lastWriteLineError = runResult['isError'] == true
+            ? (runResult['output']?.toString() ?? 'Compilation failed.')
+            : 'Expected output does not match actual output.';
         return false;
       }
     }
 
+    _lastWriteLineError = '';
     return true;
   }
 
@@ -745,12 +815,19 @@ class _McqTestScreenState extends State<McqTestScreen> {
   }
 
   Future<bool?> _openCodePlayground(MCQ question) {
+    final language = question.codeLanguage.isNotEmpty
+        ? question.codeLanguage
+        : 'cpp';
+    final title = question.fileName.isNotEmpty
+        ? question.fileName
+        : '${language.toUpperCase()} Code';
     return Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => CppPlaygroundScreen(
-          title: question.fileName.isNotEmpty ? question.fileName : 'C++ Code',
+        builder: (_) => CodePlaygroundScreen(
+          title: title,
           initialCode: _editableCodeForQuestion(question),
+          language: language,
           testCases: [...question.testCases, ...question.hiddenTestCases],
         ),
       ),
@@ -1081,7 +1158,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
 
   Widget _buildHighlightedCodeText(String code, ThemeData theme) {
     return RichText(
-      text: CppCodeController.highlightedTextSpan(
+      text: CodePlaygroundController.highlightedTextSpan(
         code,
         theme,
         GoogleFonts.robotoMono(
@@ -1133,792 +1210,5 @@ class _McqTestScreenState extends State<McqTestScreen> {
     }
 
     return rows;
-  }
-}
-
-class CppPlaygroundScreen extends StatefulWidget {
-  final String title;
-  final String initialCode;
-  final List<CodeChallengeTestCase> testCases;
-
-  const CppPlaygroundScreen({
-    super.key,
-    required this.title,
-    required this.initialCode,
-    this.testCases = const [],
-  });
-
-  @override
-  State<CppPlaygroundScreen> createState() => _CppPlaygroundScreenState();
-}
-
-class _CppPlaygroundScreenState extends State<CppPlaygroundScreen> {
-  late final CppCodeController _codeController;
-  final TextEditingController _stdinController = TextEditingController();
-  final ScrollController _editorScrollController = ScrollController();
-  final ScrollController _gutterScrollController = ScrollController();
-  final CppCodeRunner _cppCodeRunner = CppCodeRunner();
-  String _output = '';
-  bool _hasRunError = false;
-  bool _isRunning = false;
-  bool _testsPassed = false;
-  int _passedTests = 0;
-  int _totalTests = 0;
-  List<_PlaygroundTestResult> _testResults = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _codeController = CppCodeController(text: widget.initialCode);
-    _editorScrollController.addListener(_syncScrollFromEditor);
-    _gutterScrollController.addListener(_syncScrollFromGutter);
-    _runCode();
-  }
-
-  @override
-  void dispose() {
-    _editorScrollController
-      ..removeListener(_syncScrollFromEditor)
-      ..dispose();
-    _gutterScrollController
-      ..removeListener(_syncScrollFromGutter)
-      ..dispose();
-    _codeController.dispose();
-    _stdinController.dispose();
-    super.dispose();
-  }
-
-  void _syncScrollFromEditor() {
-    if (!_gutterScrollController.hasClients ||
-        !_editorScrollController.hasClients) {
-      return;
-    }
-    if (_gutterScrollController.offset == _editorScrollController.offset)
-      return;
-    _gutterScrollController.jumpTo(_editorScrollController.offset);
-  }
-
-  void _syncScrollFromGutter() {
-    if (!_gutterScrollController.hasClients ||
-        !_editorScrollController.hasClients) {
-      return;
-    }
-    if (_editorScrollController.offset == _gutterScrollController.offset)
-      return;
-    _editorScrollController.jumpTo(_gutterScrollController.offset);
-  }
-
-  Future<void> _runCode() async {
-    if (_isRunning) return;
-
-    setState(() {
-      _output = widget.testCases.isEmpty
-          ? 'Compiling and running...'
-          : 'Compiling and running tests...';
-      _hasRunError = false;
-      _isRunning = true;
-      _testsPassed = false;
-      _passedTests = 0;
-      _totalTests = widget.testCases.length;
-      _testResults = const [];
-    });
-
-    try {
-      if (widget.testCases.isEmpty) {
-        final result = await _cppCodeRunner.run(
-          _codeController.text,
-          input: _stdinController.text,
-        );
-        if (!mounted) return;
-
-        setState(() {
-          _output = result.output;
-          _hasRunError = result.isError;
-          _isRunning = false;
-        });
-        return;
-      }
-
-      final inputs = widget.testCases
-          .map((testCase) => testCase.input)
-          .toList();
-      final runResults = await _cppCodeRunner.runBatch(
-        _codeController.text,
-        inputs,
-      );
-      if (!mounted) return;
-
-      final testResults = <_PlaygroundTestResult>[];
-      var passed = 0;
-
-      for (var index = 0; index < widget.testCases.length; index++) {
-        final testCase = widget.testCases[index];
-        final runResult = runResults[index];
-        final actual = _normalizeOutput(runResult.output);
-        final expected = _normalizeOutput(testCase.expectedOutput);
-        final isPassed = !runResult.isError && actual == expected;
-        if (isPassed) passed++;
-
-        testResults.add(
-          _PlaygroundTestResult(
-            index: index,
-            testCase: testCase,
-            runResult: runResult,
-            passed: isPassed,
-          ),
-        );
-      }
-
-      setState(() {
-        _passedTests = passed;
-        _totalTests = widget.testCases.length;
-        _testsPassed = passed == widget.testCases.length;
-        _output = 'Passed $_passedTests/$_totalTests tests.';
-        _testResults = testResults;
-        _hasRunError = !_testsPassed;
-        _isRunning = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-
-      setState(() {
-        _output = 'Failed to run code: $error';
-        _hasRunError = true;
-        _isRunning = false;
-      });
-    }
-  }
-
-  String _normalizeOutput(String text) {
-    final normalized = text.replaceAll('\r\n', '\n');
-    final lines = normalized
-        .split('\n')
-        .map((line) => line.trimRight())
-        .toList();
-
-    while (lines.isNotEmpty && lines.first.trim().isEmpty) {
-      lines.removeAt(0);
-    }
-    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
-      lines.removeLast();
-    }
-
-    return lines.join('\n').trim();
-  }
-
-  Widget _buildSplitTestResultCard(
-    ThemeData theme,
-    _PlaygroundTestResult result,
-  ) {
-    final borderColor = result.passed
-        ? Colors.green.withValues(alpha: 0.3)
-        : theme.colorScheme.error.withValues(alpha: 0.3);
-    final tintColor = result.passed
-        ? Colors.green.withValues(alpha: 0.08)
-        : theme.colorScheme.error.withValues(alpha: 0.08);
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  result.label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-              Icon(
-                result.passed ? Icons.check_circle : Icons.cancel,
-                color: result.passed ? Colors.green : theme.colorScheme.error,
-                size: 20,
-              ),
-            ],
-          ),
-          if (result.input.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Input',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                result.input,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 12.5,
-                  height: 1.45,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildOutputSidePanel(
-                  theme: theme,
-                  title: 'Expected',
-                  content: result.expectedOutput,
-                  backgroundColor: tintColor,
-                  borderColor: borderColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOutputSidePanel(
-                  theme: theme,
-                  title: 'Actual',
-                  content: result.actualOutput,
-                  backgroundColor: result.passed
-                      ? Colors.green.withValues(alpha: 0.04)
-                      : theme.colorScheme.error.withValues(alpha: 0.04),
-                  borderColor: borderColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            result.passed ? 'Passed' : 'Failed',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: result.passed ? Colors.green : theme.colorScheme.error,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOutputSidePanel({
-    required ThemeData theme,
-    required String title,
-    required String content,
-    required Color backgroundColor,
-    required Color borderColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            content.isEmpty ? '(no output)' : content,
-            style: GoogleFonts.robotoMono(
-              fontSize: 12.5,
-              height: 1.45,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: InlineCodeText(widget.title, style: GoogleFonts.poppins()),
-        backgroundColor: theme.colorScheme.primary,
-        actions: [
-          IconButton(
-            tooltip: 'Run code',
-            onPressed: _isRunning ? null : _runCode,
-            icon: const Icon(Icons.play_arrow_rounded),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: _PlaygroundPanel(
-                title: 'Code',
-                child: _NumberedCodeEditor(
-                  controller: _codeController,
-                  editorScrollController: _editorScrollController,
-                  gutterScrollController: _gutterScrollController,
-                  theme: theme,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isRunning
-                    ? null
-                    : widget.testCases.isNotEmpty && _testsPassed
-                    ? () => Navigator.pop(context, true)
-                    : _runCode,
-                icon: _isRunning
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : widget.testCases.isNotEmpty && _testsPassed
-                    ? const Icon(Icons.check_circle_outline)
-                    : const Icon(Icons.play_arrow_rounded),
-                label: Text(
-                  _isRunning
-                      ? 'Running...'
-                      : widget.testCases.isNotEmpty && _testsPassed
-                      ? 'Use This Solution'
-                      : 'Run Code',
-                ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-            Expanded(
-              flex: 2,
-              child: widget.testCases.isEmpty
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: _PlaygroundPanel(
-                            title: 'Output',
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                _output,
-                                style: GoogleFonts.robotoMono(
-                                  fontSize: 13,
-                                  height: 1.45,
-                                  color: _hasRunError
-                                      ? theme.colorScheme.error
-                                      : theme.colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          flex: 2,
-                          child: _PlaygroundPanel(
-                            title: 'Input',
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                              child: TextField(
-                                controller: _stdinController,
-                                enabled: !_isRunning,
-                                expands: true,
-                                maxLines: null,
-                                minLines: null,
-                                keyboardType: TextInputType.multiline,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                style: GoogleFonts.robotoMono(
-                                  fontSize: 13,
-                                  height: 1.45,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: 'stdin',
-                                  hintStyle: GoogleFonts.robotoMono(
-                                    fontSize: 13,
-                                    color: theme.colorScheme.onSurfaceVariant
-                                        .withValues(alpha: 0.65),
-                                  ),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : _PlaygroundPanel(
-                      title: 'Test Results',
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _output,
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _testsPassed
-                                    ? Colors.green
-                                    : theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            ..._testResults.map(
-                              (result) =>
-                                  _buildSplitTestResultCard(theme, result),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaygroundTestResult {
-  final int index;
-  final CodeChallengeTestCase testCase;
-  final CppRunResult runResult;
-  final bool passed;
-
-  const _PlaygroundTestResult({
-    required this.index,
-    required this.testCase,
-    required this.runResult,
-    required this.passed,
-  });
-
-  String get label =>
-      testCase.hidden ? 'Hidden Test ${index + 1}' : 'Test ${index + 1}';
-
-  String get input => testCase.input;
-
-  String get expectedOutput => testCase.expectedOutput;
-
-  String get actualOutput => runResult.output;
-}
-
-class _NumberedCodeEditor extends StatefulWidget {
-  final CppCodeController controller;
-  final ScrollController editorScrollController;
-  final ScrollController gutterScrollController;
-  final ThemeData theme;
-
-  const _NumberedCodeEditor({
-    required this.controller,
-    required this.editorScrollController,
-    required this.gutterScrollController,
-    required this.theme,
-  });
-
-  @override
-  State<_NumberedCodeEditor> createState() => _NumberedCodeEditorState();
-}
-
-class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
-  late final VoidCallback _listener;
-
-  @override
-  void initState() {
-    super.initState();
-    _listener = () => setState(() {});
-    widget.controller.addListener(_listener);
-  }
-
-  @override
-  void didUpdateWidget(covariant _NumberedCodeEditor oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.removeListener(_listener);
-      widget.controller.addListener(_listener);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_listener);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final theme = widget.theme;
-        final codeStyle = GoogleFonts.robotoMono(
-          fontSize: 13,
-          height: 1.45,
-          color: theme.colorScheme.onSurface,
-        );
-        const gutterWidth = 25.0;
-        const codeHorizontalPadding = 12.0 * 2;
-        final availableWidth = max(
-          0.0,
-          constraints.maxWidth - gutterWidth - codeHorizontalPadding,
-        );
-        final gutterLabels = _buildGutterLabels(
-          widget.controller.text,
-          codeStyle,
-          availableWidth,
-        );
-
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: gutterWidth,
-              child: ListView.builder(
-                controller: widget.gutterScrollController,
-                physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.only(top: 8, bottom: 8),
-                itemExtent: 19,
-                itemCount: gutterLabels.length,
-                itemBuilder: (context, index) {
-                  final label = gutterLabels[index];
-                  return Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Text(
-                        label ?? '',
-                        textAlign: TextAlign.right,
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 12,
-                          height: 1.45,
-                          color: theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.55,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 0),
-            Expanded(
-              child: TextField(
-                controller: widget.controller,
-                scrollController: widget.editorScrollController,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                keyboardType: TextInputType.multiline,
-                autocorrect: false,
-                enableSuggestions: false,
-                cursorColor: theme.colorScheme.primary,
-                style: codeStyle,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: 11,
-                    horizontal: 12,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  List<String?> _buildGutterLabels(
-    String source,
-    TextStyle style,
-    double availableWidth,
-  ) {
-    final lines = source.isEmpty ? <String>[''] : source.split('\n');
-    final labels = <String?>[];
-
-    for (var index = 0; index < lines.length; index++) {
-      final visualLineCount = _countWrappedVisualLines(
-        lines[index],
-        style,
-        availableWidth,
-      );
-      labels.add('${index + 1}');
-      for (
-        var wrappedIndex = 1;
-        wrappedIndex < visualLineCount;
-        wrappedIndex++
-      ) {
-        labels.add(null);
-      }
-    }
-
-    return labels.isEmpty ? <String?>[null] : labels;
-  }
-
-  int _countWrappedVisualLines(
-    String text,
-    TextStyle style,
-    double availableWidth,
-  ) {
-    if (availableWidth <= 0) return 1;
-
-    final painter = TextPainter(
-      text: TextSpan(text: text.isEmpty ? ' ' : text, style: style),
-      textDirection: TextDirection.ltr,
-      maxLines: null,
-    )..layout(maxWidth: availableWidth);
-
-    return max(1, painter.computeLineMetrics().length);
-  }
-}
-
-class CppCodeController extends TextEditingController {
-  CppCodeController({super.text});
-
-  static final RegExp _tokenPattern = RegExp(
-    r'''(//.*$|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b(?:#include|using|namespace|int|return|void|double|float|char|string|bool|if|else|for|while|class|struct|public|private|true|false)\b|\b(?:cout|cin|std|endl|main)\b|\b\d+(?:\.\d+)?\b|[{}()[\];,<>+\-*/=])''',
-    multiLine: true,
-  );
-
-  @override
-  TextSpan buildTextSpan({
-    required BuildContext context,
-    TextStyle? style,
-    required bool withComposing,
-  }) {
-    final theme = Theme.of(context);
-    final baseStyle = style ?? DefaultTextStyle.of(context).style;
-    return highlightedTextSpan(text, theme, baseStyle);
-  }
-
-  static TextSpan highlightedTextSpan(
-    String source,
-    ThemeData theme,
-    TextStyle baseStyle,
-  ) {
-    final spans = <TextSpan>[];
-    var lastMatchEnd = 0;
-
-    for (final match in _tokenPattern.allMatches(source)) {
-      if (match.start > lastMatchEnd) {
-        spans.add(TextSpan(text: source.substring(lastMatchEnd, match.start)));
-      }
-
-      final token = source.substring(match.start, match.end);
-      spans.add(TextSpan(text: token, style: _styleForToken(token, theme)));
-      lastMatchEnd = match.end;
-    }
-
-    if (lastMatchEnd < source.length) {
-      spans.add(TextSpan(text: source.substring(lastMatchEnd)));
-    }
-
-    return TextSpan(style: baseStyle, children: spans);
-  }
-
-  static TextStyle _styleForToken(String token, ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-
-    Color color;
-    FontWeight fontWeight = FontWeight.w400;
-
-    if (token.startsWith('//')) {
-      color = isDark ? const Color(0xFF6A9955) : const Color(0xFF008000);
-    } else if (token.startsWith('"') || token.startsWith("'")) {
-      color = isDark ? const Color(0xFFCE9178) : const Color(0xFFA31515);
-    } else if (RegExp(r'^\d').hasMatch(token)) {
-      color = isDark ? const Color(0xFFB5CEA8) : const Color(0xFF098658);
-    } else if (RegExp(
-      r'^(#include|using|namespace|int|return|void|double|float|char|string|bool|if|else|for|while|class|struct|public|private|true|false)$',
-    ).hasMatch(token)) {
-      color = isDark ? const Color(0xFF569CD6) : const Color(0xFF0000FF);
-      fontWeight = FontWeight.w600;
-    } else if (RegExp(r'^(cout|cin|std|endl|main)$').hasMatch(token)) {
-      color = isDark ? const Color(0xFFDCDCAA) : const Color(0xFF795E26);
-    } else {
-      color = isDark ? const Color(0xFFD4D4D4) : const Color(0xFF333333);
-    }
-
-    return TextStyle(color: color, fontWeight: fontWeight);
-  }
-}
-
-class _PlaygroundPanel extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _PlaygroundPanel({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ),
-          Expanded(child: child),
-        ],
-      ),
-    );
   }
 }
