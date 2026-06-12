@@ -821,6 +821,9 @@ class _McqTestScreenState extends State<McqTestScreen> {
     final title = question.fileName.isNotEmpty
         ? question.fileName
         : '${language.toUpperCase()} Code';
+    final challengeQuestion = question.isCodeChallenge
+        ? question.instruction
+        : '';
     return Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -829,6 +832,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
           initialCode: _editableCodeForQuestion(question),
           language: language,
           testCases: [...question.testCases, ...question.hiddenTestCases],
+          challengeQuestion: challengeQuestion,
         ),
       ),
     );

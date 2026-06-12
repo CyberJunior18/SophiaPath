@@ -13,6 +13,7 @@ class CodePlaygroundScreen extends StatefulWidget {
   final String initialCode;
   final String language;
   final List<dynamic>? testCases;
+  final String challengeQuestion;
 
   const CodePlaygroundScreen({
     super.key,
@@ -20,6 +21,7 @@ class CodePlaygroundScreen extends StatefulWidget {
     required this.initialCode,
     required this.language,
     this.testCases,
+    this.challengeQuestion = '',
   });
 
   @override
@@ -637,6 +639,42 @@ class _CodePlaygroundScreenState extends State<CodePlaygroundScreen> {
         title: InlineCodeText(widget.title, style: GoogleFonts.poppins()),
         backgroundColor: theme.colorScheme.primary,
         actions: [
+          if (widget.challengeQuestion.isNotEmpty)
+            IconButton(
+              tooltip: 'View question',
+              icon: const Icon(Icons.help_outline_rounded),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Row(
+                      children: [
+                        Icon(Icons.help, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Challenge',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    content: SingleChildScrollView(
+                      child: SelectableText(
+                        widget.challengeQuestion,
+                        style: GoogleFonts.poppins(fontSize: 14, height: 1.5),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Got it'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           if (_isProcessRunning)
             IconButton(
               tooltip: 'Stop process',

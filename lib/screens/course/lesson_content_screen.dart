@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart'; // Add this line
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../../widgets/inline_code_text.dart';
+import '../../widgets/uml_diagram_widget.dart';
 import '../authentication/authService.dart';
 import '../Lessons/mcq_test_screen.dart';
 import '../code_playground_screen.dart';
@@ -348,6 +349,12 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 
       case 'normal_code':
         return _buildNormalCodeBlock(context, block);
+
+      case 'uml_diagram':
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: UmlDiagramWidget(data: block.raw),
+        );
 
       case 'code_challenge':
         return _buildCodeChallengeBlock(context, block);
