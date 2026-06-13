@@ -582,7 +582,9 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     final codeLines = lines.isNotEmpty ? lines : block.text.split('\n');
     final codeText = codeLines.join('\n');
     final colorScheme = Theme.of(context).colorScheme;
-    final canRunCode = _canRunCode(codeLines);
+    final isRunable =
+        block.raw['runable'] != false; // Default to true if not present
+    final canRunCode = isRunable && _canRunCode(codeLines);
     final detectedLanguage = _detectLanguage(codeLines);
     return LayoutBuilder(
       builder: (context, constraints) {
