@@ -246,11 +246,17 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     if (isFirstLessonOfFirstCourse) {
       startTime = DateTime.now();
     }
+    // Check whether this lesson has questions alone or also has non-exercise blocks
+    // (headings, tables, bullet lists, paragraphs, etc.) alongside exercises.
+    // If it has mixed content, route to LessonContentScreen which renders ALL block types inline,
+    // rather than McqTestScreen which would only show the extracted MCQ questions.
+    final hasMixedContent = lesson.contents.any((c) => c.hasNonExerciseBlocks);
+
     debugPrint("\n Lessons info : ${lesson.toString()}");
     final score = await Navigator.push<int>(
       context,
       MaterialPageRoute(
-        builder: (_) => lesson.questions.isNotEmpty
+        builder: (_) => lesson.questions.isNotEmpty && !hasMixedContent
             ? McqTestScreen(
                 section: lesson.title,
                 questions: lesson.questions,

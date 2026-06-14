@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/models/course/course_info.dart';
 import 'package:sophia_path/models/course/lesson.dart';
 
+import '../../models/course/lessonContent.dart' hide Lesson;
+
 class AuthService {
   // Use 10.0.2.2 for Android emulator to reach localhost on your PC
   // If using a real device, replace with your PC's local IP e.g. http://192.168.1.x:3000
@@ -419,6 +421,30 @@ class AuthService {
       );
     } catch (e) {
       throw Exception('Network error: $e');
+    }
+  }
+
+  Future<LessonContent?> getLessonContentById({
+    required int courseId,
+    required int sectionId,
+    required int lessonId,
+    required int contentId,
+  }) async {
+    try {
+      final fullSection = await getLessonById(
+        courseId: courseId,
+        sectionId: sectionId,
+        lessonId: lessonId,
+      );
+      // Find the specific content
+      for (final content in fullSection.contents) {
+        if (content.id == contentId) {
+          return content;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 

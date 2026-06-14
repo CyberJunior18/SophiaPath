@@ -216,12 +216,12 @@ class LessonContent {
         for (final blockItem in rawBlocks.whereType<Map>()) {
           final block = Map<String, dynamic>.from(blockItem);
           final blockType = (block['type'] ?? '').toString().toLowerCase();
-          // Only classify as MCQ if it's an actual MCQ exercise type, not code_challenge
-          // code_challenge blocks are displayed as part of learning content
-          if (blockType == 'mcq' ||
-              blockType == 'fill_code' ||
-              blockType == 'write_line' ||
-              blockType == 'find_error') {
+          // Only classify as MCQ if it's a pure MCQ block (multiple choice question).
+          // Blocks like write_line, fill_code, find_error are exercise blocks embedded
+          // within learning content pages that have context blocks (heading, paragraph, etc.).
+          // Those mixed pages should keep their LEARNING type so they render in LessonContentScreen
+          // which displays all blocks inline.
+          if (blockType == 'mcq') {
             return LessonContentType.MCQ;
           }
         }
@@ -361,6 +361,28 @@ class LessonContent {
       }
     }
 
+    return false;
+  }
+
+  /// Returns true if any page in this lesson content has renderable blocks
+  /// that are not exercise-type (e.g., UML diagram, heading, paragraph, etc.).
+  /// When this is true, the content should be displayed in LessonContentScreen
+  /// which can render all block types inline, rather than McqTestScreen.
+  bool get hasNonExerciseBlocks {
+    const exerciseTypes = {
+      'mcq',
+      'fill_code',
+      'write_line',
+      'find_error',
+      'code_challenge',
+    };
+    for (final page in pages) {
+      for (final block in page.blocks) {
+        if (!exerciseTypes.contains(block.type)) {
+          return true;
+        }
+      }
+    }
     return false;
   }
 }
@@ -594,6 +616,7 @@ class CodeTemplateLine {
   final int width;
   final String expectedAnswer;
   final bool multiline;
+  final bool sameLine;
 
   const CodeTemplateLine({
     required this.type,
@@ -601,6 +624,7 @@ class CodeTemplateLine {
     this.width = 6,
     this.expectedAnswer = '',
     this.multiline = false,
+    this.sameLine = false,
   });
 
   factory CodeTemplateLine.fromMap(Map<String, dynamic> map) {
@@ -616,6 +640,7 @@ class CodeTemplateLine {
       width: asInt(map['width']) > 0 ? asInt(map['width']) : 6,
       expectedAnswer: (map['expectedAnswer'] ?? '').toString(),
       multiline: map['multiline'] == true,
+      sameLine: map['sameLine'] == true,
     );
   }
 }

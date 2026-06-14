@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/inline_code_text.dart';
+import '../widgets/uml_diagram_widget.dart';
 import '../models/course/lessonContent.dart';
 import '../services/code_execution_service.dart';
 
@@ -14,6 +15,7 @@ class CodePlaygroundScreen extends StatefulWidget {
   final String language;
   final List<dynamic>? testCases;
   final String challengeQuestion;
+  final Map<String, dynamic>? challengeInfo;
 
   const CodePlaygroundScreen({
     super.key,
@@ -22,6 +24,7 @@ class CodePlaygroundScreen extends StatefulWidget {
     required this.language,
     this.testCases,
     this.challengeQuestion = '',
+    this.challengeInfo,
   });
 
   @override
@@ -475,6 +478,81 @@ class _CodePlaygroundScreenState extends State<CodePlaygroundScreen> {
     return lines.join('\n').trim();
   }
 
+  Widget _challengeSheetSection(
+    BuildContext context,
+    String title,
+    String body,
+    ColorScheme colorScheme,
+  ) {
+    if (body.trim().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          InlineCodeText(
+            body,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              height: 1.5,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _challengeCodeBlock(
+    BuildContext context,
+    String label,
+    String code,
+    ColorScheme colorScheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.robotoMono(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              code,
+              style: GoogleFonts.robotoMono(
+                fontSize: 13,
+                height: 1.4,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSplitTestResultCard(
     ThemeData theme,
     _PlaygroundTestResult result,
@@ -639,39 +717,168 @@ class _CodePlaygroundScreenState extends State<CodePlaygroundScreen> {
         title: InlineCodeText(widget.title, style: GoogleFonts.poppins()),
         backgroundColor: theme.colorScheme.primary,
         actions: [
-          if (widget.challengeQuestion.isNotEmpty)
+          if (widget.challengeInfo != null)
             IconButton(
-              tooltip: 'View question',
-              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'Challenge info',
+              icon: const Icon(Icons.info_outline),
               onPressed: () {
-                showDialog(
+                showModalBottomSheet(
                   context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Row(
-                      children: [
-                        Icon(Icons.help, color: theme.colorScheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Challenge',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
                     ),
-                    content: SingleChildScrollView(
-                      child: SelectableText(
-                        widget.challengeQuestion,
-                        style: GoogleFonts.poppins(fontSize: 14, height: 1.5),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('Got it'),
-                      ),
-                    ],
                   ),
+                  builder: (sheetContext) {
+                    final sheetColors = Theme.of(sheetContext).colorScheme;
+                    final info = widget.challengeInfo!;
+                    final example = info['example'] is Map
+                        ? Map<String, dynamic>.from(info['example'] as Map)
+                        : <String, dynamic>{};
+
+                    return DraggableScrollableSheet(
+                      initialChildSize: 0.65,
+                      minChildSize: 0.4,
+                      maxChildSize: 0.9,
+                      expand: false,
+                      builder: (_, scrollController) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                          child: ListView(
+                            controller: scrollController,
+                            children: [
+                              Center(
+                                child: Container(
+                                  width: 36,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: sheetColors.onSurfaceVariant
+                                        .withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.local_cafe_outlined,
+                                    color: sheetColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Code Challenge',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: sheetColors.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              _challengeSheetSection(
+                                sheetContext,
+                                'Problem',
+                                (info['problem'] ?? '').toString(),
+                                sheetColors,
+                              ),
+                              _challengeSheetSection(
+                                sheetContext,
+                                'Input format',
+                                (info['inputFormat'] ?? '').toString(),
+                                sheetColors,
+                              ),
+                              _challengeSheetSection(
+                                sheetContext,
+                                'Output format',
+                                (info['outputFormat'] ?? '').toString(),
+                                sheetColors,
+                              ),
+                              _challengeSheetSection(
+                                sheetContext,
+                                'Constraints',
+                                (info['constraints'] ?? '').toString(),
+                                sheetColors,
+                              ),
+                              if (example.isNotEmpty) ...[
+                                Text(
+                                  'Example',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: sheetColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if ((example['input'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                  _challengeCodeBlock(
+                                    sheetContext,
+                                    'Input',
+                                    (example['input'] ?? '').toString(),
+                                    sheetColors,
+                                  ),
+                                if ((example['output'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                  _challengeCodeBlock(
+                                    sheetContext,
+                                    'Output',
+                                    (example['output'] ?? '').toString(),
+                                    sheetColors,
+                                  ),
+                                if ((example['explanation'] ?? '')
+                                    .toString()
+                                    .isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      (example['explanation'] ?? '').toString(),
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 13,
+                                        height: 1.5,
+                                        color: sheetColors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                              // === UML DIAGRAM SECTION ===
+                              if (info['umlDiagram'] is List &&
+                                  (info['umlDiagram'] as List).isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Class Diagram',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: sheetColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ...((info['umlDiagram'] as List).map((
+                                  diagramData,
+                                ) {
+                                  final diagram = diagramData is Map
+                                      ? Map<String, dynamic>.from(diagramData)
+                                      : <String, dynamic>{};
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: UmlDiagramWidget(
+                                      data: diagram,
+                                      compact: true,
+                                    ),
+                                  );
+                                })),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
                 );
               },
             ),

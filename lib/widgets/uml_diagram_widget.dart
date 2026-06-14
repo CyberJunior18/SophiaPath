@@ -4,7 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 class UmlDiagramWidget extends StatelessWidget {
   final Map<String, dynamic> data;
 
-  const UmlDiagramWidget({super.key, required this.data});
+  /// If true, no outer border/shadow wrapper is added (used when rendering
+  /// multiple diagrams inside a parent container).
+  final bool compact;
+
+  const UmlDiagramWidget({super.key, required this.data, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -12,8 +16,9 @@ class UmlDiagramWidget extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final title = (data['title'] ?? '').toString();
+    final isAbstract = data['abstract'] == true;
     final rawAttributes = data['attributes'];
-    final rawMethods = data['Methods'];
+    final rawMethods = data['methods'];
 
     final attributes = rawAttributes is List
         ? rawAttributes
@@ -28,6 +33,95 @@ class UmlDiagramWidget extends StatelessWidget {
               .map((m) => Map<String, dynamic>.from(m))
               .toList()
         : <Map<String, dynamic>>[];
+
+    final diagramBody = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // === CLASS NAME SECTION ===
+        _buildSection(
+          context: context,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              children: [
+                if (isAbstract)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '«abstract»',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: isAbstract ? FontStyle.italic : FontStyle.normal,
+                    color: isAbstract
+                        ? colorScheme.primary
+                        : colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          showBottomBorder: true,
+          isTitle: true,
+          isAbstract: isAbstract,
+        ),
+
+        // === ATTRIBUTES SECTION ===
+        if (attributes.isNotEmpty)
+          _buildSection(
+            context: context,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (int i = 0; i < attributes.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _buildAttributeLine(context, attributes[i]),
+                  ],
+                ],
+              ),
+            ),
+            showBottomBorder: methods.isNotEmpty,
+            isTitle: false,
+          ),
+
+        // === METHODS SECTION ===
+        if (methods.isNotEmpty)
+          _buildSection(
+            context: context,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (int i = 0; i < methods.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _buildMethodLine(context, methods[i]),
+                  ],
+                ],
+              ),
+            ),
+            showBottomBorder: false,
+            isTitle: false,
+          ),
+      ],
+    );
+
+    if (compact) return diagramBody;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -51,79 +145,7 @@ class UmlDiagramWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // === CLASS NAME SECTION ===
-                _buildSection(
-                  context: context,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  showBottomBorder: true,
-                  isTitle: true,
-                ),
-
-                // === ATTRIBUTES SECTION ===
-                if (attributes.isNotEmpty)
-                  _buildSection(
-                    context: context,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (int i = 0; i < attributes.length; i++) ...[
-                            if (i > 0) const SizedBox(height: 4),
-                            _buildAttributeLine(context, attributes[i]),
-                          ],
-                        ],
-                      ),
-                    ),
-                    showBottomBorder: methods.isNotEmpty,
-                    isTitle: false,
-                  ),
-
-                // === METHODS SECTION ===
-                if (methods.isNotEmpty)
-                  _buildSection(
-                    context: context,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          for (int i = 0; i < methods.length; i++) ...[
-                            if (i > 0) const SizedBox(height: 4),
-                            _buildMethodLine(context, methods[i]),
-                          ],
-                        ],
-                      ),
-                    ),
-                    showBottomBorder: false,
-                    isTitle: false,
-                  ),
-              ],
-            ),
+            child: diagramBody,
           ),
         );
       },
@@ -135,12 +157,15 @@ class UmlDiagramWidget extends StatelessWidget {
     required Widget child,
     required bool showBottomBorder,
     required bool isTitle,
+    bool isAbstract = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         color: isTitle
-            ? colorScheme.primary.withValues(alpha: 0.08)
+            ? (isAbstract
+                  ? colorScheme.primary.withValues(alpha: 0.12)
+                  : colorScheme.primary.withValues(alpha: 0.08))
             : Colors.transparent,
         border: showBottomBorder
             ? Border(
@@ -158,7 +183,7 @@ class UmlDiagramWidget extends StatelessWidget {
   Widget _buildAttributeLine(BuildContext context, Map<String, dynamic> attr) {
     final name = (attr['name'] ?? '').toString();
     final type = (attr['type'] ?? '').toString();
-    final visibility = (attr['visible'] ?? '').toString().toLowerCase();
+    final visibility = (attr['visibility'] ?? '').toString().toLowerCase();
 
     String visibilitySymbol;
     switch (visibility) {
@@ -174,13 +199,21 @@ class UmlDiagramWidget extends StatelessWidget {
         break;
     }
 
-    return _buildLine(context, '$visibilitySymbol $name : $type');
+    // Underline static attributes
+    final isStatic = attr['static'] == true;
+
+    return _buildLine(
+      context,
+      '$visibilitySymbol $name : $type',
+      italic: false,
+      underline: isStatic,
+    );
   }
 
   Widget _buildMethodLine(BuildContext context, Map<String, dynamic> method) {
     final name = (method['name'] ?? '').toString();
-    final methodType = (method['type'] ?? '').toString();
-    final rawParams = method['parameter'];
+    final methodType = (method['returnType'] ?? '').toString();
+    final rawParams = method['parameters'];
 
     final params = rawParams is List
         ? rawParams
@@ -213,11 +246,23 @@ class UmlDiagramWidget extends StatelessWidget {
     }
 
     final lineText = '$visibilitySymbol $name($paramStr)$returnTypeStr';
+    final isAbstractMethod = method['abstract'] == true;
+    final isStaticMethod = method['static'] == true;
 
-    return _buildLine(context, lineText);
+    return _buildLine(
+      context,
+      lineText,
+      italic: isAbstractMethod,
+      underline: isStaticMethod,
+    );
   }
 
-  Widget _buildLine(BuildContext context, String text) {
+  Widget _buildLine(
+    BuildContext context,
+    String text, {
+    bool italic = false,
+    bool underline = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     return Text(
       text,
@@ -225,6 +270,8 @@ class UmlDiagramWidget extends StatelessWidget {
         fontSize: 13,
         height: 1.4,
         color: colorScheme.onSurface,
+        fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+        decoration: underline ? TextDecoration.underline : TextDecoration.none,
       ),
     );
   }

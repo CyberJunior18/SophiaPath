@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../Lessons/mcq_test_screen.dart';
+import '../authentication/authService.dart';
 import 'lesson_content_screen.dart';
 
 class LessonContentsListScreen extends StatelessWidget {
@@ -39,16 +40,35 @@ class LessonContentsListScreen extends StatelessWidget {
     BuildContext context,
     lesson_content_model.Lesson content,
   ) async {
-    final questions = content.extractQuestions();
+    final authService = AuthService();
+    lesson_content_model.Lesson fullContent = content; // fallback
 
-    if (questions.isNotEmpty) {
+    try {
+      // courseId/sectionId/lessonId might be the same if your API works that way
+      final fetched = await authService.getLessonContentById(
+        courseId: lesson.id ?? 0,
+        sectionId: lesson.id ?? 0,
+        lessonId: lesson.id ?? 0,
+        contentId: content.id,
+      );
+      if (fetched != null) {
+        fullContent = fetched;
+      }
+    } catch (_) {
+      // Keep the original content on error
+    }
+
+    final questions = fullContent.extractQuestions();
+
+    // If the page ONLY contains exercise blocks, route directly to McqTestScreen
+    if (questions.isNotEmpty && !fullContent.hasNonExerciseBlocks) {
       await Navigator.push<int>(
         context,
         MaterialPageRoute(
           builder: (_) => McqTestScreen(
-            section: content.partTitle.isNotEmpty
-                ? content.partTitle
-                : content.chapterName,
+            section: fullContent.partTitle.isNotEmpty
+                ? fullContent.partTitle
+                : fullContent.chapterName,
             questions: questions,
             courseId: lesson.id ?? 0,
             totalLessons: lesson.contents.length,
@@ -60,17 +80,18 @@ class LessonContentsListScreen extends StatelessWidget {
       return;
     }
 
+    // Otherwise, open LessonContentScreen with the FULL content (all blocks)
     await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => LessonContentScreen(
           lesson: lesson_model.Section(
             id: lesson.id,
-            title: content.partTitle.isNotEmpty
-                ? content.partTitle
+            title: fullContent.partTitle.isNotEmpty
+                ? fullContent.partTitle
                 : lesson.title,
             questions: questions,
-            contents: [content],
+            contents: [fullContent], // now contains all blocks
             done: lesson.done,
             description: lesson.description,
           ),
