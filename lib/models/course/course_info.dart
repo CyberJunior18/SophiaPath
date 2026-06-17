@@ -45,13 +45,13 @@ class CourseInfo {
     final dynamic rawSections = map['sections'];
     List<Lesson> parsedSections = const [];
 
-    int _asInt(dynamic value) {
+    int asInt(dynamic value) {
       if (value is int) return value;
       if (value is num) return value.toInt();
       return int.tryParse(value?.toString() ?? '') ?? 0;
     }
 
-    List<Lesson> _parseLessons(dynamic value) {
+    List<Lesson> parseLessons(dynamic value) {
       if (value is! List) return const [];
 
       return value.whereType<Map>().map((item) {
@@ -60,11 +60,11 @@ class CourseInfo {
       }).toList();
     }
 
-    List<Lesson> _parseSections(dynamic value) {
+    List<Lesson> parseSections(dynamic value) {
       if (value is String && value.trim().isNotEmpty) {
         try {
           final decoded = jsonDecode(value);
-          return _parseSections(decoded);
+          return parseSections(decoded);
         } catch (_) {
           return const [];
         }
@@ -78,7 +78,7 @@ class CourseInfo {
       }).toList();
     }
 
-    List<Lesson> _parseLessonsFromSections(dynamic sectionsValue) {
+    List<Lesson> parseLessonsFromSections(dynamic sectionsValue) {
       if (sectionsValue is! List) return const [];
 
       final sectionMaps = sectionsValue
@@ -102,24 +102,24 @@ class CourseInfo {
         return nestedLessons;
       }
 
-      return _parseLessons(sectionMaps);
+      return parseLessons(sectionMaps);
     }
 
-    parsedSections = _parseSections(rawSections);
+    parsedSections = parseSections(rawSections);
 
     final dynamic rawLessons = map['lessons'];
     final parsedLessons = rawLessons is List && rawLessons.isNotEmpty
-        ? _parseLessons(rawLessons)
-        : _parseLessonsFromSections(rawSections);
-    final int parsedTotalLessons = _asInt(
+        ? parseLessons(rawLessons)
+        : parseLessonsFromSections(rawSections);
+    final int parsedTotalLessons = asInt(
       map['total_lessons'] ?? map['totalLessons'],
     );
 
     return CourseInfo(
-      id: _asInt(map['id']),
+      id: asInt(map['id']),
       title: map['title']?.toString() ?? '',
       description: map['description']?.toString() ?? '',
-      numberOfFinishedLessons: _asInt(
+      numberOfFinishedLessons: asInt(
         map['number_of_finished_lessons'] ?? map['lessonsDoneCount'],
       ),
       totalLessons: parsedTotalLessons > 0
