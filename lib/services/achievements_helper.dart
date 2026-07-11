@@ -1,6 +1,5 @@
 import '../models/user/achievements.dart';
 import '../models/data.dart';
-import 'course/firestore_course_service.dart';
 import 'course/user_stats_service.dart';
 
 class AchievementsHelper {

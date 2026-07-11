@@ -11,6 +11,7 @@ class User {
   final List<CourseInfo> registeredCourses;
   final List<int> registedCoursesIndexes;
   final int xp;
+  final String email;
   DateTime? lastSeen;
   bool isOnline = false;
   String? status;
@@ -31,6 +32,7 @@ class User {
     required this.fullName,
     required this.registedCoursesIndexes,
     this.xp = 0,
+    this.email = '',
   });
 
   bool get isAvailableForChat => isOnline && lastSeen != null;
@@ -61,6 +63,7 @@ class User {
       'xp': xp,
       'lastSeen': lastSeen?.toIso8601String(),
       'isOnline': isOnline,
+      'email': email,
     };
   }
 
@@ -102,6 +105,7 @@ class User {
         registeredCourses: registeredCourses,
         registedCoursesIndexes: registedCoursesIndexes,
         xp: (map['xp'] as num?)?.toInt() ?? map['XP'] ?? 0,
+        email: map['email'] ?? map['Email'] ?? '',
       )
       ..lastSeen = map['lastSeen'] != null
           ? DateTime.parse(map['lastSeen'])
@@ -126,6 +130,7 @@ class User {
     bool? isOnline,
     String? status,
     String? bio,
+    String? email,
   }) {
     return User(
         username: username ?? this.username,
@@ -139,6 +144,7 @@ class User {
         registedCoursesIndexes:
             registedCoursesIndexes ?? this.registedCoursesIndexes,
         xp: xp ?? this.xp,
+        email: email ?? this.email,
       )
       ..lastSeen = lastSeen ?? this.lastSeen
       ..isOnline = isOnline ?? this.isOnline
@@ -171,6 +177,7 @@ class User {
       registeredCourses: [], // Handle separately if needed
       registedCoursesIndexes: _safeListInt(data['registedCoursesIndexes']),
       xp: (data['xp'] as num?)?.toInt() ?? (data['XP'] as num?)?.toInt() ?? 0,
+      email: data['email']?.toString() ?? '',
     )..isOnline = data['isOnline'] == true;
   }
 
@@ -204,4 +211,5 @@ final User sampleUser = User(
   registeredCourses: [],
   registedCoursesIndexes: [],
   xp: 0,
+  email: "test@example.com",
 );

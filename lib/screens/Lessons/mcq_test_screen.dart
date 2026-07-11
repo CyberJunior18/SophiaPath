@@ -384,7 +384,7 @@ class _McqTestScreenState extends State<McqTestScreen> {
                             // ),
                             // const SizedBox(height: 10),
                             InlineCodeText(
-                              "${question.isFillCode || question.hasCodeSnippet ? question.instruction : question.question}",
+                              question.isFillCode || question.hasCodeSnippet ? question.instruction : question.question,
                               style: GoogleFonts.poppins(
                                 fontSize: 18,
                                 color: theme.textTheme.bodyLarge?.color,

@@ -11,6 +11,7 @@ class UserPreferencesService {
   static const String _userKey = 'user_data';
   static const String _isFirstLaunchKey = 'is_first_launch';
   static const String _themeKey = 'theme_preference';
+  static const String _userIdKey = 'user_id';
 
   Future<bool> saveUser(User user) async {
     try {
@@ -54,11 +55,27 @@ class UserPreferencesService {
             (source['xp'] as num?)?.toInt() ??
             (source['XP'] as num?)?.toInt() ??
             0,
+        email: (source['email'] ?? source['Email'] ?? '').toString(),
       );
+
+      final userId = source['id'] ?? source['userId'] ?? profile['userId'] ?? profile['id'];
+      if (userId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_userIdKey, userId.toString());
+      }
 
       return await saveUser(user);
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<String?> getUserId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_userIdKey);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -93,6 +110,7 @@ class UserPreferencesService {
                   .map((e) => (e as num).toInt())
                   .toList()
             : [],
+        email: userMap['email'] ?? '',
       );
     } catch (e) {
       return null;

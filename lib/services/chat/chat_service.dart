@@ -194,6 +194,138 @@ class ChatService {
     );
   }
 
+  Future<ChatMessage?> editMessage(String messageId, String text, int userId) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/message/$messageId/edit');
+      final response = await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({'text': text, 'userId': userId}),
+      );
+      if (response.statusCode == 200) {
+        final decoded = _decodeBody(response.body);
+        if (decoded is Map<String, dynamic>) {
+          final raw = decoded['message'] ?? decoded;
+          if (raw is Map) {
+            return ChatMessage.fromMap(Map<String, dynamic>.from(raw));
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> pinMessage(String messageId, bool pin) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/message/$messageId/pin');
+      final response = await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({'pin': pin}),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteDirectMessage(String messageId, int userId) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/message/$messageId?userId=$userId');
+      final response = await http.delete(
+        url,
+        headers: await _getAuthHeaders(),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<ChatMessage>> searchMessages(int userId, String query) async {
+    try {
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/chat/user/$userId/search-messages?query=${Uri.encodeQueryComponent(query)}',
+      );
+      final response = await http.get(url, headers: await _getAuthHeaders());
+      if (response.statusCode != 200) return [];
+
+      final decoded = _decodeBody(response.body);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((item) => ChatMessage.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<void> updateTypingStatus(int userId, int recipientId, String username, bool typing) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/typing');
+      await http.post(
+        url,
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'userId': userId,
+          'recipientId': recipientId,
+          'username': username,
+          'typing': typing,
+        }),
+      );
+    } catch (_) {
+      // Silently fail for typing indicators
+    }
+  }
+
+  Future<bool> getTypingStatus(int userId, int otherUserId) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/typing/$userId/$otherUserId');
+      final response = await http.get(url, headers: await _getAuthHeaders());
+      if (response.statusCode == 200) {
+        final decoded = _decodeBody(response.body);
+        if (decoded is Map<String, dynamic>) {
+          return decoded['typing'] == true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getUserConversations(int userId) async {
+    try {
+      final url = Uri.parse('${AuthService.baseUrl}/api/chat/user/$userId/conversations');
+      final response = await http.get(url, headers: await _getAuthHeaders());
+      if (response.statusCode == 200) {
+        final decoded = _decodeBody(response.body);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(
+            decoded.map((c) => Map<String, dynamic>.from(c as Map)),
+          );
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, String>> _getAuthHeaders() async {
+    final token = await AuthStorage.getToken();
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    if (token != null) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    return headers;
+  }
+
   void connect(int userId) {
     disconnect();
 

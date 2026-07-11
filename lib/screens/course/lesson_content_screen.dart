@@ -5,8 +5,9 @@ import '../../models/course/lesson.dart' as lesson_model;
 import '../../models/course/lessonContent.dart' as lesson_content_model;
 import '../../widgets/inline_code_text.dart';
 import '../../widgets/uml_diagram_widget.dart';
+import '../../widgets/cyber_lab_widget.dart';
+import '../../widgets/sophia_path_loading_screen.dart';
 import '../authentication/authService.dart';
-import '../Lessons/mcq_test_screen.dart';
 import '../code_playground_screen.dart';
 import '../../services/code_execution_service.dart';
 
@@ -233,13 +234,8 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(title: Text(widget.lesson.title)),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return SophiaPathLoadingScreen(appBarTitle: widget.lesson.title);
     }
-    final width = MediaQuery.of(context).size.width;
-
     final hasPages = _pages.isNotEmpty;
 
     return Scaffold(
@@ -419,10 +415,24 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
           ),
         );
       case 'image':
-        return Image.network(
-          block.url,
-          width: block.width,
-          height: block.height,
+        final double ratio = block.height > 0 ? block.width / block.height : 16 / 9;
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: AspectRatio(
+              aspectRatio: ratio,
+              child: Image.network(
+                block.url,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
         );
       case 'bullet_list':
         return _buildBulletList(context, block.items);
@@ -454,6 +464,12 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
 
       case 'find_error':
         return _buildMcqBlock(context, block, pageIndex, blockIndex);
+
+      case 'cyber':
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: CyberLabWidget(block: block),
+        );
 
       default:
         return Container(
@@ -1780,7 +1796,7 @@ class _InlineCodeExerciseWidgetState extends State<_InlineCodeExerciseWidget> {
   bool _lastAnswerCorrect = false;
   String _compilationError = '';
 
-  get width => null;
+  Null get width => null;
 
   @override
   void initState() {

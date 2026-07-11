@@ -2,6 +2,8 @@ import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/chat/chats_list_screen.dart';
+import 'screens/groups/groups_list_screen.dart';
+import 'screens/communities/communities_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'models/course/course_info.dart';
 import 'widgets/screen_app_bar.dart';
@@ -10,6 +12,7 @@ import 'models/user/user.dart';
 import 'screens/course/course_info_screen.dart';
 import 'screens/course/learning_screen.dart';
 import 'screens/authentication/authService.dart';
+import 'package:sophia_path/widgets/background_animation_widget.dart';
 import 'services/user_preferences_services.dart';
 
 class NavigationScreen extends StatefulWidget {
@@ -142,9 +145,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
               ),
             ...menuItems.map((item) {
+              IconData iconData = Icons.chat;
+              if (item == 'Groups') iconData = Icons.group;
+              if (item == 'Communities') iconData = Icons.forum;
+
               return ListTile(
                 leading: Icon(
-                  Icons.chat,
+                  iconData,
                   color: theme.textTheme.bodyLarge!.color!,
                 ),
                 title: Text(
@@ -155,10 +162,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
+                  Widget screen;
+                  if (item == 'Groups') {
+                    screen = const GroupsListScreen();
+                  } else if (item == 'Communities') {
+                    screen = const CommunitiesListScreen();
+                  } else {
+                    screen = const ChatsListScreen();
+                  }
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (ctx) => const ChatsListScreen(),
+                      builder: (ctx) => screen,
                     ),
                   );
                 },
@@ -237,7 +252,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return Scaffold(
       appBar: screenAppBar(context, _selectedIndex, widget.onToggleTheme),
       drawer: _selectedIndex == 0 ? _buildDrawer() : null,
-      body: currentScreen,
+      body: BackgroundAnimationWidget(child: currentScreen),
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
         height: 65,

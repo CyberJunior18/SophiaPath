@@ -8,8 +8,9 @@ import 'navigation_screen.dart';
 import 'services/course/user_stats_service.dart';
 import 'services/profile_state.dart';
 import 'services/user_preferences_services.dart';
-import 'widgets/theme.dart';
 import 'screens/authentication/authService.dart';
+import 'services/settings_provider.dart';
+import 'widgets/sophia_path_loading_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +64,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => ProfileState()),
-        // ✅ Remove the broken provider
+        ChangeNotifierProvider(create: (context) => SettingsProvider()),
       ],
       child: const MyApp(),
     ),
@@ -78,7 +79,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.light;
   final UserPreferencesService _userService = UserPreferencesService.instance;
   bool _isChecking = true;
   bool _hasUser = false;
@@ -89,7 +89,6 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _checkUserStatus();
-    _loadThemePreference();
   }
 
   Future<void> _checkUserStatus() async {
@@ -100,32 +99,21 @@ class _MyAppState extends State<MyApp> {
     setState(() => _isChecking = false);
   }
 
-  Future<void> _loadThemePreference() async {
-    final isDarkMode = await _userService.getThemePreference();
-    setState(() {
-      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
-    });
-  }
-
   void toggleTheme() async {
-    setState(() {
-      _themeMode = _themeMode == ThemeMode.light
-          ? ThemeMode.dark
-          : ThemeMode.light;
-    });
-
-    await _userService.saveThemePreference(_themeMode == ThemeMode.dark);
+    if (!mounted) return;
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+    final newPreset = settings.themePreset == 'light' ? 'dark' : 'light';
+    await settings.setThemePreset(newPreset);
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = Provider.of<SettingsProvider>(context);
     return Directionality(
-      textDirection: TextDirection.ltr, // Add this
+      textDirection: TextDirection.ltr,
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: _themeMode,
+        theme: settings.themeData,
         home: _buildHomeScreen(),
       ),
     );
@@ -154,33 +142,7 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Directionality(
-        // Also wrap SplashScreen with Directionality
-        textDirection: TextDirection.ltr,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.school,
-                size: 80,
-                color: Theme.of(context).primaryColor,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Learning App',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const CircularProgressIndicator(),
-            ],
-          ),
-        ),
-      ),
-    );
+    return const SophiaPathLoadingScreen();
   }
 }
+

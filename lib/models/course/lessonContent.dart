@@ -135,7 +135,13 @@ class LessonBlock {
     return double.tryParse(value?.toString() ?? '') ?? 100;
   }
 
-  String get url => (raw['url'] ?? '').toString();
+  String get url {
+    String rawUrl = (raw['url'] ?? raw['src'] ?? '').toString();
+    if (rawUrl.contains('placehold.co') && !rawUrl.contains('.png')) {
+      return rawUrl.replaceFirst('?text=', '.png?text=');
+    }
+    return rawUrl;
+  }
   String get variant => (raw['variant'] ?? '').toString().toLowerCase();
 
   List<Map<String, dynamic>> get items {

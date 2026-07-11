@@ -95,8 +95,9 @@ class _CodePlaygroundScreenState extends State<CodePlaygroundScreen> {
         !_editorScrollController.hasClients) {
       return;
     }
-    if (_gutterScrollController.offset == _editorScrollController.offset)
+    if (_gutterScrollController.offset == _editorScrollController.offset) {
       return;
+    }
     _gutterScrollController.jumpTo(_editorScrollController.offset);
   }
 
@@ -105,8 +106,9 @@ class _CodePlaygroundScreenState extends State<CodePlaygroundScreen> {
         !_editorScrollController.hasClients) {
       return;
     }
-    if (_editorScrollController.offset == _gutterScrollController.offset)
+    if (_editorScrollController.offset == _gutterScrollController.offset) {
       return;
+    }
     _editorScrollController.jumpTo(_gutterScrollController.offset);
   }
 
@@ -1249,7 +1251,9 @@ class _NumberedCodeEditorState extends State<_NumberedCodeEditor> {
         availableWidth,
       );
       labels.add('${i + 1}');
-      for (var w = 1; w < visualLineCount; w++) labels.add(null);
+      for (var w = 1; w < visualLineCount; w++) {
+        labels.add(null);
+      }
     }
     return labels.isEmpty ? <String?>[null] : labels;
   }

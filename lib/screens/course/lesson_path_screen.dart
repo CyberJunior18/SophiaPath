@@ -9,6 +9,7 @@ import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
 import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
+import '../../widgets/sophia_path_loading_screen.dart';
 import '../../services/course/user_stats_service.dart';
 
 class _LessonNodeData {
@@ -1257,12 +1258,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.course.title, style: TextStyle(fontSize: 15)),
-        ),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return SophiaPathLoadingScreen(appBarTitle: widget.course.title);
     }
 
     if (lessonsByPages.isEmpty) {

@@ -124,8 +124,9 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                   child: ExpansionTile(
                     initiallyExpanded: sectionIndex == 0,
                     onExpansionChanged: (expanded) async {
-                      if (expanded)
+                      if (expanded) {
                         await _ensureSectionLoaded(widget.course.id, sectionId);
+                      }
                     },
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -180,7 +181,7 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                               final category = (lessonMap['category'] ?? '')
                                   .toString()
                                   .toLowerCase();
-                                final isChapterTest = title
+                              final isChapterTest = title
                                   .toLowerCase()
                                   .startsWith('chapter test');
 
@@ -207,17 +208,16 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
                                         children: [
                                           Icon(
                                             isChapterTest
-                                              ? Icons.local_cafe_outlined
+                                                ? Icons.local_cafe_outlined
                                                 : category == 'exercise' ||
-                                                    category == 'mcq'
+                                                      category == 'mcq'
                                                 ? Icons.quiz_outlined
                                                 : Icons.menu_book_outlined,
                                             size: 20,
-                                            color:
-                                                isChapterTest
+                                            color: isChapterTest
                                                 ? Colors.brown
                                                 : category == 'exercise' ||
-                                                    category == 'mcq'
+                                                      category == 'mcq'
                                                 ? Colors.orange
                                                 : Colors.blue,
                                           ),
