@@ -174,13 +174,13 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back,
-            color: theme.textTheme.bodyLarge!.color!,
+            color: theme.textTheme.bodyLarge?.color,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           widget.course.title,
-          style: GoogleFonts.poppins(color: theme.textTheme.bodyLarge!.color!),
+          style: GoogleFonts.poppins(color: theme.textTheme.bodyLarge?.color),
         ),
         actions: [
           if (_isCourseRegistered)
@@ -233,14 +233,14 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge!.color!,
+                      color: theme.textTheme.bodyLarge?.color,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     widget.course.about,
                     style: GoogleFonts.poppins(
-                      color: theme.textTheme.bodyLarge!.color!,
+                      color: theme.textTheme.bodyLarge?.color,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -272,7 +272,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge!.color!,
+                      color: theme.textTheme.bodyLarge?.color,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -298,7 +298,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                     section.title,
                                     style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w600,
-                                      color: theme.textTheme.bodyLarge!.color!,
+                                      color: theme.textTheme.bodyLarge?.color,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -306,7 +306,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                     section.description,
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
-                                      color: theme.textTheme.bodyLarge!.color!
+                                      color: (theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface)
                                           .withValues(alpha: 0.6),
                                     ),
                                     maxLines: 2,
@@ -323,7 +323,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     Text(
                       'No sections available',
                       style: GoogleFonts.poppins(
-                        color: theme.textTheme.bodyLarge!.color!.withValues(
+                        color: (theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface).withValues(
                           alpha: 0.5,
                         ),
                       ),

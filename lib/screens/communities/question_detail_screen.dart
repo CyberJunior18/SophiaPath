@@ -375,7 +375,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       child: PollMessageWidget(
         question: _question.pollQuestion!,
         options: _question.pollOptions!,
-        votes: _question.pollVotes != null ? [_question.pollVotes] : null,
+        votes: _question.pollVotes,
         currentUserId: _currentUserId,
         onVote: (idx) async {
           if (_currentUserId == null) return;

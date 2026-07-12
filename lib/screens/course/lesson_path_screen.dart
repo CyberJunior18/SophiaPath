@@ -15,11 +15,15 @@ class _ChapterPosition {
   final int index;
   final String name;
   final double top;
+  final bool isCompleted;
+  final bool isWorkingOn;
 
   const _ChapterPosition({
     required this.index,
     required this.name,
     required this.top,
+    this.isCompleted = false,
+    this.isWorkingOn = false,
   });
 }
 
@@ -287,6 +291,22 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<GlobalKey> _lessonNodeKeys = <GlobalKey>[];
   final UserStatsService _statsService = UserStatsService();
+  final GlobalKey _topHeaderKey = GlobalKey();
+  double _topHeaderHeight = 0.0;
+
+  void _updateHeaderHeight() {
+    if (!mounted) return;
+    final RenderBox? renderBox =
+        _topHeaderKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final double newHeight = renderBox.size.height;
+      if (newHeight != _topHeaderHeight) {
+        setState(() {
+          _topHeaderHeight = newHeight;
+        });
+      }
+    }
+  }
 
   void _syncLessonNodeKeys(int count) {
     if (_lessonNodeKeys.length == count) return;
@@ -361,6 +381,47 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         (index) => base.length + index <= _completedLessons,
       ),
     ];
+  }
+
+  bool _isChapterCompleted(
+    String chapterName,
+    List<_LessonNodeData> pageLessons,
+  ) {
+    final chapterLessons = pageLessons.where((l) {
+      final name = l.chapterName.isNotEmpty ? l.chapterName : 'General';
+      return name == chapterName;
+    });
+    if (chapterLessons.isEmpty) return false;
+    return chapterLessons.every((l) => l.isCompleted(_doneLessonIds));
+  }
+
+  bool _isChapterWorkingOn(
+    String chapterName,
+    List<_LessonNodeData> pageLessons,
+    List<bool> currentUnlocked,
+  ) {
+    final chapterLessonsWithIndices = <int>[];
+    for (int i = 0; i < pageLessons.length; i++) {
+      final name = pageLessons[i].chapterName.isNotEmpty
+          ? pageLessons[i].chapterName
+          : 'General';
+      if (name == chapterName) {
+        chapterLessonsWithIndices.add(i);
+      }
+    }
+    if (chapterLessonsWithIndices.isEmpty) return false;
+
+    // Check if at least one lesson in this chapter is unlocked
+    final hasUnlocked = chapterLessonsWithIndices.any(
+      (idx) => currentUnlocked[idx],
+    );
+    if (!hasUnlocked) return false;
+
+    // Check if it is not completed
+    final allCompleted = chapterLessonsWithIndices.every(
+      (idx) => pageLessons[idx].isCompleted(_doneLessonIds),
+    );
+    return !allCompleted;
   }
 
   bool _isExerciseLike(_LessonNodeData lesson) {
@@ -752,24 +813,73 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     ];
   }
 
-  BoxDecoration _buildChapterDecoration(ThemeData theme) {
+  Widget _buildHeaderBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.grey[300] : Colors.grey[800],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  BoxDecoration _buildChapterDecoration(
+    ThemeData theme, {
+    bool isCompleted = false,
+    bool isWorkingOn = false,
+  }) {
+    final bool isHighlighted = isCompleted || isWorkingOn;
+    final Color highlightColor = theme.brightness == Brightness.dark
+        ? const Color(0xFFFFB300)
+        : const Color(0xFFD97706);
+
     return BoxDecoration(
       color: theme.brightness == Brightness.dark
           ? Colors.grey[900]?.withValues(alpha: 0.95)
           : Colors.white.withValues(alpha: 0.95),
       borderRadius: BorderRadius.circular(16),
       border: Border.all(
-        color: theme.brightness == Brightness.dark
-            ? Colors.white.withValues(alpha: 0.3)
-            : Colors.black.withValues(alpha: 0.15),
-        width: 1.5,
+        color: isHighlighted
+            ? highlightColor
+            : (theme.brightness == Brightness.dark
+                  ? Colors.white.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.15)),
+        width: isHighlighted ? 2.2 : 1.5,
       ),
       boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.08),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
+        if (isHighlighted)
+          BoxShadow(
+            color: highlightColor.withValues(alpha: 0.45),
+            blurRadius: 12,
+            spreadRadius: 2.5,
+          )
+        else
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
       ],
     );
   }
@@ -787,12 +897,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
     for (int i = 0; i < chapters.length; i++) {
       final ch = chapters[i];
-      final adjustedChTop = ch.top + 20.0;
+      final adjustedChTop = ch.top + 20.0 + _topHeaderHeight;
 
       if (scrollOffset >= adjustedChTop) {
         activeChapter = ch;
         if (i + 1 < chapters.length) {
-          nextChapterTop = chapters[i + 1].top + 20.0;
+          nextChapterTop = chapters[i + 1].top + 20.0 + _topHeaderHeight;
         } else {
           nextChapterTop = null;
         }
@@ -818,11 +928,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       left: MediaQuery.of(context).size.width * 0.05,
       right: MediaQuery.of(context).size.width * 0.05,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 10,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: _buildChapterDecoration(
+          theme,
+          isCompleted: activeChapter.isCompleted,
+          isWorkingOn: activeChapter.isWorkingOn,
         ),
-        decoration: _buildChapterDecoration(theme),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -832,9 +943,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: theme.brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.7)
-                    : Colors.black.withValues(alpha: 0.6),
+                color: (activeChapter.isCompleted || activeChapter.isWorkingOn)
+                    ? (theme.brightness == Brightness.dark
+                          ? const Color(0xFFFFB300)
+                          : const Color(0xFFD97706))
+                    : (theme.brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.7)
+                          : Colors.black.withValues(alpha: 0.6)),
               ),
             ),
             const SizedBox(height: 4),
@@ -1398,13 +1513,271 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       _scheduleAutoScrollToIndex(_pendingAutoScrollIndex);
     }
 
+    // Calculate lesson and exercise counts for header badges
+    final lessonsCount = currentPageLessons
+        .where((l) => !_isExerciseLike(l))
+        .length;
+    final exercisesCount = currentPageLessons
+        .where((l) => _isExerciseLike(l))
+        .length;
+
+    // Find the current section to display description
+    final currentSection = widget.course.sections.firstWhere(
+      (s) => s.id == widget.sectionId,
+      orElse: () => widget.course.sections.isNotEmpty
+          ? widget.course.sections.first
+          : lesson_model.Section(
+              id: widget.sectionId,
+              title: widget.sectionTitle ?? widget.course.title,
+              questions: const [],
+              contents: const [],
+              done: false,
+              description: widget.course.description,
+            ),
+    );
+
+    final String sectionDesc = currentSection.description.trim().isNotEmpty
+        ? currentSection.description.trim()
+        : widget.course.description.trim().isNotEmpty
+        ? widget.course.description.trim()
+        : widget.course.about.trim();
+
+    final isDark = theme.brightness == Brightness.dark;
+
+    final Widget headerWidget = Container(
+      key: _topHeaderKey,
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Center(
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: widget.course.imageUrl.trim().isNotEmpty
+                    ? (widget.course.imageUrl.startsWith('http')
+                          ? Image.network(
+                              widget.course.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                    Icons.book_rounded,
+                                    size: 50,
+                                    color: Colors.grey,
+                                  ),
+                            )
+                          : Image.asset(
+                              widget.course.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(
+                                    Icons.book_rounded,
+                                    size: 50,
+                                    color: Colors.grey,
+                                  ),
+                            ))
+                    : const Icon(
+                        Icons.book_rounded,
+                        size: 50,
+                        color: Colors.grey,
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            widget.sectionTitle ?? widget.course.title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          if (sectionDesc.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              sectionDesc,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                height: 1.4,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.layers_rounded,
+                    size: 18,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$lessonsCount ${lessonsCount == 1 ? 'Lesson' : 'Lessons'}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 24),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.fitness_center_rounded,
+                    size: 18,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$exercisesCount ${exercisesCount == 1 ? 'Exercise' : 'Exercises'}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final int currentSectionIndex = widget.course.sections.indexWhere(
+      (s) => s.id == currentSection.id,
+    );
+
+    Widget? upNextWidget;
+    if (currentSectionIndex != -1 &&
+        currentSectionIndex < widget.course.sections.length - 1) {
+      final nextSection = widget.course.sections[currentSectionIndex + 1];
+      if (nextSection.id != null) {
+        upNextWidget = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: Divider(
+                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      thickness: 1,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      'UP NEXT',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      color: isDark ? Colors.grey[800] : Colors.grey[300],
+                      thickness: 1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                nextSection.title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              if (nextSection.description.trim().isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(
+                  nextSection.description.trim(),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => LessonPathScreen(
+                          course: widget.course,
+                          originalCourse:
+                              widget.originalCourse ?? widget.course,
+                          initialLessonPageIndex: currentSectionIndex + 1,
+                          sectionId: nextSection.id!,
+                          sectionTitle: nextSection.title,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.15)
+                        : Colors.black.withValues(alpha: 0.08),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: Text(
+                    'Jump ahead',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 200),
+            ],
+          ),
+        );
+      }
+    }
+
     // build node widgets and compute exact Y positions so painter can follow
     final List<Widget> nodeWidgets = [];
     final List<double> nodeCentersY = [];
     final List<bool> connectNext = [];
     String? lastChapter;
     String? prevChapter;
-    double extraGap = 0;
+    double extraGap = 0.0;
     const double nodeSize = 80.0;
     double contentHeight = 0;
     int chapterCounter = 0;
@@ -1417,10 +1790,20 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         lastChapter = chapterName;
         chapterCounter++;
         if (i == 0) {
-          extraGap = 40;
+          extraGap = 40.0;
         } else {
           extraGap += 120; // space before chapter text
         }
+
+        final isCompleted = _isChapterCompleted(
+          chapterName,
+          currentPageLessons,
+        );
+        final isWorkingOn = _isChapterWorkingOn(
+          chapterName,
+          currentPageLessons,
+          currentUnlocked,
+        );
 
         //chapters names
         nodeWidgets.add(
@@ -1429,11 +1812,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             left: MediaQuery.of(context).size.width * 0.05,
             right: MediaQuery.of(context).size.width * 0.05,
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: _buildChapterDecoration(
+                theme,
+                isCompleted: isCompleted,
+                isWorkingOn: isWorkingOn,
               ),
-              decoration: _buildChapterDecoration(theme),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1443,9 +1827,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: theme.brightness == Brightness.dark
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : Colors.black.withValues(alpha: 0.6),
+                      color: (isCompleted || isWorkingOn)
+                          ? (theme.brightness == Brightness.dark
+                                ? const Color(0xFFFFB300)
+                                : const Color(0xFFD97706))
+                          : (theme.brightness == Brightness.dark
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : Colors.black.withValues(alpha: 0.6)),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1472,6 +1860,8 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             index: chapterCounter,
             name: chapterName,
             top: chapterTop,
+            isCompleted: isCompleted,
+            isWorkingOn: isWorkingOn,
           ),
         );
         contentHeight = max(contentHeight, chapterTop + 60);
@@ -1544,17 +1934,20 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         ),
       );
     }
-
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeaderHeight());
+    bool showTitle = false;
     return Scaffold(
       appBar: AppBar(
         title: FittedBox(
-          child: Text(
-            widget.sectionTitle ?? widget.course.title,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-            ),
-          ),
+          child: showTitle
+              ? Text(
+                  widget.sectionTitle ?? widget.course.title,
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                  ),
+                )
+              : Text(''),
         ),
         backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
@@ -1563,51 +1956,43 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       body: Column(
         children: [
-          // if (totalPages > 1)
-          //   Padding(
-          //     padding: const EdgeInsets.all(12.0),
-          //     child: Text(
-          //       '${lessons[_currentLessonPageIndex].title}',
-          //       style: GoogleFonts.poppins(
-          //         fontSize: 16,
-          //         fontWeight: FontWeight.w600,
-          //       ),
-          //       textAlign: TextAlign.center,
-          //     ),
-          //   ),
           Expanded(
             child: Stack(
               children: [
                 SingleChildScrollView(
                   controller: _scrollController,
                   physics: const BouncingScrollPhysics(),
-                  child: SizedBox(
-                    height: max(
-                      contentHeight + 40,
-                      totalNodesInPage * nodeSpacing + 30,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 20.0),
-                      child: Stack(
-                        children: [
-                          CustomPaint(
-                            size: Size(
-                              double.infinity,
-                              nodeCentersY.isNotEmpty
-                                  ? nodeCentersY.last + 60
-                                  : totalNodesInPage * nodeSpacing,
-                            ),
-                            painter: LessonPathPainter(
-                              nodeCentersY,
-                              connectNext: connectNext,
-                              unlocked: currentUnlocked,
-                              theme: theme,
-                            ),
+                  child: Column(
+                    children: [
+                      headerWidget,
+                      SizedBox(
+                        height: contentHeight + 40,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 20.0),
+                          child: Stack(
+                            children: [
+                              CustomPaint(
+                                size: Size(
+                                  double.infinity,
+                                  nodeCentersY.isNotEmpty
+                                      ? nodeCentersY.last + 60
+                                      : totalNodesInPage * nodeSpacing,
+                                ),
+                                painter: LessonPathPainter(
+                                  nodeCentersY,
+                                  connectNext: connectNext,
+                                  unlocked: currentUnlocked,
+                                  theme: theme,
+                                ),
+                              ),
+                              ...nodeWidgets,
+                            ],
                           ),
-                          ...nodeWidgets,
-                        ],
+                        ),
                       ),
-                    ),
+                      // ignore: use_null_aware_elements
+                      if (upNextWidget != null) upNextWidget,
+                    ],
                   ),
                 ),
                 AnimatedBuilder(
@@ -1619,34 +2004,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
               ],
             ),
           ),
-          // if (totalPages > 1)
-          //   Padding(
-          //     padding: const EdgeInsets.all(16.0),
-          //     child: Row(
-          //       mainAxisAlignment: MainAxisAlignment.center,
-          //       children: [
-          //         IconButton(
-          //           icon: const Icon(Icons.arrow_back_ios),
-          //           onPressed: _currentLessonPageIndex > 0
-          //               ? () => setState(() => _currentLessonPageIndex--)
-          //               : null,
-          //         ),
-          //         Text(
-          //           '${_currentLessonPageIndex + 1} / $totalPages',
-          //           style: GoogleFonts.poppins(
-          //             fontSize: 14,
-          //             fontWeight: FontWeight.w600,
-          //           ),
-          //         ),
-          //         IconButton(
-          //           icon: const Icon(Icons.arrow_forward_ios),
-          //           onPressed: _currentLessonPageIndex < totalPages - 1
-          //               ? () => setState(() => _currentLessonPageIndex++)
-          //               : null,
-          //         ),
-          //       ],
-          //     ),
-          //   ),
         ],
       ),
     );
@@ -1685,7 +2042,8 @@ class CourseNode extends StatefulWidget {
   State<CourseNode> createState() => _CourseNodeState();
 }
 
-class _CourseNodeState extends State<CourseNode> with SingleTickerProviderStateMixin {
+class _CourseNodeState extends State<CourseNode>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _glowScale;
   late Animation<double> _glowOpacity;
@@ -1700,17 +2058,11 @@ class _CourseNodeState extends State<CourseNode> with SingleTickerProviderStateM
     );
 
     _glowScale = Tween<double>(begin: 1.0, end: 1.35).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _glowOpacity = Tween<double>(begin: 0.35, end: 0.05).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     if (widget.isCurrent) {
@@ -1784,31 +2136,42 @@ class _CourseNodeState extends State<CourseNode> with SingleTickerProviderStateM
               AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
-                  return Container(
-                    width: nodeSize * _glowScale.value,
-                    height: nodeSize * _glowScale.value,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: nodeColor.withValues(alpha: _glowOpacity.value),
-                      boxShadow: [
-                        BoxShadow(
-                          color: nodeColor.withValues(alpha: _glowOpacity.value * 1.5),
-                          blurRadius: 15 * _glowScale.value,
-                          spreadRadius: 8 * _glowScale.value,
-                        ),
-                      ],
+                  final currentSize = nodeSize * _glowScale.value;
+                  return Positioned(
+                    top: (nodeSize - currentSize) / 2,
+                    left: (nodeSize - currentSize) / 2,
+                    width: currentSize,
+                    height: currentSize,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: nodeColor.withValues(alpha: _glowOpacity.value),
+                        boxShadow: [
+                          BoxShadow(
+                            color: nodeColor.withValues(
+                              alpha: _glowOpacity.value * 1.5,
+                            ),
+                            blurRadius: 15 * _glowScale.value,
+                            spreadRadius: 8 * _glowScale.value,
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
               ),
 
             if (!widget.locked && hovering)
-              Container(
+              Positioned(
+                top: -6,
+                left: -6,
                 width: nodeSize + 12,
                 height: nodeSize + 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: nodeColor.withValues(alpha: 0.2),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: nodeColor.withValues(alpha: 0.2),
+                  ),
                 ),
               ),
 

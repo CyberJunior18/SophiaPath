@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
-import 'dart:convert';
+import 'base64_image_cache.dart';
 
 class ProfileImage extends StatelessWidget {
   final String? imageUrl;
@@ -36,11 +36,11 @@ class ProfileImage extends StatelessWidget {
 
       if (value.startsWith('data:image/')) {
         final base64String = value.split(',').last;
-        return MemoryImage(base64Decode(base64String));
+        return MemoryImage(Base64ImageCache.decode(base64String));
       }
 
       if (value.length > 100 && !value.contains('/') && !value.contains('\\')) {
-        return MemoryImage(base64Decode(value));
+        return MemoryImage(Base64ImageCache.decode(value));
       }
 
       if (!kIsWeb) {

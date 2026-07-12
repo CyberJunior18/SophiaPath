@@ -129,7 +129,8 @@ class ChatService {
     String? replyToUsername,
     bool forwarded = false,
   }) async {
-    if (_socket?.connected == true) {
+    final isImage = message.startsWith('[IMAGE]:');
+    if (_socket?.connected == true && !isImage) {
       final payload = <String, dynamic>{
         'recipientId': recipientId,
         'message': message,

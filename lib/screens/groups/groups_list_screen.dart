@@ -88,14 +88,27 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
     }
   }
 
+  String _formatMessagePreview(String msg) {
+    if (msg.startsWith('[IMAGE]:')) {
+      final content = msg.substring(8);
+      final parts = content.split('|');
+      if (parts.length > 1 && parts[1].trim().isNotEmpty) {
+        return '📷 ${parts[1].trim()}';
+      }
+      return '📷 Image';
+    }
+    return msg;
+  }
+
   Widget _buildGroupItem(Group group) {
     final theme = Theme.of(context);
     String subtitleText = group.description;
     if (group.lastMessage != null) {
       if (group.lastMessage is Map) {
-        subtitleText = '${group.lastMessageSender ?? 'User'}: ${group.lastMessage['text'] ?? group.lastMessage['message'] ?? ''}';
+        final text = (group.lastMessage['text'] ?? group.lastMessage['message'] ?? '').toString();
+        subtitleText = '${group.lastMessageSender ?? 'User'}: ${_formatMessagePreview(text)}';
       } else {
-        subtitleText = '${group.lastMessageSender != null ? '${group.lastMessageSender}: ' : ''}${group.lastMessage}';
+        subtitleText = '${group.lastMessageSender != null ? '${group.lastMessageSender}: ' : ''}${_formatMessagePreview(group.lastMessage.toString())}';
       }
     } else if (group.description.isEmpty) {
       subtitleText = 'No messages yet';
@@ -120,7 +133,7 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
         style: GoogleFonts.poppins(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: theme.textTheme.bodyLarge!.color,
+          color: theme.textTheme.bodyLarge?.color,
         ),
       ),
       subtitle: Text(
@@ -129,7 +142,7 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
         overflow: TextOverflow.ellipsis,
         style: GoogleFonts.poppins(
           fontSize: 14,
-          color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+          color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
         ),
       ),
       trailing: Column(
@@ -141,7 +154,7 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
               _formatTime(lastMsgTime),
               style: GoogleFonts.poppins(
                 fontSize: 12,
-                color: theme.textTheme.bodySmall!.color,
+                color: theme.textTheme.bodySmall?.color,
               ),
             ),
           const SizedBox(height: 4),
@@ -202,7 +215,7 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          color: theme.textTheme.bodyLarge!.color,
+                          color: theme.textTheme.bodyLarge?.color,
                         ),
                       ),
                     ],
@@ -210,7 +223,7 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
                 )
               : ListView.separated(
                   itemCount: _groups.length,
-                  separatorBuilder: (context, index) => Divider(height: 1, color: theme.dividerColor.withOpacity(0.18)),
+                  separatorBuilder: (context, index) => Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.18)),
                   itemBuilder: (context, index) => _buildGroupItem(_groups[index]),
                 ),
       floatingActionButton: FloatingActionButton(

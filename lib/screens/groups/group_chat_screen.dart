@@ -18,6 +18,7 @@ import '../../widgets/social/group_info_dialog.dart';
 import '../../widgets/social/poll_composer_dialog.dart';
 import '../../widgets/social/poll_message_widget.dart';
 import '../../widgets/profileImage.dart';
+import '../../widgets/base64_image_cache.dart';
 
 class GroupChatScreen extends StatefulWidget {
   final Group group;
@@ -49,6 +50,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   GroupMessage? _replyingTo;
   GroupMessage? _editingMessage;
+  bool _isDisposed = false;
 
   // Typing indicators
   List<Map<String, dynamic>> _typingUsers = [];
@@ -59,6 +61,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     _currentGroup = widget.group;
     _initUserAndLoadMessages();
     _restoreDraft();
@@ -116,11 +119,33 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         userId: _chatSessionUser?.userId.toString(),
       );
       if (mounted) {
-        setState(() {
-          _messages = messages;
-          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-          _isLoading = false;
-        });
+        messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        bool hasChanges = !silent || (messages.length != _messages.length);
+        if (!hasChanges) {
+          for (int i = 0; i < messages.length; i++) {
+            if (messages[i].id != _messages[i].id ||
+                messages[i].text != _messages[i].text ||
+                messages[i].pinned != _messages[i].pinned ||
+                messages[i].deleted != _messages[i].deleted ||
+                messages[i].edited != _messages[i].edited ||
+                messages[i].pollVotes?.toString() != _messages[i].pollVotes?.toString()) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
+
+        if (hasChanges) {
+          setState(() {
+            _messages = messages;
+            _isLoading = false;
+          });
+        } else if (_isLoading) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted && !silent) setState(() => _isLoading = false);
@@ -133,15 +158,30 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
         _currentGroup.id,
       );
       if (mounted) {
-        setState(() {
-          _typingUsers = typingUsers
-              .where(
-                (t) =>
-                    t['userId']?.toString() !=
-                    _chatSessionUser?.userId.toString(),
-              )
-              .toList();
-        });
+        final filtered = typingUsers
+            .where(
+              (t) =>
+                  t['userId']?.toString() !=
+                  _chatSessionUser?.userId.toString(),
+            )
+            .toList();
+
+        bool hasChanges = filtered.length != _typingUsers.length;
+        if (!hasChanges) {
+          for (int i = 0; i < filtered.length; i++) {
+            if (filtered[i]['userId'] != _typingUsers[i]['userId'] ||
+                filtered[i]['username'] != _typingUsers[i]['username']) {
+              hasChanges = true;
+              break;
+            }
+          }
+        }
+
+        if (hasChanges) {
+          setState(() {
+            _typingUsers = filtered;
+          });
+        }
       }
     } catch (_) {}
   }
@@ -213,6 +253,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (outgoing != null && mounted) {
       setState(() {
         _messages.add(outgoing);
+        _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         _messageController.clear();
         _replyingTo = null;
       });
@@ -243,6 +284,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
     if (outgoing != null && mounted) {
       setState(() {
         _messages.add(outgoing);
+        _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       });
       _scrollToBottom();
     }
@@ -329,17 +371,32 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       if (outgoing != null && mounted) {
         setState(() {
           _messages.add(outgoing);
+          _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         });
         _scrollToBottom();
       }
     }
   }
 
+  bool _showScrollToBottomButton = false;
+
+  void _scrollListener() {
+    if (_isDisposed || !_scrollController.hasClients) return;
+    final currentScroll = _scrollController.offset;
+    final showButton = currentScroll > 200;
+    if (showButton != _showScrollToBottomButton) {
+      setState(() {
+        _showScrollToBottomButton = showButton;
+      });
+    }
+  }
+
   void _scrollToBottom() {
+    if (_isDisposed) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!_isDisposed && _scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -441,6 +498,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _scrollController.removeListener(_scrollListener);
     _pollingTimer?.cancel();
     _typingPollTimer?.cancel();
     _typingDebounceTimer?.cancel();
@@ -485,26 +544,50 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
 
     Widget buildImageWidget(String dataUrl) {
       try {
+        final placeholderColor = theme.brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.1);
+
         if (dataUrl.startsWith('data:') && dataUrl.contains(';base64,')) {
           final base64Content = dataUrl.split(';base64,').last;
-          final bytes = base64Decode(base64Content);
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.memory(
-              bytes,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.broken_image),
+          final bytes = Base64ImageCache.decode(base64Content);
+          return Container(
+            width: 250,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: placeholderColor,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                width: 250,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
+              ),
             ),
           );
         } else {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              dataUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.broken_image),
+          return Container(
+            width: 250,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: placeholderColor,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                dataUrl,
+                fit: BoxFit.cover,
+                width: 250,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
+              ),
             ),
           );
         }
@@ -666,39 +749,48 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     if (isImage && imageUrl != null) ...[
                       GestureDetector(
                         onTap: () {
+                          final localImageUrl = imageUrl;
+                          if (localImageUrl == null) return;
                           showDialog(
                             context: context,
                             builder: (context) => Dialog(
                               backgroundColor: Colors.transparent,
                               insetPadding: EdgeInsets.zero,
-                              child: Stack(
-                                children: [
-                                  Center(
-                                    child: InteractiveViewer(
-                                      child: imageUrl!.startsWith('data:')
-                                          ? Image.memory(
-                                              base64Decode(
-                                                imageUrl!
-                                                    .split(';base64,')
-                                                    .last,
-                                              ),
-                                            )
-                                          : Image.network(imageUrl!),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 40,
-                                    right: 20,
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.close,
-                                        color: Colors.white,
-                                        size: 30,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                behavior: HitTestBehavior.opaque,
+                                child: Stack(
+                                  children: [
+                                    Center(
+                                      child: GestureDetector(
+                                        onTap: () {}, // Prevent tap from bubbling up to close the dialog
+                                        child: InteractiveViewer(
+                                          child: localImageUrl.startsWith('data:')
+                                              ? Image.memory(
+                                                  Base64ImageCache.decode(
+                                                    localImageUrl
+                                                        .split(';base64,')
+                                                        .last,
+                                                  ),
+                                                )
+                                              : Image.network(localImageUrl),
+                                        ),
                                       ),
-                                      onPressed: () => Navigator.pop(context),
                                     ),
-                                  ),
-                                ],
+                                    Positioned(
+                                      top: 40,
+                                      right: 20,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
@@ -932,24 +1024,61 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : filteredMessages.isEmpty
-                ? Center(
-                    child: Text(
-                      _searchQuery.isNotEmpty
-                          ? 'No messages found'
-                          : 'No messages yet',
-                      style: GoogleFonts.poppins(color: Colors.grey),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredMessages.length,
-                    itemBuilder: (context, index) =>
-                        _buildMessageBubble(filteredMessages[index]),
+            child: Stack(
+              children: [
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : filteredMessages.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchQuery.isNotEmpty
+                              ? 'No messages found'
+                              : 'No messages yet',
+                          style: GoogleFonts.poppins(color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        reverse: true,
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        itemCount: filteredMessages.length,
+                        itemBuilder: (context, index) =>
+                            _buildMessageBubble(filteredMessages[index]),
+                      ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: AnimatedOpacity(
+                    opacity: _showScrollToBottomButton ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _showScrollToBottomButton
+                        ? GestureDetector(
+                            onTap: _scrollToBottom,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.arrow_downward,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
+                ),
+              ],
+            ),
           ),
           _buildTypingIndicator(),
           if (_replyingTo != null)

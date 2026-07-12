@@ -73,6 +73,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   Drawer _buildDrawer() {
     final theme = Theme.of(context);
+    final textColor = theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface;
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.8,
       backgroundColor: theme.drawerTheme.backgroundColor,
@@ -87,26 +88,26 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: theme.textTheme.bodyLarge!.color!,
+                  color: textColor,
                 ),
               ),
             ),
             ListTile(
               leading: Icon(
                 Icons.book,
-                color: theme.textTheme.bodyLarge!.color!,
+                color: textColor,
               ),
               title: Text(
                 'Courses',
                 style: GoogleFonts.poppins(
-                  color: theme.textTheme.bodyLarge!.color!,
+                  color: textColor,
                 ),
               ),
               trailing: Icon(
                 coursesExpanded
                     ? Icons.keyboard_arrow_up
                     : Icons.keyboard_arrow_down,
-                color: theme.textTheme.bodyLarge!.color!,
+                color: textColor,
               ),
               onTap: () {
                 setState(() {
@@ -122,12 +123,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
                     leading: Icon(
                       Icons.circle,
                       size: 10,
-                      color: theme.textTheme.bodyLarge!.color!,
+                      color: textColor,
                     ),
                     title: Text(
                       course.title,
                       style: GoogleFonts.poppins(
-                        color: theme.textTheme.bodyLarge!.color!,
+                        color: textColor,
                       ),
                     ),
                     onTap: () {
@@ -152,12 +153,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
               return ListTile(
                 leading: Icon(
                   iconData,
-                  color: theme.textTheme.bodyLarge!.color!,
+                  color: textColor,
                 ),
                 title: Text(
                   item,
                   style: GoogleFonts.poppins(
-                    color: theme.textTheme.bodyLarge!.color!,
+                    color: textColor,
                   ),
                 ),
                 onTap: () {
@@ -183,12 +184,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
             ListTile(
               leading: Icon(
                 Icons.settings,
-                color: theme.textTheme.bodyLarge!.color!,
+                color: textColor,
               ),
               title: Text(
                 'Settings',
                 style: GoogleFonts.poppins(
-                  color: theme.textTheme.bodyLarge!.color!,
+                  color: textColor,
                 ),
               ),
               onTap: () {

@@ -67,7 +67,7 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: theme.textTheme.bodyLarge!.color,
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
               const SizedBox(height: 8),
@@ -77,7 +77,7 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: theme.textTheme.bodyMedium!.color!.withOpacity(0.8),
+                  color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),

@@ -15,7 +15,7 @@ class GroupMessage {
   final bool forwarded;
   final String? pollQuestion;
   final List<dynamic>? pollOptions;
-  final List<dynamic>? pollVotes;
+  final Map<String, dynamic>? pollVotes;
 
   GroupMessage({
     required this.id,
@@ -55,7 +55,7 @@ class GroupMessage {
       forwarded: map['forwarded'] == true,
       pollQuestion: map['pollQuestion'],
       pollOptions: map['pollOptions'] is List ? List.from(map['pollOptions']) : null,
-      pollVotes: map['pollVotes'] is List ? List.from(map['pollVotes']) : null,
+      pollVotes: map['pollVotes'] is Map ? Map<String, dynamic>.from(map['pollVotes']) : null,
     );
   }
 }

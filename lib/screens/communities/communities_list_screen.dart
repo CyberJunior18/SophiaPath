@@ -267,7 +267,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: theme.textTheme.bodyLarge!.color,
+                        color: theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -275,7 +275,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                       community.description,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
-                        color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+                        color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -424,7 +424,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: theme.textTheme.bodyLarge!.color,
+                  color: theme.textTheme.bodyLarge?.color,
                 ),
               ),
               const SizedBox(height: 8),
@@ -434,7 +434,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: theme.textTheme.bodyMedium!.color!.withOpacity(0.8),
+                  color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),

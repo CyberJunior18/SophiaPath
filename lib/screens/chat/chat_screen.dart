@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../models/chat/chat_message.dart';
 import '../../models/chat/chat_session_user.dart';
 import '../../services/chat/chat_service.dart';
 import '../../services/local_social_storage.dart';
 import '../../widgets/social/dm_message_action_menu.dart';
+import '../../widgets/base64_image_cache.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? chatId;
@@ -52,14 +56,15 @@ class _ChatScreenState extends State<ChatScreen> {
   // Reply state
   ChatMessage? _replyingTo;
 
-  // Edit state
   ChatMessage? _editingMessage;
+  bool _isDisposed = false;
 
   String get _draftKey => 'dm_${widget.receiverID}';
 
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener);
     _bootstrapChat();
     _restoreDraft();
   }
@@ -102,9 +107,11 @@ class _ChatScreenState extends State<ChatScreen> {
           } else {
             _messages.add(message);
           }
-          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         });
-        _scrollToBottom();
+        if (_scrollController.hasClients && _scrollController.offset < 100) {
+          _scrollToBottom();
+        }
 
         if (message.recipientId == currentUser.userId) {
           _chatService.markConversationAsRead(
@@ -141,7 +148,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _messages
           ..clear()
           ..addAll(history);
-        _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         _isLoading = false;
       });
 
@@ -170,11 +177,25 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  bool _showScrollToBottomButton = false;
+
+  void _scrollListener() {
+    if (_isDisposed || !_scrollController.hasClients) return;
+    final currentScroll = _scrollController.offset;
+    final showButton = currentScroll > 200;
+    if (showButton != _showScrollToBottomButton) {
+      setState(() {
+        _showScrollToBottomButton = showButton;
+      });
+    }
+  }
+
   void _scrollToBottom() {
+    if (_isDisposed) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!_isDisposed && _scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -211,6 +232,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (!mounted) return;
 
+      history.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
       bool hasChanges = false;
       if (history.length != _messages.length) {
         hasChanges = true;
@@ -233,9 +256,10 @@ class _ChatScreenState extends State<ChatScreen> {
           _messages
             ..clear()
             ..addAll(history);
-          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         });
-        _scrollToBottom();
+        if (_scrollController.hasClients && _scrollController.offset < 100) {
+          _scrollToBottom();
+        }
       }
 
       final hasUnread = history.any(
@@ -296,9 +320,20 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // If editing, call editMessage API instead
     if (_editingMessage != null) {
+      String newText;
+      if (_editingMessage!.message.startsWith('[IMAGE]:')) {
+        final content = _editingMessage!.message.substring(8);
+        final parts = content.split('|');
+        final dataUrl = parts[0];
+        final caption = text;
+        newText = '[IMAGE]:$dataUrl${caption.isNotEmpty ? '|$caption' : ''}';
+      } else {
+        newText = text;
+      }
+
       final updated = await _chatService.editMessage(
         _editingMessage!.id,
-        text,
+        newText,
         _currentUser!.userId,
       );
       if (updated != null && mounted) {
@@ -332,7 +367,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         if (!_chatService.isConnected) {
           _messages.add(outgoingMessage);
-          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+          _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         }
         _messageController.clear();
         _replyingTo = null;
@@ -345,6 +380,111 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _errorMessage = error.toString();
       });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 60,
+    );
+
+    if (pickedFile == null || _currentUser == null) return;
+
+    if (!mounted) return;
+
+    final captionController = TextEditingController();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Send Image',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(File(pickedFile.path), fit: BoxFit.cover),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: captionController,
+              decoration: InputDecoration(
+                hintText: 'Add a caption...',
+                hintStyle: GoogleFonts.poppins(fontSize: 14),
+                border: const UnderlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Send',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (send == true) {
+      final bytes = await File(pickedFile.path).readAsBytes();
+      final base64String = base64Encode(bytes);
+
+      final extension = pickedFile.path.split('.').last.toLowerCase();
+      final mimeType =
+          (extension == 'png' || extension == 'gif' || extension == 'webp')
+          ? 'image/$extension'
+          : 'image/jpeg';
+
+      final dataUrl = 'data:$mimeType;base64,$base64String';
+      final caption = captionController.text.trim();
+      final text = '[IMAGE]:$dataUrl${caption.isNotEmpty ? '|$caption' : ''}';
+
+      final recipientId = int.tryParse(widget.receiverID);
+      if (recipientId == null) {
+        setState(() {
+          _errorMessage = 'Recipient id is invalid';
+        });
+        return;
+      }
+
+      try {
+        final outgoingMessage = await _chatService.sendMessage(
+          senderId: _currentUser!.userId,
+          recipientId: recipientId,
+          username: _currentUser!.username,
+          message: text,
+          avatar: _currentUser!.avatar,
+        );
+
+        if (!mounted) return;
+        setState(() {
+          if (!_chatService.isConnected) {
+            _messages.add(outgoingMessage);
+            _messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          }
+          _errorMessage = null;
+        });
+        _scrollToBottom();
+      } catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage = error.toString();
+        });
+      }
     }
   }
 
@@ -415,7 +555,14 @@ class _ChatScreenState extends State<ChatScreen> {
             ? () {
                 setState(() {
                   _editingMessage = message;
-                  _messageController.text = message.message;
+                  if (message.message.startsWith('[IMAGE]:')) {
+                    final content = message.message.substring(8);
+                    final parts = content.split('|');
+                    _messageController.text =
+                        parts.length > 1 ? parts.sublist(1).join('|') : '';
+                  } else {
+                    _messageController.text = message.message;
+                  }
                 });
               }
             : null,
@@ -458,6 +605,74 @@ class _ChatScreenState extends State<ChatScreen> {
     final otherBubbleColor = theme.brightness == Brightness.dark
         ? theme.colorScheme.surfaceContainerHighest
         : theme.colorScheme.surface;
+
+    final bool isImage =
+        !message.deleted && message.message.startsWith('[IMAGE]:');
+    String? imageUrl;
+    String? caption;
+    if (isImage) {
+      final content = message.message.substring(8);
+      final parts = content.split('|');
+      imageUrl = parts[0];
+      if (parts.length > 1) {
+        caption = parts.sublist(1).join('|');
+      }
+    }
+    final localImageUrl = imageUrl;
+
+    Widget buildImageWidget(String dataUrl) {
+      try {
+        final placeholderColor = theme.brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.1);
+
+        if (dataUrl.startsWith('data:') && dataUrl.contains(';base64,')) {
+          final base64Content = dataUrl.split(';base64,').last;
+          final bytes = Base64ImageCache.decode(base64Content);
+          return Container(
+            width: 250,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: placeholderColor,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                bytes,
+                fit: BoxFit.cover,
+                width: 250,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
+              ),
+            ),
+          );
+        } else {
+          return Container(
+            width: 250,
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: placeholderColor,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                dataUrl,
+                fit: BoxFit.cover,
+                width: 250,
+                height: 200,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.broken_image),
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        return const Icon(Icons.broken_image);
+      }
+    }
 
     return GestureDetector(
       onLongPress: () => _showMessageActionMenu(message),
@@ -571,27 +786,88 @@ class _ChatScreenState extends State<ChatScreen> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                color: isMe ? Colors.white60 : null,
-                              ),
+                                  fontSize: 11,
+                                  color: isMe ? Colors.white60 : null),
                             ),
                           ],
                         ),
                       ),
-                    Text(
-                      message.deleted
-                          ? 'This message was deleted'
-                          : message.message,
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        height: 1.35,
-                        color:
-                            isMe ? Colors.white : theme.colorScheme.onSurface,
-                        fontStyle: message.deleted
-                            ? FontStyle.italic
-                            : FontStyle.normal,
+                    if (isImage && localImageUrl != null) ...[
+                      GestureDetector(
+                        onTap: () {
+                           showDialog(
+                            context: context,
+                            builder: (context) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              insetPadding: EdgeInsets.zero,
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                behavior: HitTestBehavior.opaque,
+                                child: Stack(
+                                  children: [
+                                    Center(
+                                      child: GestureDetector(
+                                        onTap: () {}, // Prevent tap from bubbling up to close the dialog
+                                        child: InteractiveViewer(
+                                          child: localImageUrl.startsWith('data:')
+                                              ? Image.memory(
+                                                  Base64ImageCache.decode(
+                                                    localImageUrl
+                                                        .split(';base64,')
+                                                        .last,
+                                                  ),
+                                                )
+                                              : Image.network(localImageUrl),
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      top: 40,
+                                      right: 20,
+                                      child: IconButton(
+                                        icon: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        child: buildImageWidget(localImageUrl),
                       ),
-                    ),
+                      if (caption != null && caption.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          caption,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: isMe
+                                ? Colors.white
+                                : theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ] else
+                      Text(
+                        message.deleted
+                            ? 'This message was deleted'
+                            : message.message,
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          height: 1.35,
+                          color:
+                              isMe ? Colors.white : theme.colorScheme.onSurface,
+                          fontStyle: message.deleted
+                              ? FontStyle.italic
+                              : FontStyle.normal,
+                        ),
+                      ),
                     const SizedBox(height: 6),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -787,6 +1063,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         child: Row(
           children: [
+            IconButton(
+              icon: Icon(
+                Icons.image_outlined,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              onPressed: _pickImage,
+              tooltip: 'Send Image',
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: TextField(
                 controller: _messageController,
@@ -848,6 +1133,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _scrollController.removeListener(_scrollListener);
     _messageSubscription?.cancel();
     _errorSubscription?.cancel();
     _connectionSubscription?.cancel();
@@ -953,31 +1240,68 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            'No messages yet. Send the first one.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              fontSize: 15,
-                              color: const Color(0xFF607086),
+            child: Stack(
+              children: [
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No messages yet. Send the first one.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  color: const Color(0xFF607086),
+                                ),
+                              ),
                             ),
+                          )
+                        : ListView.builder(
+                            reverse: true,
+                            controller: _scrollController,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              return _buildMessageBubble(_messages[index]);
+                            },
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding:
-                            const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          return _buildMessageBubble(_messages[index]);
-                        },
-                      ),
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: AnimatedOpacity(
+                    opacity: _showScrollToBottomButton ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _showScrollToBottomButton
+                        ? GestureDetector(
+                            onTap: _scrollToBottom,
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.arrow_downward,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+              ],
+            ),
           ),
           _buildTypingIndicator(),
           _buildReplyBar(),

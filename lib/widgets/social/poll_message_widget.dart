@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 class PollMessageWidget extends StatelessWidget {
   final String question;
   final List<dynamic> options;
-  final List<dynamic>? votes; // Each entry maps optionIndex → list of voter IDs
+  final Map<String, dynamic>? votes; // Maps userId → optionIndex
   final String? currentUserId;
   final void Function(int optionIndex)? onVote;
 
@@ -147,40 +147,27 @@ class PollMessageWidget extends StatelessWidget {
   }
 
   int _getTotalVotes() {
-    if (votes == null || votes!.isEmpty) return 0;
-    int count = 0;
-    for (final v in votes!) {
-      if (v is List) {
-        count += v.length;
-      } else if (v is Map) {
-        // If votes is stored as { optionIndex: [userIds] }
-        for (final entry in v.values) {
-          if (entry is List) count += entry.length;
-        }
-      }
-    }
-    return count;
+    if (votes == null) return 0;
+    return votes!.length;
   }
 
   int _getOptionVoteCount(int index) {
-    if (votes == null || votes!.isEmpty) return 0;
-    if (index < votes!.length && votes![index] is List) {
-      return (votes![index] as List).length;
-    }
-    return 0;
+    if (votes == null) return 0;
+    return votes!.values.where((v) => v == index || int.tryParse(v.toString()) == index).length;
   }
 
   int? _getUserVotedIndex() {
     if (votes == null || currentUserId == null) return null;
-    final uid = int.tryParse(currentUserId!) ?? currentUserId;
-    for (int i = 0; i < votes!.length; i++) {
-      if (votes![i] is List) {
-        final voterList = votes![i] as List;
-        if (voterList.any((v) => v.toString() == uid.toString())) {
-          return i;
+    final voteValue = votes![currentUserId];
+    if (voteValue == null) {
+      // Try string vs int conversions in keys
+      for (final entry in votes!.entries) {
+        if (entry.key.toString() == currentUserId.toString()) {
+          return int.tryParse(entry.value.toString()) ?? entry.value as int?;
         }
       }
+      return null;
     }
-    return null;
+    return int.tryParse(voteValue.toString()) ?? voteValue as int?;
   }
 }

@@ -145,4 +145,3 @@ class SplashScreen extends StatelessWidget {
     return const SophiaPathLoadingScreen();
   }
 }
-

@@ -272,14 +272,14 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         style: GoogleFonts.poppins(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: theme.textTheme.bodyLarge!.color,
+          color: theme.textTheme.bodyLarge?.color,
         ),
       ),
       subtitle: Text(
         '@$username${tag.isNotEmpty ? ' • $tag' : ''}',
         style: GoogleFonts.poppins(
           fontSize: 12,
-          color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+          color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
         ),
       ),
       trailing: Icon(Icons.chevron_right, color: theme.colorScheme.primary),
@@ -319,6 +319,18 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return User.defaultProfileImage;
   }
 
+  String _formatMessagePreview(String msg) {
+    if (msg.startsWith('[IMAGE]:')) {
+      final content = msg.substring(8);
+      final parts = content.split('|');
+      if (parts.length > 1 && parts[1].trim().isNotEmpty) {
+        return '📷 ${parts[1].trim()}';
+      }
+      return '📷 Image';
+    }
+    return msg;
+  }
+
   Widget _buildChatItem(int index) {
     final contact = _contacts[index];
     final theme = Theme.of(context);
@@ -337,16 +349,16 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         style: GoogleFonts.poppins(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: theme.textTheme.bodyLarge!.color,
+          color: theme.textTheme.bodyLarge?.color,
         ),
       ),
       subtitle: Text(
-        contact.lastMessage,
+        _formatMessagePreview(contact.lastMessage),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: GoogleFonts.poppins(
           fontSize: 14,
-          color: theme.textTheme.bodyMedium!.color!.withOpacity(0.7),
+          color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
         ),
       ),
       trailing: Column(
@@ -357,7 +369,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             _formatTime(contact.lastMessageTime),
             style: GoogleFonts.poppins(
               fontSize: 12,
-              color: theme.textTheme.bodySmall!.color,
+              color: theme.textTheme.bodySmall?.color,
             ),
           ),
           const SizedBox(height: 4),
@@ -561,11 +573,16 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   }
 
   void _deleteChat(ChatContact contact) {
-    // Implement delete logic
     print('Deleting chat: ${contact.userId}');
-    setState(() {
-      _contacts.removeWhere((c) => c.chatId == contact.chatId);
-    });
+    final index = _contacts.indexWhere((c) => c.chatId == contact.chatId);
+    if (index >= 0) {
+      setState(() {
+        _contacts.removeAt(index);
+        if (index < _chatUsers.length) {
+          _chatUsers.removeAt(index);
+        }
+      });
+    }
   }
 
   String _formatTime(DateTime time) {
@@ -719,8 +736,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                               fontWeight: FontWeight.w600,
                                               color: theme
                                                   .textTheme
-                                                  .bodyLarge!
-                                                  .color,
+                                                  .bodyLarge
+                                                  ?.color,
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -728,11 +745,11 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                             'Search for users above to start a conversation',
                                             style: GoogleFonts.poppins(
                                               fontSize: 14,
-                                              color: theme
+                                              color: (theme
                                                   .textTheme
-                                                  .bodyMedium!
-                                                  .color!
-                                                  .withOpacity(0.7),
+                                                  .bodyMedium
+                                                  ?.color ?? theme.colorScheme.onSurface)
+                                                  .withValues(alpha: 0.7),
                                             ),
                                           ),
                                         ],
