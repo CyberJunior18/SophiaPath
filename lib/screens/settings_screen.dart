@@ -6,6 +6,7 @@ import 'package:sophia_path/services/profile_state.dart';
 import 'package:sophia_path/services/settings_provider.dart';
 import 'package:sophia_path/services/user_preferences_services.dart';
 import 'package:sophia_path/screens/authentication/authService.dart';
+import 'package:sophia_path/screens/authentication/edit_profile.dart';
 import 'package:sophia_path/widgets/background_animation_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -17,8 +18,23 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final List<String> _fontOptions = ['default', 'sans', 'serif', 'monospace', 'dyslexic'];
-  final List<String> _bgStyles = ['constellation', 'circuit', 'aurora', 'grid', 'matrix', 'vortex', 'warp'];
+  bool _showAllThemes = false;
+  final List<String> _fontOptions = [
+    'default',
+    'sans',
+    'serif',
+    'monospace',
+    'dyslexic',
+  ];
+  final List<String> _bgStyles = [
+    'constellation',
+    'circuit',
+    'aurora',
+    'grid',
+    'matrix',
+    'vortex',
+    'warp',
+  ];
 
   String _getFontLabel(String key) {
     switch (key) {
@@ -64,10 +80,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ) {
     final textController = TextEditingController(text: currentColor);
     final List<String> pickerColors = [
-      '#3D5CFF', '#FF3D57', '#3DFF57', '#FF9F3D', '#9F3DFF', '#3DFFE3',
-      '#1F1F39', '#858597', '#E6F2FF', '#FFFFFF', '#0F172A', '#F7F9FC',
-      '#1E1F29', '#0C2617', '#0F3057', '#29153A', '#3B4252', '#FDF6E3',
-      '#E5E7EB', '#00A86B'
+      '#3D5CFF',
+      '#FF3D57',
+      '#3DFF57',
+      '#FF9F3D',
+      '#9F3DFF',
+      '#3DFFE3',
+      '#1F1F39',
+      '#858597',
+      '#E6F2FF',
+      '#FFFFFF',
+      '#0F172A',
+      '#F7F9FC',
+      '#1E1F29',
+      '#0C2617',
+      '#0F3057',
+      '#29153A',
+      '#3B4252',
+      '#FDF6E3',
+      '#E5E7EB',
+      '#00A86B',
     ];
 
     showDialog(
@@ -88,15 +120,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 280,
                   height: 180,
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 5,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 5,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
                     itemCount: pickerColors.length,
                     itemBuilder: (context, index) {
                       final c = pickerColors[index];
-                      final isSelected = c.toLowerCase() == textController.text.toLowerCase();
+                      final isSelected =
+                          c.toLowerCase() == textController.text.toLowerCase();
                       return GestureDetector(
                         onTap: () {
                           textController.text = c;
@@ -107,15 +141,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: settings.parseColor(c, Colors.grey),
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? theme.primaryColor : Colors.grey.shade400,
+                              color: isSelected
+                                  ? theme.primaryColor
+                                  : Colors.grey.shade400,
                               width: isSelected ? 3.0 : 1.0,
                             ),
                           ),
                           child: isSelected
                               ? Icon(
                                   Icons.check,
-                                  color: ThemeData.estimateBrightnessForColor(
-                                              settings.parseColor(c, Colors.grey)) ==
+                                  color:
+                                      ThemeData.estimateBrightnessForColor(
+                                            settings.parseColor(c, Colors.grey),
+                                          ) ==
                                           Brightness.dark
                                       ? Colors.white
                                       : Colors.black,
@@ -134,7 +172,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: InputDecoration(
                     labelText: 'Hex Color Code',
                     hintText: '#FFFFFF',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     prefixIcon: const Icon(Icons.color_lens_outlined),
                   ),
                   maxLength: 7,
@@ -230,12 +270,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   await UserPreferencesService.instance.clearAllData();
                   // Remove token
                   await AuthStorage.clearToken();
-                  
+
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => LoginScreen(onToggleTheme: widget.onToggleTheme),
+                        builder: (_) =>
+                            LoginScreen(onToggleTheme: widget.onToggleTheme),
                       ),
                       (route) => false,
                     );
@@ -272,6 +313,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = profileState.currentUser;
     final theme = Theme.of(context);
 
+    final List<String> gridThemeIds;
+    if (_showAllThemes) {
+      gridThemeIds = [...SettingsProvider.presets.keys, 'custom'];
+    } else {
+      gridThemeIds = ['light', 'dark', 'sepia', 'lava', 'ocean'];
+      if (gridThemeIds.contains(settings.themePreset)) {
+        gridThemeIds.add('custom');
+      } else {
+        gridThemeIds.add(settings.themePreset);
+      }
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -285,30 +338,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20),
           children: [
             // Subtitle header
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'SophiaPath Preferences',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Manage your account configurations and style preferences.',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.only(bottom: 24.0),
+            //   child: Column(
+            //     crossAxisAlignment: CrossAxisAlignment.start,
+            //     children: [
+            //       Text(
+            //         'SophiaPath Preferences',
+            //         style: GoogleFonts.poppins(
+            //           fontSize: 22,
+            //           fontWeight: FontWeight.bold,
+            //           color: theme.textTheme.bodyLarge?.color,
+            //         ),
+            //       ),
+            //       const SizedBox(height: 4),
+            //       Text(
+            //         'Manage your account configurations and style preferences.',
+            //         style: GoogleFonts.poppins(
+            //           fontSize: 14,
+            //           color: theme.textTheme.bodyMedium?.color?.withValues(
+            //             alpha: 0.7,
+            //           ),
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
 
             // SECTION 1: Account info
             _buildSectionHeader('Account Details'),
@@ -324,18 +379,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    _buildRowItem(
-                      icon: Icons.alternate_email,
-                      title: 'Email Address',
-                      value: user?.email.isNotEmpty == true ? user!.email : 'test@example.com',
-                      isTransparent: true,
-                    ),
-                    const Divider(height: 24),
-                    _buildRowItem(
-                      icon: Icons.lock_outline,
-                      title: 'Password Status',
-                      value: 'Last changed 3 months ago',
-                      isTransparent: true,
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.person_outline,
+                        color: theme.primaryColor,
+                      ),
+                      title: Text(
+                        'Profile Information',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Change username, full name, age, and sex',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: theme.textTheme.bodyMedium?.color?.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) {
+                              return EditProfile(
+                                onToggleTheme: widget.onToggleTheme,
+                              );
+                            },
+                          ),
+                        );
+                        profileState.refreshUser();
+                      },
                     ),
                   ],
                 ),
@@ -358,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'App Theme Presets',
+                      'Themes',
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -370,32 +450,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        childAspectRatio: 2.2,
-                      ),
-                      itemCount: SettingsProvider.presets.length + 1,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 2.2,
+                          ),
+                      itemCount: gridThemeIds.length,
                       itemBuilder: (context, index) {
-                        final String id;
+                        final String id = gridThemeIds[index];
                         final String name;
                         final Color bg;
                         final Color primary;
-                        final bool isCustom = index == SettingsProvider.presets.length;
+                        final bool isCustom = id == 'custom';
 
                         if (isCustom) {
-                          id = 'custom';
                           name = 'Custom';
                           bg = settings.parseColor(
-                              settings.customColors['bgDefault'] ?? '#FFFFFF', Colors.white);
+                            settings.customColors['bgDefault'] ?? '#FFFFFF',
+                            Colors.white,
+                          );
                           primary = settings.parseColor(
-                              settings.customColors['primaryMain'] ?? '#3D5CFF', const Color(0xFF3D5CFF));
+                            settings.customColors['primaryMain'] ?? '#3D5CFF',
+                            const Color(0xFF3D5CFF),
+                          );
                         } else {
-                          final keys = SettingsProvider.presets.keys.toList();
-                          id = keys[index];
-                          final data = SettingsProvider.presets[id]!;
                           name = id[0].toUpperCase() + id.substring(1);
+                          final data = SettingsProvider.presets[id]!;
                           bg = Color(data.bg);
                           primary = Color(data.primary);
                         }
@@ -405,26 +487,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         return GestureDetector(
                           onTap: () => settings.setThemePreset(id),
                           child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 23),
                             decoration: BoxDecoration(
                               color: bg,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: isSelected ? theme.primaryColor : theme.dividerColor,
+                                color: isSelected
+                                    ? theme.primaryColor
+                                    : theme.dividerColor,
                                 width: isSelected ? 2.5 : 1.0,
                               ),
                               boxShadow: isSelected
                                   ? [
                                       BoxShadow(
-                                        color: theme.primaryColor.withValues(alpha: 0.15),
+                                        color: theme.primaryColor.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
-                                      )
+                                      ),
                                     ]
                                   : null,
                             ),
                             alignment: Alignment.center,
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
                                   width: 10,
@@ -439,11 +525,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   child: Text(
                                     name,
                                     maxLines: 1,
+                                    textAlign: TextAlign.center,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color:
+                                          ThemeData.estimateBrightnessForColor(
+                                                bg,
+                                              ) ==
+                                              Brightness.dark
                                           ? Colors.white
                                           : Colors.black87,
                                     ),
@@ -454,6 +547,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         );
                       },
+                    ),
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showAllThemes = !_showAllThemes;
+                          });
+                        },
+                        icon: Icon(
+                          _showAllThemes
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          color: theme.primaryColor,
+                          size: 20,
+                        ),
+                        label: Text(
+                          _showAllThemes ? 'View Less' : 'View More',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                      ),
                     ),
 
                     if (settings.themePreset == 'custom') ...[
@@ -472,7 +590,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 10),
                       // Custom colors editor
                       ...settings.customColors.keys.map((colorKey) {
-                        final hex = settings.customColors[colorKey] ?? '#FFFFFF';
+                        final hex =
+                            settings.customColors[colorKey] ?? '#FFFFFF';
                         final color = settings.parseColor(hex, Colors.grey);
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
@@ -482,7 +601,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             decoration: BoxDecoration(
                               color: color,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade400, width: 1),
+                              border: Border.all(
+                                color: Colors.grey.shade400,
+                                width: 1,
+                              ),
                             ),
                           ),
                           title: Text(
@@ -490,7 +612,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: GoogleFonts.poppins(fontSize: 13),
                           ),
                           trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               border: Border.all(color: theme.dividerColor),
                               borderRadius: BorderRadius.circular(6),
@@ -503,7 +628,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ),
                           ),
-                          onTap: () => _showColorPickerDialog(context, settings, colorKey, hex),
+                          onTap: () => _showColorPickerDialog(
+                            context,
+                            settings,
+                            colorKey,
+                            hex,
+                          ),
                         );
                       }),
                     ],
@@ -521,20 +651,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Font Family',
+                              'Font Family:',
                               style: GoogleFonts.poppins(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                                fontSize: 16,
                                 color: theme.textTheme.bodyLarge?.color,
                               ),
                             ),
-                            Text(
-                              'Select default text typeface',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-                              ),
-                            ),
+                            // Text(
+                            //   'Select default text typeface',
+                            //   style: GoogleFonts.poppins(
+                            //     fontSize: 12,
+                            //     color: theme.textTheme.bodyMedium?.color
+                            //         ?.withValues(alpha: 0.6),
+                            //   ),
+                            // ),
                           ],
                         ),
                         DropdownButton<String>(
@@ -550,100 +681,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           items: _fontOptions.map((opt) {
                             return DropdownMenuItem<String>(
                               value: opt,
-                              child: Text(_getFontLabel(opt)),
+                              child: Text(
+                                _getFontLabel(opt),
+                                style: TextStyle(fontSize: 12),
+                              ),
                             );
                           }).toList(),
-                        )
+                        ),
                       ],
                     ),
 
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Divider(),
-                    ),
+                    // const Padding(
+                    //   padding: EdgeInsets.symmetric(vertical: 16),
+                    //   child: Divider(),
+                    // ),
 
                     // Background animation toggle
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Global Background Animation',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: theme.textTheme.bodyLarge?.color,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Renders abstract movement behind pages',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      value: settings.globalBg,
-                      onChanged: (val) => settings.setGlobalBg(val),
-                    ),
+                    // SwitchListTile(
+                    //   contentPadding: EdgeInsets.zero,
+                    //   title: Text(
+                    //     'Global Background Animation',
+                    //     style: GoogleFonts.poppins(
+                    //       fontWeight: FontWeight.bold,
+                    //       fontSize: 14,
+                    //       color: theme.textTheme.bodyLarge?.color,
+                    //     ),
+                    //   ),
+                    //   subtitle: Text(
+                    //     'Renders abstract movement behind pages',
+                    //     style: GoogleFonts.poppins(
+                    //       fontSize: 12,
+                    //       color: theme.textTheme.bodyMedium?.color?.withValues(
+                    //         alpha: 0.6,
+                    //       ),
+                    //     ),
+                    //   ),
+                    //   value: settings.globalBg,
+                    //   onChanged: (val) => settings.setGlobalBg(val),
+                    // ),
+                    // if (settings.globalBg) ...[
+                    //   const SizedBox(height: 8),
+                    //   Row(
+                    //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    //     children: [
+                    //       Text(
+                    //         'Animation Style',
+                    //         style: GoogleFonts.poppins(
+                    //           fontSize: 13,
+                    //           fontWeight: FontWeight.w600,
+                    //           color: theme.textTheme.bodyLarge?.color,
+                    //         ),
+                    //       ),
+                    //       DropdownButton<String>(
+                    //         value: settings.bgStyle,
+                    //         underline: Container(),
+                    //         style: GoogleFonts.poppins(
+                    //           color: theme.textTheme.bodyLarge?.color,
+                    //           fontWeight: FontWeight.w600,
+                    //         ),
+                    //         onChanged: (val) {
+                    //           if (val != null) settings.setBgStyle(val);
+                    //         },
+                    //         items: _bgStyles.map((opt) {
+                    //           return DropdownMenuItem<String>(
+                    //             value: opt,
+                    //             child: Text(_getBgStyleLabel(opt)),
+                    //           );
+                    //         }).toList(),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ],
+                    // const Padding(
+                    //   padding: EdgeInsets.symmetric(vertical: 16),
+                    //   child: Divider(),
+                    // ),
 
-                    if (settings.globalBg) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Animation Style',
-                            style: GoogleFonts.poppins(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: theme.textTheme.bodyLarge?.color,
-                            ),
-                          ),
-                          DropdownButton<String>(
-                            value: settings.bgStyle,
-                            underline: Container(),
-                            style: GoogleFonts.poppins(
-                              color: theme.textTheme.bodyLarge?.color,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            onChanged: (val) {
-                              if (val != null) settings.setBgStyle(val);
-                            },
-                            items: _bgStyles.map((opt) {
-                              return DropdownMenuItem<String>(
-                                value: opt,
-                                child: Text(_getBgStyleLabel(opt)),
-                              );
-                            }).toList(),
-                          )
-                        ],
-                      ),
-                    ],
-
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Divider(),
-                    ),
-
-                    // Logo style toggle
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Logo Smooth Gradient',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: theme.textTheme.bodyLarge?.color,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Apply colorful gradient to brand icons',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      value: settings.logoGradient,
-                      onChanged: (val) => settings.setLogoGradient(val),
-                    ),
+                    // // Logo style toggle
+                    // SwitchListTile(
+                    //   contentPadding: EdgeInsets.zero,
+                    //   title: Text(
+                    //     'Logo Smooth Gradient',
+                    //     style: GoogleFonts.poppins(
+                    //       fontWeight: FontWeight.bold,
+                    //       fontSize: 14,
+                    //       color: theme.textTheme.bodyLarge?.color,
+                    //     ),
+                    //   ),
+                    //   subtitle: Text(
+                    //     'Apply colorful gradient to brand icons',
+                    //     style: GoogleFonts.poppins(
+                    //       fontSize: 12,
+                    //       color: theme.textTheme.bodyMedium?.color?.withValues(
+                    //         alpha: 0.6,
+                    //       ),
+                    //     ),
+                    //   ),
+                    //   value: settings.logoGradient,
+                    //   onChanged: (val) => settings.setLogoGradient(val),
+                    // ),
                   ],
                 ),
               ),
@@ -724,7 +860,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const Divider(height: 8),
                     ListTile(
-                      leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                      leading: const Icon(
+                        Icons.delete_forever,
+                        color: Colors.redAccent,
+                      ),
                       title: Text(
                         'Delete Account',
                         style: GoogleFonts.poppins(
@@ -733,7 +872,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           color: Colors.redAccent,
                         ),
                       ),
-                      trailing: const Icon(Icons.chevron_right, color: Colors.redAccent),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.redAccent,
+                      ),
                       onTap: _confirmDeleteAccount,
                     ),
                   ],
@@ -751,7 +893,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'SophiaPath Mobile • Version 1.0.0',
                       style: GoogleFonts.poppins(
                         fontSize: 11,
-                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.5,
+                        ),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -760,7 +904,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       'Built with ❤️ for Learners',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
-                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                     ),
                   ],
@@ -808,7 +954,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title,
                 style: GoogleFonts.poppins(
                   fontSize: 12,
-                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(
+                    alpha: 0.6,
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
