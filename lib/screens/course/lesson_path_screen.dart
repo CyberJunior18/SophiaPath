@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/course/lesson.dart' as lesson_model;
@@ -11,6 +10,18 @@ import '../Lessons/mcq_test_screen.dart';
 import 'lesson_content_screen.dart';
 import '../../widgets/sophia_path_loading_screen.dart';
 import '../../services/course/user_stats_service.dart';
+
+class _ChapterPosition {
+  final int index;
+  final String name;
+  final double top;
+
+  const _ChapterPosition({
+    required this.index,
+    required this.name,
+    required this.top,
+  });
+}
 
 class _LessonNodeData {
   final int id;
@@ -741,6 +752,109 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     ];
   }
 
+  BoxDecoration _buildChapterDecoration(ThemeData theme) {
+    return BoxDecoration(
+      color: theme.brightness == Brightness.dark
+          ? Colors.grey[900]?.withValues(alpha: 0.95)
+          : Colors.white.withValues(alpha: 0.95),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: theme.brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.3)
+            : Colors.black.withValues(alpha: 0.15),
+        width: 1.5,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStickyHeader(List<_ChapterPosition> chapters) {
+    if (chapters.isEmpty || !_scrollController.hasClients) {
+      return const SizedBox.shrink();
+    }
+
+    final scrollOffset = _scrollController.offset;
+    const double headerHeight = 62.0;
+
+    _ChapterPosition? activeChapter;
+    double? nextChapterTop;
+
+    for (int i = 0; i < chapters.length; i++) {
+      final ch = chapters[i];
+      final adjustedChTop = ch.top + 20.0;
+
+      if (scrollOffset >= adjustedChTop) {
+        activeChapter = ch;
+        if (i + 1 < chapters.length) {
+          nextChapterTop = chapters[i + 1].top + 20.0;
+        } else {
+          nextChapterTop = null;
+        }
+      }
+    }
+
+    if (activeChapter == null) {
+      return const SizedBox.shrink();
+    }
+
+    double topPos = 0.0;
+    if (nextChapterTop != null) {
+      final distanceToNext = nextChapterTop - scrollOffset;
+      if (distanceToNext < headerHeight) {
+        topPos = distanceToNext - headerHeight;
+      }
+    }
+
+    final theme = Theme.of(context);
+
+    return Positioned(
+      top: topPos,
+      left: MediaQuery.of(context).size.width * 0.05,
+      right: MediaQuery.of(context).size.width * 0.05,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
+        decoration: _buildChapterDecoration(theme),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Chapter ${activeChapter.index}',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: theme.brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.7)
+                    : Colors.black.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              activeChapter.name,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: theme.brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _findDatabaseCourse() async {
     try {
       // final allCourses = await _courseService.getCourses();
@@ -1274,6 +1388,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final theme = Theme.of(context);
     final nodeSpacing = 120.0;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
+    final List<_ChapterPosition> chapters = [];
     final totalNodesInPage = currentPageLessons.length;
     final currentScores = _normalizedScores(totalNodesInPage);
     final currentUnlocked = _normalizedUnlocked(totalNodesInPage);
@@ -1292,6 +1407,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     double extraGap = 0;
     const double nodeSize = 80.0;
     double contentHeight = 0;
+    int chapterCounter = 0;
     for (int i = 0; i < totalNodesInPage; i++) {
       final chapterName = currentPageLessons[i].chapterName.isNotEmpty
           ? currentPageLessons[i].chapterName
@@ -1299,6 +1415,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
       if (chapterName != lastChapter) {
         lastChapter = chapterName;
+        chapterCounter++;
         if (i == 0) {
           extraGap = 40;
         } else {
@@ -1309,54 +1426,57 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         nodeWidgets.add(
           Positioned(
             top: i * nodeSpacing + extraGap - 30,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white),
-                ),
-                child: Text(
-                  chapterName,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
+            left: MediaQuery.of(context).size.width * 0.05,
+            right: MediaQuery.of(context).size.width * 0.05,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 10,
+              ),
+              decoration: _buildChapterDecoration(theme),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Chapter $chapterCounter',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.7)
+                          : Colors.black.withValues(alpha: 0.6),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    chapterName,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black87,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         );
 
         final chapterTop = i * nodeSpacing + extraGap - 30;
-        contentHeight = max(contentHeight, chapterTop + 60);
-
-        extraGap += 60;
-        //dividers
-        nodeWidgets.add(
-          Positioned(
-            top: i * nodeSpacing + extraGap - 135,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: DottedLine(
-                direction: Axis.horizontal,
-                lineThickness: 2.0,
-                dashLength: 4.0,
-                dashColor: theme.brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
-                dashGapLength: 4.0,
-              ),
-            ),
+        chapters.add(
+          _ChapterPosition(
+            index: chapterCounter,
+            name: chapterName,
+            top: chapterTop,
           ),
         );
+        contentHeight = max(contentHeight, chapterTop + 60);
+
+        extraGap += 90;
 
         // nodeWidgets.add( //todo : add a widget that appears on top as lock
         //   Positioned(
@@ -1418,6 +1538,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             theme: theme,
             nodeColor: _lessonNodeColors[currentPageLessons[i].scoreLessonId],
             enabled: currentUnlocked[i],
+            isCurrent: i == _completedLessons,
             onTap: () => _showLessonPreview(currentPageLessons[i], i),
           ),
         ),
@@ -1455,37 +1576,47 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           //     ),
           //   ),
           Expanded(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              child: SizedBox(
-                height: max(
-                  contentHeight + 40,
-                  totalNodesInPage * nodeSpacing + 30,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: Stack(
-                    children: [
-                      CustomPaint(
-                        size: Size(
-                          double.infinity,
-                          nodeCentersY.isNotEmpty
-                              ? nodeCentersY.last + 60
-                              : totalNodesInPage * nodeSpacing,
-                        ),
-                        painter: LessonPathPainter(
-                          nodeCentersY,
-                          connectNext: connectNext,
-                          unlocked: currentUnlocked,
-                          theme: theme,
-                        ),
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  child: SizedBox(
+                    height: max(
+                      contentHeight + 40,
+                      totalNodesInPage * nodeSpacing + 30,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20.0),
+                      child: Stack(
+                        children: [
+                          CustomPaint(
+                            size: Size(
+                              double.infinity,
+                              nodeCentersY.isNotEmpty
+                                  ? nodeCentersY.last + 60
+                                  : totalNodesInPage * nodeSpacing,
+                            ),
+                            painter: LessonPathPainter(
+                              nodeCentersY,
+                              connectNext: connectNext,
+                              unlocked: currentUnlocked,
+                              theme: theme,
+                            ),
+                          ),
+                          ...nodeWidgets,
+                        ],
                       ),
-                      ...nodeWidgets,
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                AnimatedBuilder(
+                  animation: _scrollController,
+                  builder: (context, child) {
+                    return _buildStickyHeader(chapters);
+                  },
+                ),
+              ],
             ),
           ),
           // if (totalPages > 1)
@@ -1532,6 +1663,7 @@ class CourseNode extends StatefulWidget {
   final ThemeData theme;
   final Color? nodeColor;
   final bool enabled;
+  final bool isCurrent;
   final VoidCallback? onTap;
 
   const CourseNode({
@@ -1545,6 +1677,7 @@ class CourseNode extends StatefulWidget {
     required this.theme,
     this.nodeColor,
     this.enabled = true,
+    this.isCurrent = false,
     this.onTap,
   });
 
@@ -1552,8 +1685,56 @@ class CourseNode extends StatefulWidget {
   State<CourseNode> createState() => _CourseNodeState();
 }
 
-class _CourseNodeState extends State<CourseNode> {
+class _CourseNodeState extends State<CourseNode> with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _glowScale;
+  late Animation<double> _glowOpacity;
   bool hovering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    );
+
+    _glowScale = Tween<double>(begin: 1.0, end: 1.35).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _glowOpacity = Tween<double>(begin: 0.35, end: 0.05).animate(
+      CurvedAnimation(
+        parent: _pulseController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    if (widget.isCurrent) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CourseNode oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isCurrent != oldWidget.isCurrent) {
+      if (widget.isCurrent) {
+        _pulseController.repeat(reverse: true);
+      } else {
+        _pulseController.stop();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   Color _darken(Color color, [double amount = 0.18]) {
     final hsl = HSLColor.fromColor(color);
@@ -1599,6 +1780,28 @@ class _CourseNodeState extends State<CourseNode> {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
+            if (widget.isCurrent && !widget.locked)
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  return Container(
+                    width: nodeSize * _glowScale.value,
+                    height: nodeSize * _glowScale.value,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: nodeColor.withValues(alpha: _glowOpacity.value),
+                      boxShadow: [
+                        BoxShadow(
+                          color: nodeColor.withValues(alpha: _glowOpacity.value * 1.5),
+                          blurRadius: 15 * _glowScale.value,
+                          spreadRadius: 8 * _glowScale.value,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
             if (!widget.locked && hovering)
               Container(
                 width: nodeSize + 12,
