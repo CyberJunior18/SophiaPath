@@ -1935,19 +1935,91 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeaderHeight());
-    bool showTitle = false;
     return Scaffold(
       appBar: AppBar(
-        title: FittedBox(
-          child: showTitle
-              ? Text(
-                  widget.sectionTitle ?? widget.course.title,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 20,
+        title: AnimatedBuilder(
+          animation: _scrollController,
+          builder: (context, child) {
+            final double scrollOffset =
+                _scrollController.hasClients ? _scrollController.offset : 0.0;
+            final bool showTitle = scrollOffset >= _topHeaderHeight;
+
+            Widget titleWidget;
+            if (showTitle) {
+              Widget iconWidget;
+              if (widget.course.imageUrl.trim().isNotEmpty) {
+                if (widget.course.imageUrl.startsWith('http')) {
+                  iconWidget = ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.network(
+                      widget.course.imageUrl,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.book_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                } else {
+                  iconWidget = ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.asset(
+                      widget.course.imageUrl,
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.book_rounded,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                }
+              } else {
+                iconWidget = const Icon(
+                  Icons.book_rounded,
+                  size: 20,
+                  color: Colors.white,
+                );
+              }
+
+              titleWidget = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  iconWidget,
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      widget.sectionTitle ?? widget.course.title,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                )
-              : Text(''),
+                ],
+              );
+            } else {
+              titleWidget = const SizedBox.shrink();
+            }
+
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              child: titleWidget,
+            );
+          },
         ),
         backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
