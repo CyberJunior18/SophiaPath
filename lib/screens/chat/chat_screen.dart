@@ -323,6 +323,9 @@ class _ChatScreenState extends State<ChatScreen> {
         username: _currentUser!.username,
         message: text,
         avatar: _currentUser!.avatar,
+        replyToId: _replyingTo?.id,
+        replyToMessage: _replyingTo?.message,
+        replyToUsername: _replyingTo?.senderUsername,
       );
 
       if (!mounted) return;

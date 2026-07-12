@@ -124,6 +124,10 @@ class ChatService {
     required String username,
     required String message,
     String? avatar,
+    String? replyToId,
+    String? replyToMessage,
+    String? replyToUsername,
+    bool forwarded = false,
   }) async {
     if (_socket?.connected == true) {
       final payload = <String, dynamic>{
@@ -134,6 +138,10 @@ class ChatService {
       if (avatar != null) {
         payload['avatar'] = avatar;
       }
+      if (replyToId != null) payload['replyToId'] = replyToId;
+      if (replyToMessage != null) payload['replyToMessage'] = replyToMessage;
+      if (replyToUsername != null) payload['replyToUsername'] = replyToUsername;
+      if (forwarded) payload['forwarded'] = forwarded;
 
       _socket!.emit('sendMessage', payload);
 
@@ -146,6 +154,10 @@ class ChatService {
         timestamp: DateTime.now(),
         avatar: avatar,
         read: false,
+        replyToId: replyToId,
+        replyToMessage: replyToMessage,
+        replyToUsername: replyToUsername,
+        forwarded: forwarded,
       );
     }
 
@@ -159,6 +171,10 @@ class ChatService {
     if (avatar != null) {
       payload['avatar'] = avatar;
     }
+    if (replyToId != null) payload['replyToId'] = replyToId;
+    if (replyToMessage != null) payload['replyToMessage'] = replyToMessage;
+    if (replyToUsername != null) payload['replyToUsername'] = replyToUsername;
+    if (forwarded) payload['forwarded'] = forwarded;
 
     final response = await http.post(
       url,
