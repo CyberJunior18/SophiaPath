@@ -46,6 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _otherUserTyping = false;
   Timer? _typingPollTimer;
   Timer? _typingDebounceTimer;
+  Timer? _pollingTimer;
   bool _iAmTyping = false;
 
   // Reply state
@@ -104,6 +105,13 @@ class _ChatScreenState extends State<ChatScreen> {
           _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
         });
         _scrollToBottom();
+
+        if (message.recipientId == currentUser.userId) {
+          _chatService.markConversationAsRead(
+            currentUser.userId,
+            otherUserId,
+          );
+        }
       });
 
       _errorSubscription = _chatService.errors.listen((error) {
@@ -147,6 +155,11 @@ class _ChatScreenState extends State<ChatScreen> {
         _pollTypingStatus();
       });
 
+      // Start polling for messages
+      _pollingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _pollMessages();
+      });
+
       _scrollToBottom();
     } catch (error) {
       if (!mounted) return;
@@ -183,6 +196,59 @@ class _ChatScreenState extends State<ChatScreen> {
         _otherUserTyping = isTyping;
       });
     }
+  }
+
+  Future<void> _pollMessages() async {
+    if (_currentUser == null) return;
+    final otherUserId = int.tryParse(widget.receiverID);
+    if (otherUserId == null) return;
+
+    try {
+      final history = await _chatService.getConversationHistory(
+        _currentUser!.userId,
+        otherUserId,
+      );
+
+      if (!mounted) return;
+
+      bool hasChanges = false;
+      if (history.length != _messages.length) {
+        hasChanges = true;
+      } else {
+        for (int i = 0; i < history.length; i++) {
+          if (history[i].id != _messages[i].id ||
+              history[i].message != _messages[i].message ||
+              history[i].read != _messages[i].read ||
+              history[i].deleted != _messages[i].deleted ||
+              history[i].pinned != _messages[i].pinned ||
+              history[i].edited != _messages[i].edited) {
+            hasChanges = true;
+            break;
+          }
+        }
+      }
+
+      if (hasChanges) {
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(history);
+          _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+        });
+        _scrollToBottom();
+      }
+
+      final hasUnread = history.any(
+        (message) =>
+            message.recipientId == _currentUser!.userId && !message.read,
+      );
+      if (hasUnread) {
+        _chatService.markConversationAsRead(
+          _currentUser!.userId,
+          otherUserId,
+        );
+      }
+    } catch (_) {}
   }
 
   void _onTextChanged(String text) {
@@ -784,6 +850,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _connectionSubscription?.cancel();
     _typingPollTimer?.cancel();
     _typingDebounceTimer?.cancel();
+    _pollingTimer?.cancel();
     _chatService.dispose();
     _messageController.dispose();
     _scrollController.dispose();

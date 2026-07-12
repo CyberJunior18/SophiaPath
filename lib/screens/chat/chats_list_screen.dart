@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/chat/chat_contact.dart';
+import '../../models/chat/chat_message.dart';
 import '../../models/user/user.dart'; // Use your existing User model
 import 'chat_screen.dart';
 import '../../services/chat/chat_service.dart';
@@ -15,6 +17,7 @@ class ChatsListScreen extends StatefulWidget {
 
 class _ChatsListScreenState extends State<ChatsListScreen> {
   final ChatService _chatService = ChatService();
+  StreamSubscription<ChatMessage>? _messageSubscription;
   final List<ChatContact> _contacts = [];
   final List<User> _chatUsers = []; // Using your User model
   final List<Map<String, dynamic>> _allBackendUsers =
@@ -27,13 +30,15 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChatContacts();
+    _loadChatContacts(initial: true);
     _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _messageSubscription?.cancel();
+    _chatService.dispose();
     super.dispose();
   }
 
@@ -56,94 +61,195 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     }
   }
 
-  Future<void> _loadChatContacts() async {
+  Future<void> _loadChatContacts({bool initial = false}) async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _contacts.clear();
-      _chatUsers.clear();
-    });
+    if (initial) {
+      setState(() {
+        _isLoading = true;
+        _contacts.clear();
+        _chatUsers.clear();
+      });
+    }
 
     try {
       final currentUser = await _chatService.getCurrentUser();
+
+      // Connect socket if not connected
+      _chatService.connect(currentUser.userId);
+
+      // Listen to incoming messages for real-time updates
+      if (_messageSubscription == null) {
+        _messageSubscription = _chatService.incomingMessages.listen((message) {
+          _handleIncomingMessage(message, currentUser.userId);
+        });
+      }
+
       final allUsers = await _chatService.getAllUsers();
       final contacts = <ChatContact>[];
       final users = <User>[];
 
       // Store all backend users for search
-      setState(() {
-        _allBackendUsers.clear();
-        _allBackendUsers.addAll(
-          allUsers.where((u) => (u['id'] as int?) != currentUser.userId),
-        );
-      });
-
-      // Filter out current user and load chat data for each other user - only if they have message history
-      for (final userData in allUsers) {
-        final userId = userData['id'] as int?;
-        if (userId == null || userId == currentUser.userId) continue;
-
-        try {
-          final history = await _chatService.getConversationHistory(
-            currentUser.userId,
-            userId,
+      if (mounted) {
+        setState(() {
+          _allBackendUsers.clear();
+          _allBackendUsers.addAll(
+            allUsers.where((u) => (u['id'] as int?) != currentUser.userId),
           );
+        });
+      }
 
-          // Only add to contacts if there's actual message history
-          if (history.isNotEmpty) {
-            final unreadCount = history
-                .where(
-                  (message) =>
-                      message.recipientId == currentUser.userId &&
-                      !message.read,
-                )
-                .length;
+      // Fetch conversations from the backend
+      final conversations = await _chatService.getUserConversations(currentUser.userId);
 
-            contacts.add(
-              ChatContact(
-                userId: userId.toString(),
-                chatId: 'conversation-${currentUser.userId}-$userId',
-                lastMessageTime: history.last.timestamp,
-                lastMessage: history.last.message,
-                unreadCount: unreadCount,
-              ),
-            );
+      // Fetch history for active conversations in parallel
+      final histories = await Future.wait(
+        conversations.map((conv) {
+          final otherUserId = conv['userId1'] == currentUser.userId ? conv['userId2'] : conv['userId1'];
+          return _chatService.getConversationHistory(currentUser.userId, otherUserId);
+        }),
+      );
 
-            users.add(
-              User(
-                  username: (userData['username'] ?? 'user$userId') as String,
-                  fullName: (userData['fullname'] ?? 'User $userId') as String,
-                  tag: (userData['tag'] ?? '') as String,
-                  age: (userData['age'] ?? 0) as int,
-                  sex: (userData['gender'] ?? 'Not specified') as String,
-                  profileImage: '',
-                  achievementsProgress: const [],
-                  registeredCourses: const [],
-                  registedCoursesIndexes: const [],
-                )
-                ..isOnline = true
-                ..lastSeen = history.last.timestamp,
-            );
-          }
-        } catch (_) {
-          // Skip users with failed history fetch
-          continue;
-        }
+      for (var i = 0; i < conversations.length; i++) {
+        final conv = conversations[i];
+        final history = histories[i];
+        final otherUserId = conv['userId1'] == currentUser.userId ? conv['userId2'] : conv['userId1'];
+
+        final userData = allUsers.firstWhere(
+          (u) => u['id'] == otherUserId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (userData.isEmpty) continue;
+
+        final unreadCount = history
+            .where(
+              (message) =>
+                  message.recipientId == currentUser.userId &&
+                  !message.read,
+            )
+            .length;
+
+        final lastMsg = conv['lastMessage'];
+        final lastMsgText = lastMsg != null ? (lastMsg['message'] ?? '') as String : '';
+        final lastMsgTimeStr = conv['lastMessageTime'] as String?;
+        final lastMsgTime = lastMsgTimeStr != null
+            ? (DateTime.tryParse(lastMsgTimeStr) ?? DateTime.now())
+            : DateTime.now();
+
+        contacts.add(
+          ChatContact(
+            userId: otherUserId.toString(),
+            chatId: conv['id'] as String? ?? 'conversation-${currentUser.userId}-$otherUserId',
+            lastMessageTime: lastMsgTime,
+            lastMessage: lastMsgText,
+            unreadCount: unreadCount,
+          ),
+        );
+
+        users.add(
+          User(
+            username: (userData['username'] ?? 'user$otherUserId') as String,
+            fullName: (userData['fullname'] ?? 'User $otherUserId') as String,
+            tag: (userData['tag'] ?? '') as String,
+            age: (userData['age'] ?? 0) as int,
+            sex: (userData['gender'] ?? 'Not specified') as String,
+            profileImage: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
+            achievementsProgress: const [],
+            registeredCourses: const [],
+            registedCoursesIndexes: const [],
+          )
+            ..isOnline = true
+            ..lastSeen = lastMsgTime,
+        );
       }
 
       if (!mounted) return;
       setState(() {
-        _chatUsers.addAll(users);
+        _contacts.clear();
+        _chatUsers.clear();
         _contacts.addAll(contacts);
+        _chatUsers.addAll(users);
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        // No fallback demo data - show empty state if loading fails
       });
+    }
+  }
+
+  void _handleIncomingMessage(ChatMessage message, int currentUserId) {
+    if (!mounted) return;
+
+    final otherUserId = message.senderId == currentUserId ? message.recipientId : message.senderId;
+    final otherUserIdStr = otherUserId.toString();
+
+    // Check if we already have this contact in our active list
+    final existingIndex = _contacts.indexWhere((c) => c.userId == otherUserIdStr);
+
+    if (existingIndex >= 0) {
+      setState(() {
+        final contact = _contacts[existingIndex];
+        final user = _chatUsers[existingIndex];
+
+        final updatedContact = ChatContact(
+          userId: contact.userId,
+          chatId: contact.chatId,
+          lastMessageTime: message.timestamp,
+          lastMessage: message.message,
+          unreadCount: message.senderId != currentUserId ? contact.unreadCount + 1 : contact.unreadCount,
+        );
+
+        // Move to the top
+        _contacts.removeAt(existingIndex);
+        _contacts.insert(0, updatedContact);
+
+        user.lastSeen = message.timestamp;
+        _chatUsers.removeAt(existingIndex);
+        _chatUsers.insert(0, user);
+      });
+    } else {
+      // New conversation! Find this user in all backend users
+      final userData = _allBackendUsers.firstWhere(
+        (u) => u['id'] == otherUserId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (userData.isNotEmpty) {
+        setState(() {
+          _contacts.insert(
+            0,
+            ChatContact(
+              userId: otherUserIdStr,
+              chatId: 'conversation-$currentUserId-$otherUserId',
+              lastMessageTime: message.timestamp,
+              lastMessage: message.message,
+              unreadCount: message.senderId != currentUserId ? 1 : 0,
+            ),
+          );
+
+          _chatUsers.insert(
+            0,
+            User(
+              username: (userData['username'] ?? 'user$otherUserId') as String,
+              fullName: (userData['fullname'] ?? 'User $otherUserId') as String,
+              tag: (userData['tag'] ?? '') as String,
+              age: (userData['age'] ?? 0) as int,
+              sex: (userData['gender'] ?? 'Not specified') as String,
+              profileImage: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
+              achievementsProgress: const [],
+              registeredCourses: const [],
+              registedCoursesIndexes: const [],
+            )
+              ..isOnline = true
+              ..lastSeen = message.timestamp,
+          );
+        });
+      } else {
+        // If not in cache, reload the list silently
+        _loadChatContacts(initial: false);
+      }
     }
   }
 
@@ -190,7 +296,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           receiverID: userId.toString(),
         ),
       ),
-    ).then((_) => _loadChatContacts());
+    ).then((_) {
+      _searchController.clear();
+      _loadChatContacts(initial: false);
+    });
   }
 
   String _displayNameForContact(int index) {
@@ -284,7 +393,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
               receiverID: contact.userId,
             ),
           ),
-        ).then((_) => _loadChatContacts());
+        ).then((_) {
+          _searchController.clear();
+          _loadChatContacts(initial: false);
+        });
       },
       onLongPress: () {
         if (index < _chatUsers.length) {
@@ -584,7 +696,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                     ),
                               )
                       : RefreshIndicator(
-                          onRefresh: _loadChatContacts,
+                          onRefresh: () => _loadChatContacts(initial: false),
                           child: _contacts.isEmpty
                               ? ListView(
                                   physics:
@@ -649,7 +761,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: theme.colorScheme.primary,
         onPressed: () {
-          _loadChatContacts();
+          _loadChatContacts(initial: false);
         },
         child: Icon(Icons.message, color: theme.colorScheme.onPrimary),
       ),
