@@ -334,6 +334,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   }
 
   Widget _buildFilterChip(int index, String label) {
+    final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final isSelected = _selectedFilter == index;
 
@@ -345,20 +346,20 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           _selectedFilter = selected ? index : 0;
         });
       },
-      backgroundColor: Colors.grey[100],
-      selectedColor: const Color(0xFF3D5CFF).withValues(alpha: 0.2),
+      backgroundColor: theme.brightness == Brightness.dark ? theme.cardColor : Colors.grey[100],
+      selectedColor: theme.primaryColor.withValues(alpha: 0.2),
       labelStyle: GoogleFonts.poppins(
         fontSize: screenWidth * 0.035,
-        color: isSelected ? const Color(0xFF3D5CFF) : Colors.grey[700],
+        color: isSelected ? theme.primaryColor : (theme.brightness == Brightness.dark ? Colors.grey[300] : Colors.grey[700]),
         fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
       ),
-      checkmarkColor: const Color(0xFF3D5CFF),
+      checkmarkColor: theme.primaryColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: isSelected
-              ? const Color(0xFF3D5CFF).withValues(alpha: 0.5)
-              : Colors.grey[300]!,
+              ? theme.primaryColor.withValues(alpha: 0.5)
+              : (theme.brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!),
         ),
       ),
     );
@@ -376,7 +377,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           'Achievements',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF3D5CFF),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: _isLoading
@@ -406,14 +407,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                           vertical: screenWidth * 0.015,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3D5CFF).withValues(alpha: 0.1),
+                          color: theme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${_achievements.where((a) => a.isCompleted).length}/${_achievements.length}',
                           style: GoogleFonts.poppins(
                             fontSize: screenWidth * 0.035,
-                            color: const Color(0xFF3D5CFF),
+                            color: theme.primaryColor,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -497,9 +498,9 @@ Keep pushing for greatness! 💪
             await Share.share(shareText);
             await statsService.incrementShareCount();
           },
-          icon: const Icon(Icons.share),
-          label: const Text('Share'),
-          backgroundColor: const Color(0xFF3D5CFF),
+          icon: Icon(Icons.share, color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark ? Colors.white : Colors.black),
+          label: Text('Share', style: TextStyle(color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark ? Colors.white : Colors.black)),
+          backgroundColor: theme.primaryColor,
         ),
       ),
     );

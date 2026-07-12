@@ -7,6 +7,7 @@ import '../../services/social_service.dart';
 import '../../services/chat/chat_service.dart';
 import '../../widgets/social/poll_message_widget.dart';
 import '../../services/local_social_storage.dart';
+import '../../widgets/profileImage.dart';
 
 class QuestionDetailScreen extends StatefulWidget {
   final Community? community;
@@ -282,16 +283,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
+                      ProfileImage(
+                        imageUrl: comment.authorAvatar,
                         radius: 12,
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        backgroundImage: comment.authorAvatar.isNotEmpty ? NetworkImage(comment.authorAvatar) : null,
-                        child: comment.authorAvatar.isEmpty
-                            ? Text(
-                                comment.authorName.isNotEmpty ? comment.authorName[0].toUpperCase() : 'U',
-                                style: TextStyle(fontSize: 10, color: theme.colorScheme.onSecondaryContainer),
-                              )
-                            : null,
+                        name: comment.authorName,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -456,16 +451,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
+                            ProfileImage(
+                              imageUrl: _question.authorAvatar,
                               radius: 18,
-                              backgroundColor: theme.colorScheme.primaryContainer,
-                              backgroundImage: _question.authorAvatar.isNotEmpty ? NetworkImage(_question.authorAvatar) : null,
-                              child: _question.authorAvatar.isEmpty
-                                  ? Text(
-                                      _question.authorName.isNotEmpty ? _question.authorName[0].toUpperCase() : 'U',
-                                      style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
-                                    )
-                                  : null,
+                              name: _question.authorName,
                             ),
                             const SizedBox(width: 12),
                             Column(

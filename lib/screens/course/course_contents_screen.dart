@@ -79,7 +79,7 @@ class _CourseContentsScreenState extends State<CourseContentsScreen> {
           '${widget.course.title} - All Content',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF3D5CFF),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: widget.course.sections.isEmpty

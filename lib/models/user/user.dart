@@ -97,6 +97,7 @@ class User {
         age: (map['age'] as num?)?.toInt() ?? map['Age'] ?? 20,
         sex: map['gender'] ?? map['sex'] ?? map['Sex'] ?? 'Rather not say',
         profileImage:
+            map['avatar'] ??
             map['profilePicture'] ??
             map['profileImage'] ??
             map['ProfileImage'] ??
@@ -169,6 +170,7 @@ class User {
           data['Sex']?.toString() ??
           'Rather not say',
       profileImage:
+          data['avatar']?.toString() ??
           data['profileImage']?.toString() ??
           data['profilePicture']?.toString() ??
           data['ProfileImage']?.toString() ??

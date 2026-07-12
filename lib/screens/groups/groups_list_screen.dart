@@ -9,6 +9,7 @@ import '../../services/chat/chat_service.dart';
 import '../../models/chat/chat_session_user.dart';
 import 'group_chat_screen.dart';
 import '../../widgets/social/create_group_dialog.dart';
+import '../../widgets/profileImage.dart';
 
 class GroupsListScreen extends StatefulWidget {
   const GroupsListScreen({super.key});
@@ -109,16 +110,10 @@ class _GroupsListScreenState extends State<GroupsListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
+      leading: ProfileImage(
+        imageUrl: group.avatar,
         radius: 28,
-        backgroundColor: theme.colorScheme.primaryContainer,
-        backgroundImage: group.avatar.isNotEmpty ? NetworkImage(group.avatar) : null,
-        child: group.avatar.isEmpty
-            ? Text(
-                group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                style: TextStyle(color: theme.colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
-              )
-            : null,
+        name: group.name,
       ),
       title: Text(
         group.name,

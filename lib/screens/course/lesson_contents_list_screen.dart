@@ -114,7 +114,7 @@ class LessonContentsListScreen extends StatelessWidget {
           lesson.title,
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF3D5CFF),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: groups.isEmpty

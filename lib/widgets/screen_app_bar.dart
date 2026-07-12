@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:sophia_path/screens/authentication/login.dart';
-import 'package:sophia_path/screens/authentication/edit_profile.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import 'package:sophia_path/widgets/tobeimplementedAlert.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +9,7 @@ import 'package:sophia_path/services/profile_state.dart';
 
 import '../models/user/user.dart';
 import '../screens/profile/achievements_screen.dart';
+import '../screens/settings_screen.dart';
 import '../services/user_preferences_services.dart';
 
 AppBar screenAppBar(
@@ -33,25 +33,27 @@ AppBar screenAppBar(
         ),
       ),
       actions: [
-        TextButton(
+        IconButton(
+          icon: const Icon(Icons.settings),
           onPressed: () async {
             await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (ctx) {
-                  return EditProfile(onToggleTheme: onToggleTheme);
+                  return SettingsScreen(onToggleTheme: onToggleTheme);
                 },
               ),
             );
             profileState.refreshUser();
           },
-          child: Text("Edit", style: theme.textTheme.titleMedium!),
         ),
       ],
     );
   }
 
   return AppBar(
+    backgroundColor: theme.primaryColor,
+    foregroundColor: Colors.white,
     toolbarHeight: 80,
     iconTheme: const IconThemeData(color: Colors.white),
     title: Column(

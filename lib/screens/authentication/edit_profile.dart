@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:provider/provider.dart';
 import '../../models/user/user.dart';
 import '../../services/profile_state.dart';
 import '../../services/user_preferences_services.dart';
+import '../../widgets/profileImage.dart';
 import 'authService.dart';
 
 class EditProfile extends StatefulWidget {
@@ -176,44 +178,16 @@ class _EditProfileState extends State<EditProfile> {
   }
 
   Widget _buildAvatar() {
-    final image = _profileImage.trim();
-
     return GestureDetector(
       onTap: _showImageSourceDialog,
       child: Stack(
         children: [
-          CircleAvatar(
+          ProfileImage(
+            imageUrl: _profileImage,
             radius: 60,
-            backgroundColor: Colors.blue.shade50,
-            child: ClipOval(
-              child: image.isEmpty
-                  ? const Icon(Icons.person, size: 60, color: Colors.blue)
-                  : image.startsWith('http')
-                  ? Image.network(
-                      image,
-                      fit: BoxFit.cover,
-                      width: 120,
-                      height: 120,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.blue,
-                      ),
-                    )
-                  : kIsWeb
-                  ? const Icon(Icons.person, size: 60, color: Colors.blue)
-                  : Image.file(
-                      File(image),
-                      fit: BoxFit.cover,
-                      width: 120,
-                      height: 120,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.blue,
-                      ),
-                    ),
-            ),
+            name: _fullNameController.text.isEmpty
+                ? _usernameController.text
+                : _fullNameController.text,
           ),
           const Positioned(
             bottom: 0,
@@ -238,11 +212,31 @@ class _EditProfileState extends State<EditProfile> {
     });
 
     try {
+      String? avatarBase64;
+      if (_profileImage.isNotEmpty) {
+        if (_profileImage.startsWith('http') || _profileImage.startsWith('data:image/')) {
+          avatarBase64 = _profileImage;
+        } else if (!kIsWeb) {
+          try {
+            final file = File(_profileImage);
+            if (await file.exists()) {
+              final bytes = await file.readAsBytes();
+              final extension = p.extension(_profileImage).replaceAll('.', '').toLowerCase();
+              final mimeType = (extension == 'png') ? 'image/png' : 'image/jpeg';
+              avatarBase64 = 'data:$mimeType;base64,${base64Encode(bytes)}';
+            }
+          } catch (e) {
+            debugPrint('Error reading avatar file: $e');
+          }
+        }
+      }
+
       final backendResult = await _authService.updateProfile(
         username: _usernameController.text.trim(),
         fullname: _fullNameController.text.trim(),
         tag: _tagController.text.trim(),
         gender: _normalizeGender(_selectedGender),
+        avatar: avatarBase64,
       );
 
       if (backendResult['success'] != true) {
@@ -266,6 +260,11 @@ class _EditProfileState extends State<EditProfile> {
         return;
       }
 
+      final updatedProfileData = backendResult['data'];
+      final backendAvatar = updatedProfileData is Map
+          ? (updatedProfileData['avatar'] ?? updatedProfileData['profileImage'])?.toString()
+          : null;
+
       final existingUser = await _userService.getUser();
       final updatedUser = User(
         username: _usernameController.text.trim(),
@@ -274,9 +273,11 @@ class _EditProfileState extends State<EditProfile> {
         age:
             int.tryParse(_ageController.text.trim()) ?? existingUser?.age ?? 20,
         sex: _normalizeGender(_selectedGender),
-        profileImage: _profileImage.isEmpty
-            ? existingUser?.profileImage ?? User.defaultProfileImage
-            : _profileImage,
+        profileImage: (backendAvatar != null && backendAvatar.isNotEmpty)
+            ? backendAvatar
+            : (_profileImage.isEmpty
+                ? existingUser?.profileImage ?? User.defaultProfileImage
+                : _profileImage),
         achievementsProgress:
             existingUser?.achievementsProgress ?? List<double>.filled(13, 0),
         registeredCourses: existingUser?.registeredCourses ?? const [],

@@ -12,6 +12,7 @@ import 'community_detail_screen.dart';
 import 'category_styles.dart';
 import '../../services/local_social_storage.dart';
 import 'question_detail_screen.dart';
+import '../../widgets/profileImage.dart';
 
 class CommunitiesListScreen extends StatefulWidget {
   const CommunitiesListScreen({super.key});
@@ -439,16 +440,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
               const SizedBox(height: 16),
               Row(
                 children: [
-                  CircleAvatar(
+                  ProfileImage(
+                    imageUrl: question.authorAvatar,
                     radius: 12,
-                    backgroundColor: theme.colorScheme.secondaryContainer,
-                    backgroundImage: question.authorAvatar.isNotEmpty ? NetworkImage(question.authorAvatar) : null,
-                    child: question.authorAvatar.isEmpty
-                        ? Text(
-                            question.authorName.isNotEmpty ? question.authorName[0].toUpperCase() : 'U',
-                            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSecondaryContainer),
-                          )
-                        : null,
+                    name: question.authorName,
                   ),
                   const SizedBox(width: 8),
                   Text(

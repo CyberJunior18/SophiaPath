@@ -159,7 +159,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
           'Sections',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
-        backgroundColor: const Color(0xFF3D5CFF),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -268,7 +268,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                               color: theme.cardColor,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: Colors.grey.withValues(alpha: 0.2),
+                                color: theme.dividerColor.withValues(alpha: 0.5),
                               ),
                             ),
                             child: Column(
@@ -281,7 +281,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                     Text(
                                       '#${item.index + 1}',
                                       style: GoogleFonts.poppins(
-                                        color: const Color(0xFF3D5CFF),
+                                        color: theme.primaryColor,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -440,7 +440,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3D5CFF),
+              backgroundColor: theme.primaryColor,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -451,7 +451,9 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
               ),
             ),
           ),
@@ -476,21 +478,27 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(999),
-        color: Colors.grey.withValues(alpha: 0.15),
+        color: theme.colorScheme.secondary.withValues(alpha: 0.1),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: Colors.grey[700]),
+          Icon(
+            icon,
+            size: 14,
+            color: theme.primaryColor,
+          ),
           const SizedBox(width: 4),
           Text(
             text,
             style: GoogleFonts.poppins(
               fontSize: 11,
               fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ),
         ],

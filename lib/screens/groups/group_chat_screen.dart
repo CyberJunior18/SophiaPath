@@ -17,6 +17,7 @@ import '../../widgets/social/message_action_menu.dart';
 import '../../widgets/social/group_info_dialog.dart';
 import '../../widgets/social/poll_composer_dialog.dart';
 import '../../widgets/social/poll_message_widget.dart';
+import '../../widgets/profileImage.dart';
 
 class GroupChatScreen extends StatefulWidget {
   final Group group;
@@ -876,24 +877,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 onTap: _showGroupInfo,
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: theme.colorScheme.primaryContainer,
-                      backgroundImage: _currentGroup.avatar.isNotEmpty
-                          ? NetworkImage(_currentGroup.avatar)
-                          : null,
-                      child: _currentGroup.avatar.isEmpty
-                          ? Text(
-                              _currentGroup.name.isNotEmpty
-                                  ? _currentGroup.name[0].toUpperCase()
-                                  : 'G',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onPrimaryContainer,
-                              ),
-                            )
-                          : null,
-                    ),
+                     ProfileImage(
+                       imageUrl: _currentGroup.avatar,
+                       radius: 18,
+                       name: _currentGroup.name,
+                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

@@ -249,6 +249,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final theme = Theme.of(context);
+    final bool isDarkNav = ThemeData.estimateBrightnessForColor(theme.cardColor) == Brightness.dark;
+
     return Scaffold(
       appBar: screenAppBar(context, _selectedIndex, widget.onToggleTheme),
       drawer: _selectedIndex == 0 ? _buildDrawer() : null,
@@ -257,8 +260,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
         index: _selectedIndex,
         height: 65,
         backgroundColor: Colors.transparent,
-        color: const Color(0xFF161632),
-        buttonBackgroundColor: const Color(0xFF18193C),
+        color: theme.cardColor,
+        buttonBackgroundColor: theme.primaryColor,
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 400),
         letIndexChange: (index) => true,
@@ -270,13 +273,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
               children: [
                 Icon(
                   Icons.school,
-                  color: _selectedIndex == 0 ? Colors.white : Colors.white70,
+                  color: _selectedIndex == 0
+                      ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                          ? Colors.white
+                          : Colors.black)
+                      : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                   size: 24,
                 ),
                 Text(
                   'Learning',
                   style: TextStyle(
-                    color: _selectedIndex == 0 ? Colors.white : Colors.white70,
+                    color: _selectedIndex == 0
+                        ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                            ? Colors.white
+                            : Colors.black)
+                        : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                     fontSize: 10,
                   ),
                 ),
@@ -290,13 +301,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
               children: [
                 Icon(
                   Icons.person,
-                  color: _selectedIndex == 1 ? Colors.white : Colors.white70,
+                  color: _selectedIndex == 1
+                      ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                          ? Colors.white
+                          : Colors.black)
+                      : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                   size: 24,
                 ),
                 Text(
                   'Profile',
                   style: TextStyle(
-                    color: _selectedIndex == 1 ? Colors.white : Colors.white70,
+                    color: _selectedIndex == 1
+                        ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                            ? Colors.white
+                            : Colors.black)
+                        : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                     fontSize: 10,
                   ),
                 ),

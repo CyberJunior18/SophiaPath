@@ -302,14 +302,12 @@ class _LearningScreenState extends State<LearningScreen> {
                         Container(
                           padding: EdgeInsets.all(screenWidth * 0.025),
                           decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF3D5CFF,
-                            ).withValues(alpha: 0.1),
+                            color: theme.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Icon(
                             _getCourseIcon(sampleCourse.title),
-                            color: const Color(0xFF3D5CFF),
+                            color: theme.primaryColor,
                             size: screenWidth * 0.05,
                           ),
                         ),
@@ -337,7 +335,7 @@ class _LearningScreenState extends State<LearningScreen> {
                             value: progress,
                             backgroundColor: theme.colorScheme.outline
                                 .withValues(alpha: 0.2),
-                            color: const Color(0xFF3D5CFF),
+                            color: theme.primaryColor,
                             borderRadius: BorderRadius.circular(4),
                             minHeight: screenWidth * 0.01,
                           ),
@@ -359,7 +357,7 @@ class _LearningScreenState extends State<LearningScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: screenWidth * 0.032,
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF3D5CFF),
+                                  color: theme.primaryColor,
                                 ),
                               ),
                             ],
@@ -367,35 +365,31 @@ class _LearningScreenState extends State<LearningScreen> {
                         ],
                       )
                     else
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenWidth * 0.02,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF18193C)
-                              : const Color(0xFFE6F2FF),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(
-                              0xFF3D5CFF,
-                            ).withValues(alpha: 0.2),
-                            width: 1,
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.03,
+                            vertical: screenWidth * 0.02,
                           ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Start',
-                            style: GoogleFonts.poppins(
-                              fontSize: screenWidth * 0.038,
-                              color: const Color(0xFF3D5CFF),
-                              fontWeight: FontWeight.w600,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondary,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: theme.primaryColor.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Start',
+                              style: GoogleFonts.poppins(
+                                fontSize: screenWidth * 0.038,
+                                color: theme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                   ],
                 ),
               ),
@@ -444,12 +438,12 @@ class _LearningScreenState extends State<LearningScreen> {
                       Container(
                         padding: EdgeInsets.all(screenWidth * 0.025),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3D5CFF).withValues(alpha: 0.1),
+                          color: theme.primaryColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           _getCourseIcon(comingSoonCourseTitle),
-                          color: const Color(0xFF3D5CFF),
+                          color: theme.primaryColor,
                           size: screenWidth * 0.05,
                         ),
                       ),
@@ -475,7 +469,7 @@ class _LearningScreenState extends State<LearningScreen> {
                       'Coming Soon',
                       style: GoogleFonts.poppins(
                         fontSize: screenWidth * 0.038,
-                        color: Color(0xFF5D6CFF),
+                        color: theme.primaryColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

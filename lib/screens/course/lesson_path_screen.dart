@@ -1435,7 +1435,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             ),
           ),
         ),
-        backgroundColor: const Color(0xFF3D5CFF),
+        backgroundColor: theme.primaryColor,
         foregroundColor: Colors.white,
         actions: _buildAppBarActions(totalNodesInPage: totalNodesInPage),
       ),
@@ -1870,7 +1870,7 @@ class LessonPathPainter extends CustomPainter {
 
       final paint = Paint()
         ..color = isSegmentUnlocked
-            ? const Color(0xFF3D5CFF).withValues(alpha: 0.7)
+            ? theme.primaryColor.withValues(alpha: 0.7)
             : (isDark ? Colors.grey[700]! : Colors.grey[300]!)
         ..style = PaintingStyle.stroke
         ..strokeWidth = isSegmentUnlocked ? 3.5 : 2.5
@@ -1895,7 +1895,7 @@ class LessonPathPainter extends CustomPainter {
 
       if (isSegmentUnlocked) {
         final arrowPaint = Paint()
-          ..color = const Color(0xFF3D5CFF)
+          ..color = theme.primaryColor
           ..style = PaintingStyle.fill;
 
         final t = 0.7;

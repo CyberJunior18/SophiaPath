@@ -180,6 +180,7 @@ class AuthService {
     required String fullname,
     required String tag,
     required String gender,
+    String? avatar,
   }) async {
     final url = Uri.parse('$baseUrl/users/me');
     final token = await AuthStorage.getToken();
@@ -203,6 +204,7 @@ class AuthService {
           'fullname': fullname,
           'tag': tag,
           'gender': gender,
+          if (avatar != null) 'avatar': avatar,
         }),
       );
 

@@ -302,7 +302,7 @@ Keep learning with me! 💪
                   border: Border.all(
                     color: isDark
                         ? const Color.fromRGBO(217, 217, 217, 100)
-                        : const Color(0xFF3D5CFF),
+                        : theme.primaryColor,
                     width: 3,
                   ),
                 ),
@@ -357,13 +357,16 @@ Keep learning with me! 💪
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF3D5CFF), Color(0xFF1CB0F6)],
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.primaryColor,
+                      theme.primaryColor.withValues(alpha: 0.7),
+                    ],
                   ),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF3D5CFF).withValues(alpha: 0.22),
+                      color: theme.primaryColor.withValues(alpha: 0.22),
                       blurRadius: 14,
                       offset: const Offset(0, 8),
                     ),
@@ -475,9 +478,7 @@ Keep learning with me! 💪
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF3D5CFF,
-                              ).withValues(alpha: 0.1),
+                              color: theme.primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Row(
@@ -486,15 +487,15 @@ Keep learning with me! 💪
                                   'View All',
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
-                                    color: const Color(0xFF3D5CFF),
+                                    color: theme.primaryColor,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
-                                const Icon(
+                                Icon(
                                   Icons.arrow_forward_ios,
                                   size: 14,
-                                  color: Color(0xFF3D5CFF),
+                                  color: theme.primaryColor,
                                 ),
                               ],
                             ),
@@ -552,7 +553,7 @@ Keep learning with me! 💪
                               '+ ${_achievements.length - 6} more achievements',
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
-                                color: const Color(0xFF3D5CFF),
+                                color: theme.primaryColor,
                                 fontStyle: FontStyle.italic,
                               ),
                             ),
@@ -592,7 +593,7 @@ Keep learning with me! 💪
                 child: ElevatedButton.icon(
                   onPressed: _shareProgress,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3D5CFF),
+                    backgroundColor: theme.primaryColor,
                     padding: EdgeInsets.symmetric(
                       vertical: screenHeight * 0.015,
                       horizontal: screenWidth * 0.05,

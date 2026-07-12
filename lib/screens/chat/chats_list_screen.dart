@@ -4,6 +4,7 @@ import '../../models/chat/chat_contact.dart';
 import '../../models/user/user.dart'; // Use your existing User model
 import 'chat_screen.dart';
 import '../../services/chat/chat_service.dart';
+import '../../widgets/profileImage.dart';
 
 class ChatsListScreen extends StatefulWidget {
   const ChatsListScreen({super.key});
@@ -155,10 +156,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
+      leading: ProfileImage(
+        imageUrl: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
         radius: 24,
-        backgroundColor: theme.colorScheme.secondary,
-        child: Icon(Icons.person, color: theme.colorScheme.primary, size: 24),
+        name: fullName,
       ),
       title: Text(
         fullName,
@@ -217,13 +218,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
+      leading: ProfileImage(
+        imageUrl: avatar,
         radius: 28,
-        backgroundImage: avatar.isNotEmpty ? NetworkImage(avatar) : null,
-        backgroundColor: theme.colorScheme.secondary,
-        child: avatar.isEmpty
-            ? Icon(Icons.person, color: theme.colorScheme.primary, size: 28)
-            : null,
+        name: displayName,
       ),
       title: Text(
         displayName,

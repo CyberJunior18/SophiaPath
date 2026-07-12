@@ -97,7 +97,7 @@ class UserPreferencesService {
         tag: userMap['tag'] ?? '',
         age: userMap['age'] ?? 0,
         sex: userMap['gender'] ?? '',
-        profileImage: userMap['profilePicture'] ?? '',
+        profileImage: userMap['avatar'] ?? userMap['profilePicture'] ?? userMap['profileImage'] ?? '',
         xp: (userMap['xp'] as num?)?.toInt() ?? 0,
         achievementsProgress: userMap['achievementsScores'] != null
             ? (jsonDecode(userMap['achievementsScores']) as List)

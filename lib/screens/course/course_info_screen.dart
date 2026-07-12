@@ -286,7 +286,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                               Icons.check_circle,
                               size: 18,
                               color: _isCourseRegistered
-                                  ? const Color(0xFF3D5CFF)
+                                  ? theme.primaryColor
                                   : Colors.grey,
                             ),
                             const SizedBox(width: 10),
@@ -337,7 +337,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _navigateToLessonPath,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3D5CFF),
+                        backgroundColor: theme.primaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -362,7 +362,9 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                               ),
                             ),
                     ),
@@ -401,9 +403,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     required String label,
     required String value,
   }) {
+    final theme = Theme.of(context);
     return Column(
       children: [
-        Icon(icon, size: 30, color: const Color(0xFF3D5CFF)),
+        Icon(icon, size: 30, color: theme.primaryColor),
         const SizedBox(height: 4),
         Text(
           value,
