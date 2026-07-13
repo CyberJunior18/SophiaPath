@@ -330,7 +330,7 @@ Keep learning with me! 💪
               SizedBox(height: screenHeight * 0.008),
 
               Text(
-                displayUser.tag,
+                displayUser.role.label,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: screenWidth * 0.05,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),

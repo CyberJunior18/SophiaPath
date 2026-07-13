@@ -15,7 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _tagController = TextEditingController();
+  final TextEditingController _tagController = TextEditingController(text: 'Student');
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -38,18 +38,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  final List<String> _availableTags = [
-    'Student',
-    'Software Engineer',
-    'Teacher',
-    'Developer',
-    'Designer',
-    'Researcher',
-    'Entrepreneur',
-    'Freelancer',
-    'Manager',
-    'Other',
-  ];
+
 
   void _clearSensitiveFields() {
     _passwordController.clear();
@@ -451,53 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 v == null ? 'Please select a gender' : null,
                           ),
 
-                          const SizedBox(height: 16),
 
-                          // Profession Dropdown
-                          DropdownButtonFormField<String>(
-                            value: _tagController.text.isEmpty
-                                ? null
-                                : _tagController.text,
-                            decoration: InputDecoration(
-                              labelText: 'Profession',
-                              prefixIcon: const Icon(Icons.work_outline),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.grey.shade300,
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                  color: Colors.blue.shade400,
-                                  width: 2,
-                                ),
-                              ),
-                              filled: true,
-                            ),
-                            items: _availableTags
-                                .map(
-                                  (t) => DropdownMenuItem(
-                                    value: t,
-                                    child: Text(t),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (v) {
-                              if (v != null) {
-                                _tagController.text = v;
-                              }
-                            },
-                            validator: (v) => v == null || v.isEmpty
-                                ? 'Please select a profession'
-                                : null,
-                          ),
-
-                          const SizedBox(height: 20),
 
                           // Error Message
                           if (_errorMessage != null)
