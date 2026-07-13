@@ -2,6 +2,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/user/user.dart';
+import '../models/user/user_role.dart';
+import '../screens/authentication/authService.dart';
 
 class UserPreferencesService {
   UserPreferencesService._privateConstructor();
@@ -36,6 +38,15 @@ class UserPreferencesService {
           ? profile['user'] as Map<String, dynamic>
           : profile;
 
+      // Decode the JWT token to get the user's role
+      final token = await AuthStorage.getToken();
+      UserRole userRole = UserRole.student;
+      if (token != null) {
+        userRole = AuthStorage.getRoleFromToken(token);
+      } else {
+        userRole = UserRole.fromInt(source['roleID'] ?? source['role']);
+      }
+
       final user = User(
         username: (source['username'] ?? '').toString(),
         fullName: (source['fullName'] ?? source['fullname'] ?? '').toString(),
@@ -56,6 +67,7 @@ class UserPreferencesService {
             (source['XP'] as num?)?.toInt() ??
             0,
         email: (source['email'] ?? source['Email'] ?? '').toString(),
+        role: userRole,
       );
 
       final userId = source['id'] ?? source['userId'] ?? profile['userId'] ?? profile['id'];
@@ -90,6 +102,15 @@ class UserPreferencesService {
 
       final userMap = jsonDecode(userJson) as Map<String, dynamic>;
 
+      // Decode the JWT token to verify/get the user's role
+      final token = await AuthStorage.getToken();
+      UserRole role = UserRole.student;
+      if (token != null) {
+        role = AuthStorage.getRoleFromToken(token);
+      } else {
+        role = UserRole.fromInt(userMap['roleID'] ?? userMap['role']);
+      }
+
       return User(
         username: userMap['username'] ?? '',
         fullName:
@@ -111,6 +132,7 @@ class UserPreferencesService {
                   .toList()
             : [],
         email: userMap['email'] ?? '',
+        role: role,
       );
     } catch (e) {
       return null;
@@ -146,6 +168,7 @@ class UserPreferencesService {
     String? profilePicture,
     List<double>? achievementsScores,
     List<int>? registedCoursesIndexes,
+    UserRole? role,
   }) async {
     try {
       final currentUser = await getUser();
@@ -160,6 +183,7 @@ class UserPreferencesService {
         profilePicture: profilePicture,
         achievementsScores: achievementsScores,
         registedCoursesIndexes: registedCoursesIndexes,
+        role: role,
       );
 
       return await saveUser(updatedUser);

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sophia_path/models/course/course_info.dart';
 import 'package:sophia_path/models/course/lesson.dart';
+import '../../models/user/user_role.dart';
 
 import '../../models/course/lessonContent.dart' hide Lesson;
 
@@ -1665,5 +1666,42 @@ class AuthStorage {
     token = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+  }
+
+  static Map<String, dynamic> decodeTokenPayload(String jwtToken) {
+    try {
+      final parts = jwtToken.split('.');
+      if (parts.length != 3) return {};
+
+      String normalized = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      switch (normalized.length % 4) {
+        case 0:
+          break;
+        case 2:
+          normalized += '==';
+          break;
+        case 3:
+          normalized += '=';
+          break;
+        default:
+          return {};
+      }
+
+      final payloadString = utf8.decode(base64.decode(normalized));
+      final decoded = jsonDecode(payloadString);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error decoding JWT: $e');
+      return {};
+    }
+  }
+
+  static UserRole getRoleFromToken(String jwtToken) {
+    final payload = decodeTokenPayload(jwtToken);
+    final roleVal = payload['role'];
+    return UserRole.fromInt(roleVal);
   }
 }

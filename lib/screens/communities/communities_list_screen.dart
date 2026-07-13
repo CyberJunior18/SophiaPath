@@ -754,10 +754,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                         },
                       ),
                     ),
-                    // if (_currentUser?.isStudent ?? true)
-                    //   Container()
-                    // else
-                    ...[
+                    if (_currentUser?.isStudent ?? true)
+                      Container()
+                    else ...[
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _showCreateDialog,

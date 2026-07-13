@@ -1,4 +1,5 @@
 import '../course/course_info.dart';
+import 'user_role.dart';
 
 class User {
   final String username;
@@ -12,6 +13,7 @@ class User {
   final List<int> registedCoursesIndexes;
   final int xp;
   final String email;
+  final UserRole role;
   DateTime? lastSeen;
   bool isOnline = false;
   String? status;
@@ -33,6 +35,7 @@ class User {
     required this.registedCoursesIndexes,
     this.xp = 0,
     this.email = '',
+    this.role = UserRole.student,
   });
 
   bool get isAvailableForChat => isOnline && lastSeen != null;
@@ -64,6 +67,8 @@ class User {
       'lastSeen': lastSeen?.toIso8601String(),
       'isOnline': isOnline,
       'email': email,
+      'roleID': role.value,
+      'role': role.value,
     };
   }
 
@@ -107,6 +112,7 @@ class User {
         registedCoursesIndexes: registedCoursesIndexes,
         xp: (map['xp'] as num?)?.toInt() ?? map['XP'] ?? 0,
         email: map['email'] ?? map['Email'] ?? '',
+        role: UserRole.fromInt(map['roleID'] ?? map['role']),
       )
       ..lastSeen = map['lastSeen'] != null
           ? DateTime.parse(map['lastSeen'])
@@ -132,6 +138,7 @@ class User {
     String? status,
     String? bio,
     String? email,
+    UserRole? role,
   }) {
     return User(
         username: username ?? this.username,
@@ -146,6 +153,7 @@ class User {
             registedCoursesIndexes ?? this.registedCoursesIndexes,
         xp: xp ?? this.xp,
         email: email ?? this.email,
+        role: role ?? this.role,
       )
       ..lastSeen = lastSeen ?? this.lastSeen
       ..isOnline = isOnline ?? this.isOnline
@@ -180,6 +188,7 @@ class User {
       registedCoursesIndexes: _safeListInt(data['registedCoursesIndexes']),
       xp: (data['xp'] as num?)?.toInt() ?? (data['XP'] as num?)?.toInt() ?? 0,
       email: data['email']?.toString() ?? '',
+      role: UserRole.fromInt(data['roleID'] ?? data['role']),
     )..isOnline = data['isOnline'] == true;
   }
 
@@ -215,3 +224,10 @@ final User sampleUser = User(
   xp: 0,
   email: "test@example.com",
 );
+
+extension UserRoleHelpers on User {
+  bool get isStudent => role == UserRole.student;
+  bool get isExpert => role == UserRole.expert;
+  bool get isModerator => role == UserRole.moderator;
+  bool get isAdmin => role == UserRole.admin;
+}
