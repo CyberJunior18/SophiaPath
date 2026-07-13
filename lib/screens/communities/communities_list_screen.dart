@@ -21,7 +21,8 @@ class CommunitiesListScreen extends StatefulWidget {
   State<CommunitiesListScreen> createState() => _CommunitiesListScreenState();
 }
 
-class _CommunitiesListScreenState extends State<CommunitiesListScreen> with SingleTickerProviderStateMixin {
+class _CommunitiesListScreenState extends State<CommunitiesListScreen>
+    with SingleTickerProviderStateMixin {
   final SocialService _socialService = SocialService();
   final UserPreferencesService _userService = UserPreferencesService.instance;
 
@@ -81,12 +82,14 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
 
         if (userId != null && userId.isNotEmpty) {
           final communities = await _socialService.getCommunities(userId);
-          
+
           // Load saved posts from local storage
           final savedIds = await LocalSocialStorage.instance.getSavedPosts();
           final List<Question> savedQuestions = [];
           if (savedIds.isNotEmpty) {
-            final futures = savedIds.map((id) => _socialService.getQuestionById(id, userId!));
+            final futures = savedIds.map(
+              (id) => _socialService.getQuestionById(id, userId!),
+            );
             final results = await Future.wait(futures);
             for (final q in results) {
               if (q != null) {
@@ -112,12 +115,18 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
 
   Future<void> _handleToggleJoin(Community community) async {
     if (_currentUser == null) return;
-    final userId = _chatSessionUser?.userId.toString() ?? await _userService.getUserId() ?? '';
+    final userId =
+        _chatSessionUser?.userId.toString() ??
+        await _userService.getUserId() ??
+        '';
     if (userId.isEmpty) return;
 
     if (community.isJoined) {
       // Leave logic
-      final success = await _socialService.toggleJoinCommunity(community.id, userId);
+      final success = await _socialService.toggleJoinCommunity(
+        community.id,
+        userId,
+      );
       if (success) _loadData();
     } else {
       // Check NSFW
@@ -137,16 +146,23 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
         });
         return;
       }
-      
+
       // Join
-      final success = await _socialService.toggleJoinCommunity(community.id, userId);
+      final success = await _socialService.toggleJoinCommunity(
+        community.id,
+        userId,
+      );
       if (success) _loadData();
     }
   }
 
   Future<void> _handleRulesJoinSubmit() async {
-    if (_rulesCommunity == null || !_rulesAccepted || _currentUser == null) return;
-    final userId = _chatSessionUser?.userId.toString() ?? await _userService.getUserId() ?? '';
+    if (_rulesCommunity == null || !_rulesAccepted || _currentUser == null)
+      return;
+    final userId =
+        _chatSessionUser?.userId.toString() ??
+        await _userService.getUserId() ??
+        '';
     if (userId.isEmpty) return;
 
     try {
@@ -164,7 +180,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
 
   Future<void> _handleCreateSubmit() async {
     if (_name.trim().isEmpty) return;
-    final userId = _chatSessionUser?.userId.toString() ?? await _userService.getUserId() ?? '';
+    final userId =
+        _chatSessionUser?.userId.toString() ??
+        await _userService.getUserId() ??
+        '';
     if (userId.isEmpty) return;
 
     try {
@@ -178,7 +197,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
         isNSFW: false,
         rules: [],
       );
-      
+
       if (success) {
         setState(() {
           _name = '';
@@ -196,7 +215,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
 
   Widget _buildCommunityCard(Community community) {
     final theme = Theme.of(context);
-    final catStyle = categoryStyles[community.category] ?? categoryStyles['Software Engineering']!;
+    final catStyle =
+        categoryStyles[community.category] ??
+        categoryStyles['Software Engineering']!;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -207,7 +228,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => CommunityDetailScreen(community: community)),
+            MaterialPageRoute(
+              builder: (context) => CommunityDetailScreen(community: community),
+            ),
           ).then((_) => _loadData());
         },
         child: Container(
@@ -225,7 +248,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                   gradient: LinearGradient(
                     colors: [
                       catStyle.color.withOpacity(0.6),
-                      catStyle.color.withOpacity(0.9)
+                      catStyle.color.withOpacity(0.9),
                     ],
                   ),
                 ),
@@ -246,11 +269,14 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                               color: Colors.black.withOpacity(0.1),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
-                            )
-                          ]
+                            ),
+                          ],
                         ),
                         child: Center(
-                          child: Text(community.icon, style: const TextStyle(fontSize: 28)),
+                          child: Text(
+                            community.icon,
+                            style: const TextStyle(fontSize: 28),
+                          ),
                         ),
                       ),
                     ),
@@ -258,7 +284,12 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, top: 32, bottom: 16),
+                padding: const EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 32,
+                  bottom: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -275,7 +306,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                       community.description,
                       style: GoogleFonts.poppins(
                         fontSize: 13,
-                        color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
+                        color:
+                            (theme.textTheme.bodyMedium?.color ??
+                                    theme.colorScheme.onSurface)
+                                .withValues(alpha: 0.7),
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -286,7 +320,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                       runSpacing: 8,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: catStyle.bg,
                             borderRadius: BorderRadius.circular(12),
@@ -294,7 +331,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(catStyle.icon, style: const TextStyle(fontSize: 12)),
+                              Text(
+                                catStyle.icon,
+                                style: const TextStyle(fontSize: 12),
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 community.category,
@@ -308,17 +348,24 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: theme.dividerColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                            border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.2),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                community.isPrivate ? '🔒 Private' : '🌐 Public',
+                                community.isPrivate
+                                    ? '🔒 Private'
+                                    : '🌐 Public',
                                 style: GoogleFonts.poppins(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
@@ -330,7 +377,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                         ),
                         if (community.isNSFW)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red,
                               borderRadius: BorderRadius.circular(12),
@@ -359,7 +409,11 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.people, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.people,
+                              size: 18,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${community.membersCount} members',
@@ -374,23 +428,40 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                         ElevatedButton.icon(
                           onPressed: () => _handleToggleJoin(community),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: community.isJoined ? theme.colorScheme.error.withOpacity(0.1) : theme.colorScheme.primary,
-                            foregroundColor: community.isJoined ? theme.colorScheme.error : theme.colorScheme.onPrimary,
+                            backgroundColor: community.isJoined
+                                ? theme.colorScheme.error.withOpacity(0.1)
+                                : theme.colorScheme.primary,
+                            foregroundColor: community.isJoined
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onPrimary,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          icon: Icon(community.isJoined ? Icons.exit_to_app : Icons.login, size: 16),
+                          icon: Icon(
+                            community.isJoined
+                                ? Icons.exit_to_app
+                                : Icons.login,
+                            size: 16,
+                          ),
                           label: Text(
                             community.isJoined ? 'Leave' : 'Join',
-                            style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -434,7 +505,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.8),
+                  color:
+                      (theme.textTheme.bodyMedium?.color ??
+                              theme.colorScheme.onSurface)
+                          .withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),
@@ -454,15 +528,35 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                     ),
                   ),
                   const Spacer(),
-                  Icon(Icons.thumb_up_alt_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.thumb_up_alt_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${question.upvotes}', style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${question.upvotes}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.comment_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${question.commentsCount}', style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${question.commentsCount}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -474,7 +568,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
@@ -494,12 +590,15 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                     children: [
                       Text(
                         'Create Learning Community',
-                        style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close),
                         onPressed: () => Navigator.pop(context),
-                      )
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -507,7 +606,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                     decoration: InputDecoration(
                       labelText: 'Community Name',
                       hintText: 'e.g. Software Architecture',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     onChanged: (val) => setModalState(() => _name = val),
                   ),
@@ -517,7 +618,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                     decoration: InputDecoration(
                       labelText: 'Description',
                       hintText: 'What is this community\'s learning focus?',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     onChanged: (val) => setModalState(() => _description = val),
                   ),
@@ -526,21 +629,34 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                     value: _category,
                     decoration: InputDecoration(
                       labelText: 'Category',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     items: communityCategories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins())))
+                        .map(
+                          (c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(c, style: GoogleFonts.poppins()),
+                          ),
+                        )
                         .toList(),
                     onChanged: (val) => setModalState(() => _category = val!),
                   ),
                   const SizedBox(height: 16),
-                  Text('Select Community Icon:', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Select Community Icon:',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     children: ['⭐', '🌟', '🏫', '📚', '🎯', '🔥'].map((emoji) {
                       return ChoiceChip(
-                        label: Text(emoji, style: const TextStyle(fontSize: 20)),
+                        label: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 20),
+                        ),
                         selected: _icon == emoji,
                         onSelected: (selected) {
                           if (selected) setModalState(() => _icon = emoji);
@@ -560,33 +676,41 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                           : null,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: Text('Create Community', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Create Community',
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
                 ],
               ),
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final filtered = _communities.where((c) {
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
-      return c.name.toLowerCase().contains(q) || c.description.toLowerCase().contains(q);
+      return c.name.toLowerCase().contains(q) ||
+          c.description.toLowerCase().contains(q);
     }).toList();
 
     final myCommunities = filtered.where((c) => c.isJoined).toList();
-    final discoverCommunities = filtered.where((c) => !c.isJoined && !c.isPrivate).toList();
+    final discoverCommunities = filtered
+        .where((c) => !c.isJoined && !c.isPrivate)
+        .toList();
     final privateCommunities = filtered.where((c) => c.isPrivate).toList();
 
     return Scaffold(
@@ -612,12 +736,16 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                           hintText: 'Search communities...',
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
-                          fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                          fillColor: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.5),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                         onChanged: (val) {
                           setState(() {
@@ -626,20 +754,37 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _showCreateDialog,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        elevation: 4,
-                        shadowColor: theme.colorScheme.primary.withOpacity(0.5),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    // if (_currentUser?.isStudent ?? true)
+                    //   Container()
+                    // else
+                    ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _showCreateDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          elevation: 4,
+                          shadowColor: theme.colorScheme.primary.withOpacity(
+                            0.5,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text(
+                          'Create',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: Text('Create', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                    )
+                    ],
                   ],
                 ),
               ),
@@ -664,37 +809,61 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
       body: Stack(
         children: [
           _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                controller: _tabController,
-                children: [
-                  myCommunities.isEmpty
-                      ? Center(child: Text("You haven't joined any communities yet.", style: GoogleFonts.poppins(color: Colors.grey)))
-                      : ListView.builder(
-                          itemCount: myCommunities.length,
-                          itemBuilder: (ctx, i) => _buildCommunityCard(myCommunities[i]),
-                        ),
-                  discoverCommunities.isEmpty
-                      ? Center(child: Text("No communities to discover.", style: GoogleFonts.poppins(color: Colors.grey)))
-                      : ListView.builder(
-                          itemCount: discoverCommunities.length,
-                          itemBuilder: (ctx, i) => _buildCommunityCard(discoverCommunities[i]),
-                        ),
-                  _savedQuestions.isEmpty
-                      ? Center(child: Text("You haven't saved any posts yet.", style: GoogleFonts.poppins(color: Colors.grey)))
-                      : ListView.builder(
-                          itemCount: _savedQuestions.length,
-                          itemBuilder: (ctx, i) => _buildSavedQuestionCard(_savedQuestions[i]),
-                        ),
-                  privateCommunities.isEmpty
-                      ? Center(child: Text("No private communities found.", style: GoogleFonts.poppins(color: Colors.grey)))
-                      : ListView.builder(
-                          itemCount: privateCommunities.length,
-                          itemBuilder: (ctx, i) => _buildCommunityCard(privateCommunities[i]),
-                        ),
-                ],
-              ),
-          
+              ? const Center(child: CircularProgressIndicator())
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    myCommunities.isEmpty
+                        ? Center(
+                            child: Text(
+                              "You haven't joined any communities yet.",
+                              style: GoogleFonts.poppins(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: myCommunities.length,
+                            itemBuilder: (ctx, i) =>
+                                _buildCommunityCard(myCommunities[i]),
+                          ),
+                    discoverCommunities.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No communities to discover.",
+                              style: GoogleFonts.poppins(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: discoverCommunities.length,
+                            itemBuilder: (ctx, i) =>
+                                _buildCommunityCard(discoverCommunities[i]),
+                          ),
+                    _savedQuestions.isEmpty
+                        ? Center(
+                            child: Text(
+                              "You haven't saved any posts yet.",
+                              style: GoogleFonts.poppins(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _savedQuestions.length,
+                            itemBuilder: (ctx, i) =>
+                                _buildSavedQuestionCard(_savedQuestions[i]),
+                          ),
+                    privateCommunities.isEmpty
+                        ? Center(
+                            child: Text(
+                              "No private communities found.",
+                              style: GoogleFonts.poppins(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: privateCommunities.length,
+                            itemBuilder: (ctx, i) =>
+                                _buildCommunityCard(privateCommunities[i]),
+                          ),
+                  ],
+                ),
+
           // Modals logic rendered as overlays
           if (_rulesDialogOpen && _rulesCommunity != null)
             Container(
@@ -702,31 +871,52 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
               child: Center(
                 child: Card(
                   margin: const EdgeInsets.all(24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('📄 Community Rules', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+                        Text(
+                          '📄 Community Rules',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 16),
-                        Text('Please read and agree to follow the rules of ${_rulesCommunity!.name} before joining.', style: GoogleFonts.poppins()),
+                        Text(
+                          'Please read and agree to follow the rules of ${_rulesCommunity!.name} before joining.',
+                          style: GoogleFonts.poppins(),
+                        ),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             border: Border.all(color: theme.dividerColor),
                             borderRadius: BorderRadius.circular(8),
-                            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withOpacity(0.3),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: _rulesCommunity!.rules.asMap().entries.map((e) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
-                                child: Text('${e.key + 1}. ${e.value}', style: GoogleFonts.poppins(fontSize: 14)),
-                              );
-                            }).toList(),
+                            children: _rulesCommunity!.rules
+                                .asMap()
+                                .entries
+                                .map((e) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    child: Text(
+                                      '${e.key + 1}. ${e.value}',
+                                      style: GoogleFonts.poppins(fontSize: 14),
+                                    ),
+                                  );
+                                })
+                                .toList(),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -756,11 +946,13 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                               child: const Text('Cancel'),
                             ),
                             ElevatedButton(
-                              onPressed: _rulesAccepted ? _handleRulesJoinSubmit : null,
+                              onPressed: _rulesAccepted
+                                  ? _handleRulesJoinSubmit
+                                  : null,
                               child: const Text('Agree & Join'),
-                            )
+                            ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -774,15 +966,28 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
               child: Center(
                 child: Card(
                   margin: const EdgeInsets.all(24),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('⚠️ 18+ NSFW Content Check', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.red)),
+                        const Text(
+                          '⚠️ 18+ NSFW Content Check',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
                         const SizedBox(height: 16),
-                        Text('This community contains adult content. Please confirm you are at least 18 years old to join.', style: GoogleFonts.poppins(), textAlign: TextAlign.center),
+                        Text(
+                          'This community contains adult content. Please confirm you are at least 18 years old to join.',
+                          style: GoogleFonts.poppins(),
+                          textAlign: TextAlign.center,
+                        ),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -798,7 +1003,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                             ),
                             const SizedBox(width: 16),
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
                               onPressed: () async {
                                 final comm = _nsfwCommunityToJoin!;
                                 setState(() {
@@ -812,17 +1020,23 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen> with Sing
                                     _rulesDialogOpen = true;
                                   });
                                 } else {
-                                  final userId = _chatSessionUser?.userId.toString() ?? await _userService.getUserId() ?? '';
+                                  final userId =
+                                      _chatSessionUser?.userId.toString() ??
+                                      await _userService.getUserId() ??
+                                      '';
                                   if (userId.isNotEmpty) {
-                                    await _socialService.toggleJoinCommunity(comm.id, userId);
+                                    await _socialService.toggleJoinCommunity(
+                                      comm.id,
+                                      userId,
+                                    );
                                     _loadData();
                                   }
                                 }
                               },
                               child: const Text('I am 18+'),
-                            )
+                            ),
                           ],
-                        )
+                        ),
                       ],
                     ),
                   ),
