@@ -781,6 +781,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   }
 
   List<Widget> _buildAppBarActions({int? totalNodesInPage}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return [
       if (_cheatsheetLesson != null)
         IconButton(
@@ -788,7 +789,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           tooltip: 'Cheatsheet',
           onPressed: _openCheatsheetLesson,
         ),
-      SizedBox(width: 20),
+      const SizedBox(width: 20),
       if (totalNodesInPage != null)
         Padding(
           padding: const EdgeInsets.only(right: 16.0),
@@ -796,14 +797,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.black.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '$_completedLessons/$totalNodesInPage',
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: 14,
                 ),
               ),
@@ -1940,8 +1943,9 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         title: AnimatedBuilder(
           animation: _scrollController,
           builder: (context, child) {
-            final double scrollOffset =
-                _scrollController.hasClients ? _scrollController.offset : 0.0;
+            final double scrollOffset = _scrollController.hasClients
+                ? _scrollController.offset
+                : 0.0;
             final bool showTitle = scrollOffset >= _topHeaderHeight;
 
             Widget titleWidget;
@@ -1956,10 +1960,10 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                       width: 28,
                       height: 28,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.book_rounded,
                         size: 20,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                   );
@@ -1971,39 +1975,41 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                       width: 28,
                       height: 28,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
+                      errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.book_rounded,
                         size: 20,
-                        color: Colors.white,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                   );
                 }
               } else {
-                iconWidget = const Icon(
+                iconWidget = Icon(
                   Icons.book_rounded,
                   size: 20,
-                  color: Colors.white,
+                  color: isDark ? Colors.white : Colors.black87,
                 );
               }
 
-              titleWidget = Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  iconWidget,
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      widget.sectionTitle ?? widget.course.title,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: Colors.white,
+              titleWidget = Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        widget.sectionTitle ?? widget.course.title,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             } else {
               titleWidget = const SizedBox.shrink();
@@ -2012,17 +2018,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: child,
-                );
+                return FadeTransition(opacity: animation, child: child);
               },
               child: titleWidget,
             );
           },
         ),
-        backgroundColor: theme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        foregroundColor: isDark ? Colors.white : Colors.black87,
         actions: _buildAppBarActions(totalNodesInPage: totalNodesInPage),
       ),
 
