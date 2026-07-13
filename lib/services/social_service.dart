@@ -430,6 +430,8 @@ class SocialService {
     required String authorId,
     required String authorName,
     required String authorAvatar,
+    String? pollQuestion,
+    List<String>? pollOptions,
   }) async {
     try {
       final url = Uri.parse('${AuthService.baseUrl}/api/communities/rooms/$roomId/questions/create');
@@ -442,6 +444,8 @@ class SocialService {
           'authorId': int.tryParse(authorId) ?? authorId,
           'authorName': authorName,
           'authorAvatar': authorAvatar,
+          if (pollQuestion != null) 'pollQuestion': pollQuestion,
+          if (pollOptions != null) 'pollOptions': pollOptions,
         }),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -694,7 +698,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -711,7 +715,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -728,7 +732,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -745,7 +749,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;

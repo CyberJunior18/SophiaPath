@@ -4,6 +4,7 @@ import '../../models/social/community.dart';
 import '../../services/social_service.dart';
 import '../../services/user_preferences_services.dart';
 import '../../models/user/user.dart';
+import '../../models/user/user_role.dart';
 import 'room_questions_screen.dart';
 
 class CommunityDetailScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   final SocialService _socialService = SocialService();
   final UserPreferencesService _userService = UserPreferencesService.instance;
   User? _currentUser;
+  String? _currentUserId;
   List<Room> _rooms = [];
   bool _isLoadingRooms = true;
   late Community _community;
@@ -31,6 +33,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
   Future<void> _initData() async {
     _currentUser = await _userService.getUser();
+    _currentUserId = await _userService.getUserId();
     _loadRooms();
   }
 
@@ -50,10 +53,10 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   Future<void> _toggleJoin() async {
-    if (_currentUser == null) return;
-    final success = await _socialService.toggleJoinCommunity(_community.id, _currentUser!.username);
+    if (_currentUserId == null) return;
+    final success = await _socialService.toggleJoinCommunity(_community.id, _currentUserId!);
     if (success && mounted) {
-      final updated = await _socialService.getCommunityById(_community.id, _currentUser!.username);
+      final updated = await _socialService.getCommunityById(_community.id, _currentUserId!);
       if (updated != null) {
         setState(() {
           _community = updated;
@@ -63,9 +66,20 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
   }
 
   bool get _isOwnerOrMod {
-    if (_currentUser == null) return false;
-    final uid = _currentUser!.username;
-    return _community.ownerId == uid || _community.moderatorIds.contains(uid);
+    if (_currentUserId == null) return false;
+    final uid = _currentUserId!;
+    final isGlobalAdminOrMod = _currentUser != null &&
+        (_currentUser!.role == UserRole.admin || _currentUser!.role == UserRole.moderator);
+    return _community.ownerId == uid ||
+        _community.moderatorIds.contains(uid) ||
+        isGlobalAdminOrMod;
+  }
+
+  bool get _isOwnerOrGlobalAdmin {
+    if (_currentUserId == null) return false;
+    final uid = _currentUserId!;
+    final isGlobalAdmin = _currentUser != null && _currentUser!.role == UserRole.admin;
+    return _community.ownerId == uid || isGlobalAdmin;
   }
 
   Future<void> _showCreateRoomDialog() async {
@@ -193,6 +207,44 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                 ),
               ),
               actions: [
+                if (_isOwnerOrGlobalAdmin)
+                  TextButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('Delete Community', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                          content: Text('Are you sure you want to permanently delete this community? This action cannot be undone.', style: GoogleFonts.poppins()),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text('Cancel', style: GoogleFonts.poppins()),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text('Delete', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && mounted) {
+                        final success = await _socialService.deleteCommunity(_community.id, _currentUserId!);
+                        if (success && mounted) {
+                          Navigator.pop(context); // Close edit dialog
+                          Navigator.pop(context); // Go back to list
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Community deleted successfully')),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to delete community')),
+                          );
+                        }
+                      }
+                    },
+                    child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red, fontWeight: FontWeight.bold)),
+                  ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text('Cancel', style: GoogleFonts.poppins()),
@@ -216,7 +268,7 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
                     );
 
                     if (response != null && mounted) {
-                      final updated = await _socialService.getCommunityById(_community.id, _currentUser!.username);
+                      final updated = await _socialService.getCommunityById(_community.id, _currentUserId!);
                       if (updated != null && mounted) {
                         setState(() {
                           _community = updated;

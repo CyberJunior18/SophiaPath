@@ -40,6 +40,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
   String _description = '';
   String _icon = '⭐';
   String _category = 'Software Engineering';
+  String _rulesText = '';
 
   Community? _rulesCommunity;
   bool _rulesAccepted = false;
@@ -186,6 +187,12 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
         '';
     if (userId.isEmpty) return;
 
+    final rules = _rulesText
+        .split('\n')
+        .map((r) => r.trim())
+        .where((r) => r.isNotEmpty)
+        .toList();
+
     try {
       final success = await _socialService.createCommunity(
         name: _name,
@@ -195,7 +202,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
         ownerId: userId,
         isPrivate: false,
         isNSFW: false,
-        rules: [],
+        rules: rules,
       );
 
       if (success) {
@@ -204,6 +211,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
           _description = '';
           _icon = '⭐';
           _category = 'Software Engineering';
+          _rulesText = '';
           _openCreate = false;
         });
         _loadData();
@@ -644,6 +652,18 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                     onChanged: (val) => setModalState(() => _category = val!),
                   ),
                   const SizedBox(height: 16),
+                  TextField(
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: 'Rules (One per line)',
+                      hintText: 'e.g.\nBe respectful\nNo spamming',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (val) => setModalState(() => _rulesText = val),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     'Select Community Icon:',
                     style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -754,9 +774,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                         },
                       ),
                     ),
-                    if (_currentUser?.isStudent ?? true)
-                      Container()
-                    else ...[
+                    if (_currentUser != null && (_currentUser!.isAdmin || _currentUser!.isModerator)) ...[
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _showCreateDialog,

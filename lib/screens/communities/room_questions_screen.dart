@@ -1,9 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/social/community.dart';
 import '../../models/social/question.dart';
 import '../../services/social_service.dart';
+import '../../services/user_preferences_services.dart';
+import '../../services/chat/chat_service.dart';
+import '../../services/communities_socket_service.dart';
 import 'question_detail_screen.dart';
+import 'create_post_screen.dart';
 import '../../widgets/profileImage.dart';
 
 class RoomQuestionsScreen extends StatefulWidget {
@@ -19,17 +24,91 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
   final SocialService _socialService = SocialService();
   List<Question> _questions = [];
   bool _isLoading = true;
+  String? _currentUserId;
+  String _currentUsername = 'User';
+  String _currentUserAvatar = '';
+  List<StreamSubscription> _socketSubscriptions = [];
 
   @override
   void initState() {
     super.initState();
+    _initUserAndLoad();
+  }
+
+  Future<void> _initUserAndLoad() async {
+    try {
+      final user = await ChatService().getCurrentUser();
+      _currentUserId = user.userId.toString();
+      _currentUsername = user.displayName;
+      _currentUserAvatar = user.avatar ?? '';
+    } catch (_) {
+      final localUser = await UserPreferencesService.instance.getUser();
+      if (localUser != null) {
+        _currentUsername = localUser.fullName.isNotEmpty ? localUser.fullName : localUser.username;
+        _currentUserAvatar = localUser.profileImage;
+      }
+      _currentUserId = await UserPreferencesService.instance.getUserId();
+    }
     _loadQuestions();
+
+    // Set up WebSocket listeners
+    final userIdInt = int.tryParse(_currentUserId ?? '1') ?? 1;
+    final socketService = CommunitiesSocketService();
+    socketService.connect(userIdInt);
+
+    final roomIdInt = int.tryParse(widget.room.id);
+    if (roomIdInt != null) {
+      socketService.joinRoom(roomIdInt);
+    }
+
+    _socketSubscriptions.add(socketService.onQuestionCreated.listen((data) {
+      if (data['roomId'].toString() == widget.room.id) {
+        final question = _parseQuestionFromSocket(data);
+        setState(() {
+          final idx = _questions.indexWhere((q) => q.id == question.id);
+          if (idx == -1) {
+            _questions.insert(0, question);
+          }
+        });
+      }
+    }));
+
+    _socketSubscriptions.add(socketService.onQuestionVoted.listen((data) {
+      if (data['roomId'].toString() == widget.room.id) {
+        final question = _parseQuestionFromSocket(data);
+        setState(() {
+          final idx = _questions.indexWhere((q) => q.id == question.id);
+          if (idx != -1) {
+            _questions[idx] = question;
+          }
+        });
+      }
+    }));
+
+    _socketSubscriptions.add(socketService.onQuestionUpdated.listen((data) {
+      if (data['roomId'].toString() == widget.room.id) {
+        final question = _parseQuestionFromSocket(data);
+        setState(() {
+          final idx = _questions.indexWhere((q) => q.id == question.id);
+          if (idx != -1) {
+            _questions[idx] = question;
+          }
+        });
+      }
+    }));
+
+    _socketSubscriptions.add(socketService.onQuestionDeleted.listen((data) {
+      final qId = data['id'].toString();
+      setState(() {
+        _questions.removeWhere((q) => q.id == qId);
+      });
+    }));
   }
 
   Future<void> _loadQuestions() async {
     setState(() => _isLoading = true);
     try {
-      final questions = await _socialService.getQuestions(widget.room.id, "1");
+      final questions = await _socialService.getQuestions(widget.room.id, _currentUserId ?? "1");
       if (mounted) {
         setState(() {
           _questions = questions;
@@ -114,6 +193,29 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
   }
 
   @override
+  void dispose() {
+    for (var sub in _socketSubscriptions) {
+      sub.cancel();
+    }
+    final roomIdInt = int.tryParse(widget.room.id);
+    if (roomIdInt != null) {
+      CommunitiesSocketService().leaveRoom(roomIdInt);
+    }
+    super.dispose();
+  }
+
+  Question _parseQuestionFromSocket(Map<String, dynamic> data) {
+    final map = Map<String, dynamic>.from(data);
+    final userIdVal = int.tryParse(_currentUserId ?? '');
+    final userIdStr = _currentUserId;
+    map['userUpvoted'] = map['upvotedUsers'] is List &&
+        ((map['upvotedUsers'] as List).contains(userIdVal) || (map['upvotedUsers'] as List).contains(userIdStr));
+    map['userDownvoted'] = map['downvotedUsers'] is List &&
+        ((map['downvotedUsers'] as List).contains(userIdVal) || (map['downvotedUsers'] as List).contains(userIdStr));
+    return Question.fromMap(map);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final appBarColor = theme.brightness == Brightness.dark
@@ -153,8 +255,27 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
                   itemBuilder: (context, index) => _buildQuestionCard(_questions[index]),
                 ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Future: Ask a question
+        onPressed: () async {
+          if (_currentUserId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User details not loaded. Please try again.')),
+            );
+            return;
+          }
+          final result = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreatePostScreen(
+                roomId: widget.room.id,
+                authorId: _currentUserId!,
+                authorName: _currentUsername,
+                authorAvatar: _currentUserAvatar,
+              ),
+            ),
+          );
+          if (result == true) {
+            _loadQuestions();
+          }
         },
         backgroundColor: theme.colorScheme.primary,
         child: Icon(Icons.edit, color: theme.colorScheme.onPrimary),
