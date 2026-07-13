@@ -219,7 +219,7 @@ class ChatService {
         headers: await _getAuthHeaders(),
         body: jsonEncode({'text': text, 'userId': userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = _decodeBody(response.body);
         if (decoded is Map<String, dynamic>) {
           final raw = decoded['message'] ?? decoded;
@@ -242,7 +242,7 @@ class ChatService {
         headers: await _getAuthHeaders(),
         body: jsonEncode({'pin': pin}),
       );
-      return response.statusCode == 200;
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       return false;
     }

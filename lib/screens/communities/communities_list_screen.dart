@@ -128,7 +128,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
         community.id,
         userId,
       );
-      if (success) _loadData();
+      if (success) {
+        _loadData();
+        _tabController.animateTo(0);
+      }
     } else {
       // Check NSFW
       if (community.isNSFW) {
@@ -153,7 +156,26 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
         community.id,
         userId,
       );
-      if (success) _loadData();
+      if (success) {
+        await _loadData();
+        final updatedCommunity = _communities.firstWhere(
+          (c) => c.id == community.id,
+          orElse: () => community,
+        );
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+            ),
+          ).then((result) {
+            _loadData();
+            if (result == 'left') {
+              _tabController.animateTo(0);
+            }
+          });
+        }
+      }
     }
   }
 
@@ -167,13 +189,33 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
     if (userId.isEmpty) return;
 
     try {
-      await _socialService.toggleJoinCommunity(_rulesCommunity!.id, userId);
-      setState(() {
-        _rulesDialogOpen = false;
-        _rulesCommunity = null;
-        _rulesAccepted = false;
-      });
-      _loadData();
+      final success = await _socialService.toggleJoinCommunity(_rulesCommunity!.id, userId);
+      if (success) {
+        final communityToEnter = _rulesCommunity!;
+        setState(() {
+          _rulesDialogOpen = false;
+          _rulesCommunity = null;
+          _rulesAccepted = false;
+        });
+        await _loadData();
+        final updatedCommunity = _communities.firstWhere(
+          (c) => c.id == communityToEnter.id,
+          orElse: () => communityToEnter,
+        );
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+            ),
+          ).then((result) {
+            _loadData();
+            if (result == 'left') {
+              _tabController.animateTo(0);
+            }
+          });
+        }
+      }
     } catch (e) {
       // handle error
     }
@@ -239,7 +281,12 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
             MaterialPageRoute(
               builder: (context) => CommunityDetailScreen(community: community),
             ),
-          ).then((_) => _loadData());
+          ).then((result) {
+            _loadData();
+            if (result == 'left') {
+              _tabController.animateTo(0);
+            }
+          });
         },
         child: Container(
           decoration: BoxDecoration(
@@ -1042,11 +1089,30 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                                       await _userService.getUserId() ??
                                       '';
                                   if (userId.isNotEmpty) {
-                                    await _socialService.toggleJoinCommunity(
+                                    final success = await _socialService.toggleJoinCommunity(
                                       comm.id,
                                       userId,
                                     );
-                                    _loadData();
+                                    if (success) {
+                                      await _loadData();
+                                      final updatedCommunity = _communities.firstWhere(
+                                        (c) => c.id == comm.id,
+                                        orElse: () => comm,
+                                      );
+                                      if (mounted) {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+                                          ),
+                                        ).then((result) {
+                                          _loadData();
+                                          if (result == 'left') {
+                                            _tabController.animateTo(0);
+                                          }
+                                        });
+                                      }
+                                    }
                                   }
                                 }
                               },

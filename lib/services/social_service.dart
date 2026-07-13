@@ -771,7 +771,7 @@ class SocialService {
           'pollOptions': pollOptions,
         }),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -802,7 +802,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'content': content}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -833,7 +833,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'content': content}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -864,7 +864,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -881,7 +881,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'moderatorId': int.tryParse(moderatorId) ?? moderatorId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -898,7 +898,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'moderatorId': int.tryParse(moderatorId) ?? moderatorId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -938,7 +938,7 @@ class SocialService {
           if (ownerId != null) 'ownerId': ownerId,
         }),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -972,7 +972,7 @@ class SocialService {
           'optionIndex': optionIndex,
         }),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;
@@ -989,7 +989,7 @@ class SocialService {
         headers: await _getHeaders(),
         body: jsonEncode({'userId': int.tryParse(userId) ?? userId}),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
       }
       return null;

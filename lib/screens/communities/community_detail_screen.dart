@@ -54,13 +54,18 @@ class _CommunityDetailScreenState extends State<CommunityDetailScreen> {
 
   Future<void> _toggleJoin() async {
     if (_currentUserId == null) return;
+    final isLeaving = _community.isJoined;
     final success = await _socialService.toggleJoinCommunity(_community.id, _currentUserId!);
     if (success && mounted) {
-      final updated = await _socialService.getCommunityById(_community.id, _currentUserId!);
-      if (updated != null) {
-        setState(() {
-          _community = updated;
-        });
+      if (isLeaving) {
+        Navigator.pop(context, 'left');
+      } else {
+        final updated = await _socialService.getCommunityById(_community.id, _currentUserId!);
+        if (updated != null) {
+          setState(() {
+            _community = updated;
+          });
+        }
       }
     }
   }
