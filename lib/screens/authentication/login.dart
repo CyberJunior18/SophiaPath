@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/navigation_screen.dart';
 import 'package:sophia_path/screens/authentication/register.dart';
 import 'package:sophia_path/services/user_preferences_services.dart';
-
+import 'package:provider/provider.dart';
+import 'package:sophia_path/services/profile_state.dart';
 import 'authService.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     final result = await _authService.login(
-      email: _emailController.text.trim(),
+      emailOrUsername: _emailController.text.trim(),
       password: _passwordController.text,
     );
 
@@ -80,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Navigate to Home and remove all previous routes
       if (mounted) {
+        Provider.of<ProfileState>(context, listen: false).refreshUser();
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -171,15 +173,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Email Field
+                    // Email or Username Field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Email',
-                        hintText: 'Enter your email',
+                        labelText: 'Email or Username',
+                        hintText: 'Enter your email or username',
 
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        prefixIcon: const Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -202,12 +204,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Email is required';
+                          return 'Email or Username is required';
                         }
-                        if (!RegExp(
-                          r'^[^@]+@[^@]+\.[^@]+',
-                        ).hasMatch(value.trim())) {
-                          return 'Enter a valid email address';
+                        final trimmed = value.trim();
+                        if (trimmed.contains('@')) {
+                          if (!RegExp(
+                            r'^[^@]+@[^@]+\.[^@]+',
+                          ).hasMatch(trimmed)) {
+                            return 'Enter a valid email address';
+                          }
+                        } else {
+                          if (trimmed.length < 4) {
+                            return 'Username must be at least 4 characters';
+                          }
                         }
                         return null;
                       },

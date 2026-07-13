@@ -206,6 +206,7 @@ class UserPreferencesService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userKey);
     await prefs.remove(_themeKey);
+    await prefs.remove(_userIdKey);
     await prefs.setBool(_isFirstLaunchKey, true);
   }
 }

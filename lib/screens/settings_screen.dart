@@ -272,6 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   await AuthStorage.clearToken();
 
                   if (context.mounted) {
+                    Provider.of<ProfileState>(context, listen: false).refreshUser();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(

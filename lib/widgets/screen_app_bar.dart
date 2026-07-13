@@ -11,6 +11,7 @@ import '../models/user/user.dart';
 import '../screens/profile/achievements_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/user_preferences_services.dart';
+import '../screens/authentication/authService.dart';
 
 AppBar screenAppBar(
   BuildContext context,
@@ -110,9 +111,11 @@ AppBar screenAppBar(
               case 'logout':
                 try {
                   await UserPreferencesService.instance.clearAllData();
+                  await AuthStorage.clearToken();
                   print('✅ Local data cleared');
 
                   if (context.mounted) {
+                    Provider.of<ProfileState>(context, listen: false).refreshUser();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(

@@ -228,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           '''
 🎯 My Learning Progress 📚
 
-👤 User: ${_currentUser?.username ?? 'Student'}
+👤 User: ${Provider.of<ProfileState>(context, listen: false).currentUser?.username ?? 'Student'}
 📊 Courses: $totalCourses registered
 ✅ Lessons: $totalLessonsCompleted completed
 🏆 Achievements: $completedAchievements/$totalAchievements unlocked
@@ -276,7 +276,6 @@ Keep learning with me! 💪
       return const Center(child: CircularProgressIndicator());
     }
 
-    final displayUser = _currentUser ?? sampleUser;
     final theme = Theme.of(context);
     final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
@@ -285,6 +284,7 @@ Keep learning with me! 💪
     final isSmallScreen = screenWidth < 360;
     final profileState = Provider.of<ProfileState>(context);
     final user = profileState.currentUser ?? sampleUser;
+    final displayUser = user.copyWith(xp: _currentUser?.xp);
     return Container(
       constraints: BoxConstraints(minHeight: screenHeight),
       child: SingleChildScrollView(
@@ -307,7 +307,7 @@ Keep learning with me! 💪
                   ),
                 ),
                 child: ProfileImage(
-                  imageUrl: user.profileImage,
+                  imageUrl: displayUser.profileImage,
                   radius: 70,
                   name: displayUser.fullName,
                 ),
