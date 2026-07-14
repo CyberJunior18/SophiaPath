@@ -587,8 +587,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     _scheduleAutoScrollToIndex(
       _completedLessons > 0 ? _completedLessons - 1 : null,
     );
+    //show loading screen for a couple of seconds
+    await Future.delayed(const Duration(seconds: 3));
 
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _loadDoneLessons() async {
@@ -1035,6 +1039,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
+    final stopwatch = Stopwatch()..start();
+
     lesson_model.Section fullLesson = lesson_model.Section(
       id: targetLessonId,
       title: lesson.title,
@@ -1044,23 +1054,32 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
       description: '',
     );
 
-    if (isExercise) {
-      try {
-        fullLesson = await _authService.getLessonById(
-          courseId: widget.course.id!,
-          sectionId: widget.sectionId,
-          lessonId: targetLessonId,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load quiz lesson: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+    try {
+      fullLesson = await _authService.getLessonById(
+        courseId: widget.course.id!,
+        sectionId: widget.sectionId,
+        lessonId: targetLessonId,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load lesson: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final elapsedMs = stopwatch.elapsedMilliseconds;
+    const requiredMs = 2000;
+    if (elapsedMs < requiredMs) {
+      await Future.delayed(Duration(milliseconds: requiredMs - elapsedMs));
     }
 
     if (!mounted) return;
@@ -1095,6 +1114,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
               ),
       ),
     );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
 
     if (score != null && mounted) {
       final updatedScores = List<int>.from(currentScores);

@@ -176,6 +176,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -268,7 +269,9 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                               color: theme.cardColor,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: theme.dividerColor.withValues(alpha: 0.5),
+                                color: theme.dividerColor.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                             ),
                             child: Column(
@@ -451,7 +454,9 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                color:
+                    ThemeData.estimateBrightnessForColor(theme.primaryColor) ==
+                        Brightness.dark
                     ? Colors.white
                     : Colors.black,
               ),
@@ -487,11 +492,7 @@ class _Badge extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 14,
-            color: theme.primaryColor,
-          ),
+          Icon(icon, size: 14, color: theme.primaryColor),
           const SizedBox(width: 4),
           Text(
             text,

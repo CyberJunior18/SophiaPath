@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sophia_path/models/course/lesson.dart' as lesson_model;
-import 'course_lessons_grid_screen.dart';
+import 'course_sections_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
@@ -172,10 +172,7 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back,
-            color: theme.textTheme.bodyLarge?.color,
-          ),
+          icon: Icon(Icons.arrow_back, color: theme.textTheme.bodyLarge?.color),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -306,8 +303,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                                     section.description,
                                     style: GoogleFonts.poppins(
                                       fontSize: 12,
-                                      color: (theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface)
-                                          .withValues(alpha: 0.6),
+                                      color:
+                                          (theme.textTheme.bodyLarge?.color ??
+                                                  theme.colorScheme.onSurface)
+                                              .withValues(alpha: 0.6),
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
@@ -323,9 +322,10 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     Text(
                       'No sections available',
                       style: GoogleFonts.poppins(
-                        color: (theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface).withValues(
-                          alpha: 0.5,
-                        ),
+                        color:
+                            (theme.textTheme.bodyLarge?.color ??
+                                    theme.colorScheme.onSurface)
+                                .withValues(alpha: 0.5),
                       ),
                     ),
 
@@ -362,7 +362,11 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                                color:
+                                    ThemeData.estimateBrightnessForColor(
+                                          theme.primaryColor,
+                                        ) ==
+                                        Brightness.dark
                                     ? Colors.white
                                     : Colors.black,
                               ),

@@ -126,6 +126,10 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
     super.initState();
     _pageController = PageController();
     _lesson = widget.lesson;
+    final hasAnyBlocks = _lesson.contents.any(
+      (c) => c.pages.any((p) => p.blocks.isNotEmpty),
+    );
+    _isLoading = !hasAnyBlocks;
     _initializeLesson();
   }
 
@@ -164,12 +168,19 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
       // Fall back to the original widget.lesson
     }
 
-    if (!mounted) return;
+    _pages = _buildPages(_lesson);
+    final hasAnyBlocksAfterFetch = _lesson.contents.any(
+      (c) => c.pages.any((p) => p.blocks.isNotEmpty),
+    );
+    if (!hasAnyBlocksAfterFetch) {
+      await Future.delayed(const Duration(seconds: 2));
+    }
 
-    setState(() {
-      _pages = _buildPages(_lesson);
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   List<_LessonPageViewModel> _buildPages(lesson_model.Section lesson) {

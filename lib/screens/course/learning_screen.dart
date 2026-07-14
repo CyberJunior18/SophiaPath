@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'course_info_screen.dart';
-import 'course_lessons_grid_screen.dart';
+import 'course_sections_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 
@@ -365,31 +365,31 @@ class _LearningScreenState extends State<LearningScreen> {
                         ],
                       )
                     else
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.03,
-                            vertical: screenWidth * 0.02,
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.03,
+                          vertical: screenWidth * 0.02,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: theme.primaryColor.withValues(alpha: 0.2),
+                            width: 1,
                           ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondary,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: theme.primaryColor.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Start',
-                              style: GoogleFonts.poppins(
-                                fontSize: screenWidth * 0.038,
-                                color: theme.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Start',
+                            style: GoogleFonts.poppins(
+                              fontSize: screenWidth * 0.038,
+                              color: theme.primaryColor,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
+                      ),
                   ],
                 ),
               ),

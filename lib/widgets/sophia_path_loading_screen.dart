@@ -24,7 +24,7 @@ const List<String> learningQuotes = [
   "The more that you read, the more things you will know. The more that you learn, the more places you'll go. — Dr. Seuss",
   "Every master was once a beginner. Keep pushing forward.",
   "In a world of constant change, the learners inherit the earth.",
-  "Small daily improvements over time lead to stunning results. Focus on 1% better every day."
+  "Small daily improvements over time lead to stunning results. Focus on 1% better every day.",
 ];
 
 class SophiaPathLogo extends StatelessWidget {
@@ -33,7 +33,9 @@ class SophiaPathLogo extends StatelessWidget {
 
   Color _darken(Color color, [double amount = 0.18]) {
     final hsl = HSLColor.fromColor(color);
-    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
+    return hsl
+        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
+        .toColor();
   }
 
   @override
@@ -51,7 +53,12 @@ class SophiaPathLogo extends StatelessWidget {
             end: Alignment.centerRight,
           )
         : LinearGradient(
-            colors: [primaryColor, primaryColor, secondaryColor, secondaryColor],
+            colors: [
+              primaryColor,
+              primaryColor,
+              secondaryColor,
+              secondaryColor,
+            ],
             stops: const [0.0, 0.5, 0.5, 1.0],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
@@ -75,7 +82,8 @@ class ThreeDotsLoadingIndicator extends StatefulWidget {
   const ThreeDotsLoadingIndicator({super.key, required this.color});
 
   @override
-  State<ThreeDotsLoadingIndicator> createState() => _ThreeDotsLoadingIndicatorState();
+  State<ThreeDotsLoadingIndicator> createState() =>
+      _ThreeDotsLoadingIndicatorState();
 }
 
 class _ThreeDotsLoadingIndicatorState extends State<ThreeDotsLoadingIndicator>
@@ -140,7 +148,8 @@ class SophiaPathLoadingScreen extends StatefulWidget {
   const SophiaPathLoadingScreen({super.key, this.appBarTitle});
 
   @override
-  State<SophiaPathLoadingScreen> createState() => _SophiaPathLoadingScreenState();
+  State<SophiaPathLoadingScreen> createState() =>
+      _SophiaPathLoadingScreenState();
 }
 
 class _SophiaPathLoadingScreenState extends State<SophiaPathLoadingScreen>
@@ -186,7 +195,9 @@ class _SophiaPathLoadingScreenState extends State<SophiaPathLoadingScreen>
 
   Color _darken(Color color, [double amount = 0.18]) {
     final hsl = HSLColor.fromColor(color);
-    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
+    return hsl
+        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
+        .toColor();
   }
 
   @override
@@ -209,7 +220,7 @@ class _SophiaPathLoadingScreenState extends State<SophiaPathLoadingScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const SophiaPathLogo(size: 150),
+                    const SophiaPathLogo(size: 100),
                     const SizedBox(height: 24),
                     ShaderMask(
                       shaderCallback: (bounds) {
@@ -255,17 +266,9 @@ class _SophiaPathLoadingScreenState extends State<SophiaPathLoadingScreen>
     );
 
     if (widget.appBarTitle != null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.appBarTitle!, style: const TextStyle(fontSize: 15)),
-          automaticallyImplyLeading: false,
-        ),
-        body: content,
-      );
+      return Scaffold(body: content);
     }
 
-    return Scaffold(
-      body: content,
-    );
+    return Scaffold(body: content);
   }
 }
