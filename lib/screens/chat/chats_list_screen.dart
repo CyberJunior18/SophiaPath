@@ -79,11 +79,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       _chatService.connect(currentUser.userId);
 
       // Listen to incoming messages for real-time updates
-      if (_messageSubscription == null) {
-        _messageSubscription = _chatService.incomingMessages.listen((message) {
-          _handleIncomingMessage(message, currentUser.userId);
-        });
-      }
+      _messageSubscription ??= _chatService.incomingMessages.listen((message) {
+        _handleIncomingMessage(message, currentUser.userId);
+      });
 
       final allUsers = await _chatService.getAllUsers();
       final contacts = <ChatContact>[];
@@ -100,37 +98,56 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       }
 
       // Fetch conversations from the backend
-      final conversations = await _chatService.getUserConversations(currentUser.userId);
+      final conversations = await _chatService.getUserConversations(
+        currentUser.userId,
+      );
 
       // Fetch history for active conversations in parallel
       final histories = await Future.wait(
         conversations.map((conv) {
-          final otherUserId = conv['userId1'] == currentUser.userId ? conv['userId2'] : conv['userId1'];
-          return _chatService.getConversationHistory(currentUser.userId, otherUserId);
+          final otherUserId = conv['userId1'] == currentUser.userId
+              ? conv['userId2']
+              : conv['userId1'];
+          return _chatService.getConversationHistory(
+            currentUser.userId,
+            otherUserId,
+          );
         }),
       );
 
       for (var i = 0; i < conversations.length; i++) {
         final conv = conversations[i];
         final history = histories[i];
-        final otherUserId = conv['userId1'] == currentUser.userId ? conv['userId2'] : conv['userId1'];
+        final otherUserId = conv['userId1'] == currentUser.userId
+            ? conv['userId2']
+            : conv['userId1'];
 
-        final userData = allUsers.firstWhere(
+        var userData = allUsers.firstWhere(
           (u) => u['id'] == otherUserId,
           orElse: () => <String, dynamic>{},
         );
-        if (userData.isEmpty) continue;
+        
+        if (userData.isEmpty) {
+          userData = {
+            'id': otherUserId,
+            'username': 'user$otherUserId',
+            'fullname': 'User $otherUserId',
+            'tag': '',
+            'avatar': '',
+          };
+        }
 
         final unreadCount = history
             .where(
               (message) =>
-                  message.recipientId == currentUser.userId &&
-                  !message.read,
+                  message.recipientId == currentUser.userId && !message.read,
             )
             .length;
 
         final lastMsg = conv['lastMessage'];
-        final lastMsgText = lastMsg != null ? (lastMsg['message'] ?? '') as String : '';
+        final lastMsgText = lastMsg != null
+            ? (lastMsg['message'] ?? '') as String
+            : '';
         final lastMsgTimeStr = conv['lastMessageTime'] as String?;
         final lastMsgTime = lastMsgTimeStr != null
             ? (DateTime.tryParse(lastMsgTimeStr) ?? DateTime.now())
@@ -139,7 +156,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         contacts.add(
           ChatContact(
             userId: otherUserId.toString(),
-            chatId: conv['id'] as String? ?? 'conversation-${currentUser.userId}-$otherUserId',
+            chatId:
+                conv['id'] as String? ??
+                'conversation-${currentUser.userId}-$otherUserId',
             lastMessageTime: lastMsgTime,
             lastMessage: lastMsgText,
             unreadCount: unreadCount,
@@ -148,16 +167,18 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
         users.add(
           User(
-            username: (userData['username'] ?? 'user$otherUserId') as String,
-            fullName: (userData['fullname'] ?? 'User $otherUserId') as String,
-            tag: (userData['tag'] ?? '') as String,
-            age: (userData['age'] ?? 0) as int,
-            sex: (userData['gender'] ?? 'Not specified') as String,
-            profileImage: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
-            achievementsProgress: const [],
-            registeredCourses: const [],
-            registedCoursesIndexes: const [],
-          )
+              username: (userData['username'] ?? 'user$otherUserId') as String,
+              fullName: (userData['fullname'] ?? 'User $otherUserId') as String,
+              tag: (userData['tag'] ?? '') as String,
+              age: (userData['age'] ?? 0) as int,
+              sex: (userData['gender'] ?? 'Not specified') as String,
+              profileImage:
+                  (userData['avatar'] ?? userData['profileImage'] ?? '')
+                      .toString(),
+              achievementsProgress: const [],
+              registeredCourses: const [],
+              registedCoursesIndexes: const [],
+            )
             ..isOnline = true
             ..lastSeen = lastMsgTime,
         );
@@ -182,11 +203,15 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
   void _handleIncomingMessage(ChatMessage message, int currentUserId) {
     if (!mounted) return;
 
-    final otherUserId = message.senderId == currentUserId ? message.recipientId : message.senderId;
+    final otherUserId = message.senderId == currentUserId
+        ? message.recipientId
+        : message.senderId;
     final otherUserIdStr = otherUserId.toString();
 
     // Check if we already have this contact in our active list
-    final existingIndex = _contacts.indexWhere((c) => c.userId == otherUserIdStr);
+    final existingIndex = _contacts.indexWhere(
+      (c) => c.userId == otherUserIdStr,
+    );
 
     if (existingIndex >= 0) {
       setState(() {
@@ -198,7 +223,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           chatId: contact.chatId,
           lastMessageTime: message.timestamp,
           lastMessage: message.message,
-          unreadCount: message.senderId != currentUserId ? contact.unreadCount + 1 : contact.unreadCount,
+          unreadCount: message.senderId != currentUserId
+              ? contact.unreadCount + 1
+              : contact.unreadCount,
         );
 
         // Move to the top
@@ -232,16 +259,20 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
           _chatUsers.insert(
             0,
             User(
-              username: (userData['username'] ?? 'user$otherUserId') as String,
-              fullName: (userData['fullname'] ?? 'User $otherUserId') as String,
-              tag: (userData['tag'] ?? '') as String,
-              age: (userData['age'] ?? 0) as int,
-              sex: (userData['gender'] ?? 'Not specified') as String,
-              profileImage: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
-              achievementsProgress: const [],
-              registeredCourses: const [],
-              registedCoursesIndexes: const [],
-            )
+                username:
+                    (userData['username'] ?? 'user$otherUserId') as String,
+                fullName:
+                    (userData['fullname'] ?? 'User $otherUserId') as String,
+                tag: (userData['tag'] ?? '') as String,
+                age: (userData['age'] ?? 0) as int,
+                sex: (userData['gender'] ?? 'Not specified') as String,
+                profileImage:
+                    (userData['avatar'] ?? userData['profileImage'] ?? '')
+                        .toString(),
+                achievementsProgress: const [],
+                registeredCourses: const [],
+                registedCoursesIndexes: const [],
+              )
               ..isOnline = true
               ..lastSeen = message.timestamp,
           );
@@ -263,7 +294,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: ProfileImage(
-        imageUrl: (userData['avatar'] ?? userData['profileImage'] ?? '').toString(),
+        imageUrl: (userData['avatar'] ?? userData['profileImage'] ?? '')
+            .toString(),
         radius: 24,
         name: fullName,
       ),
@@ -279,7 +311,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         '@$username${tag.isNotEmpty ? ' • $tag' : ''}',
         style: GoogleFonts.poppins(
           fontSize: 12,
-          color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
+          color:
+              (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface)
+                  .withValues(alpha: 0.7),
         ),
       ),
       trailing: Icon(Icons.chevron_right, color: theme.colorScheme.primary),
@@ -339,11 +373,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: ProfileImage(
-        imageUrl: avatar,
-        radius: 28,
-        name: displayName,
-      ),
+      leading: ProfileImage(imageUrl: avatar, radius: 28, name: displayName),
       title: Text(
         displayName,
         style: GoogleFonts.poppins(
@@ -358,7 +388,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
         overflow: TextOverflow.ellipsis,
         style: GoogleFonts.poppins(
           fontSize: 14,
-          color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.7),
+          color:
+              (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface)
+                  .withValues(alpha: 0.7),
         ),
       ),
       trailing: Column(
@@ -745,11 +777,15 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                             'Search for users above to start a conversation',
                                             style: GoogleFonts.poppins(
                                               fontSize: 14,
-                                              color: (theme
-                                                  .textTheme
-                                                  .bodyMedium
-                                                  ?.color ?? theme.colorScheme.onSurface)
-                                                  .withValues(alpha: 0.7),
+                                              color:
+                                                  (theme
+                                                              .textTheme
+                                                              .bodyMedium
+                                                              ?.color ??
+                                                          theme
+                                                              .colorScheme
+                                                              .onSurface)
+                                                      .withValues(alpha: 0.7),
                                             ),
                                           ),
                                         ],

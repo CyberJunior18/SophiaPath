@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -28,8 +29,10 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
   _LessonFilter _activeFilter = _LessonFilter.all;
   final Map<int, int> _sectionLessonCounts = {};
   final Map<int, int> _sectionQuizCounts = {};
+  final Map<int, int> _sectionFinishedLessonCounts = {};
+  final Map<int, int> _sectionFinishedQuizCounts = {};
   final AuthService _authService = AuthService();
-
+  final List<String> sectionsIcons = [];
   @override
   void dispose() {
     _searchController.dispose();
@@ -53,15 +56,38 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
         final List<Map<String, dynamic>> lessonsList = await _authService
             .getSectionLessons(courseId: courseId, sectionId: sid);
 
-        final lessonsCount = lessonsList.length;
-        final quizCount = lessonsList.where((l) {
+        final List<Map<String, dynamic>> doneLessonsList = await _authService
+            .getSectionLessonsGrades(courseID: courseId, sectionID: sid);
+
+        final doneLessonIds = doneLessonsList
+            .map((d) => d['lessonId'].toString())
+            .toSet();
+
+        int lessonsCount = 0;
+        int quizCount = 0;
+        int finishedLessonsCount = 0;
+        int finishedQuizCount = 0;
+
+        for (final l in lessonsList) {
           final cat = (l['category'] ?? '').toString().toLowerCase();
-          return cat == 'exercise' || cat == 'quiz' || cat == 'mcq';
-        }).length;
+          final isQuiz = cat == 'exercise' || cat == 'quiz' || cat == 'mcq';
+          final lId = l['id'].toString();
+          final isDone = doneLessonIds.contains(lId);
+
+          if (isQuiz) {
+            quizCount++;
+            if (isDone) finishedQuizCount++;
+          } else {
+            lessonsCount++;
+            if (isDone) finishedLessonsCount++;
+          }
+        }
 
         setState(() {
           _sectionLessonCounts[sid] = lessonsCount;
           _sectionQuizCounts[sid] = quizCount;
+          _sectionFinishedLessonCounts[sid] = finishedLessonsCount;
+          _sectionFinishedQuizCounts[sid] = finishedQuizCount;
         });
       } catch (_) {
         // ignore errors per-section
@@ -141,6 +167,48 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
         ),
       ),
     );
+  }
+
+  String? _getSectionIconPath(String title) {
+    final lowerTitle = title.trim().toLowerCase();
+
+    if (lowerTitle.contains('common vulnerabilities')) {
+      return 'assets/sections/commonVulnerabilities.png';
+    } else if (lowerTitle.contains('c++')) {
+      return 'assets/sections/cpp.png';
+    } else if (lowerTitle.contains('cryptography')) {
+      return 'assets/sections/cryptography.png';
+    } else if (lowerTitle.contains('data structures') ||
+        lowerTitle.contains('datastructures')) {
+      return 'assets/sections/datast.png';
+    } else if (lowerTitle.contains('intro') &&
+        lowerTitle.contains('cybersecurity')) {
+      return 'assets/sections/IntroToCybersecurity.png';
+    } else if (lowerTitle.contains('intro') &&
+        lowerTitle.contains('philosophy')) {
+      return 'assets/sections/IntroToPhilosophy.png';
+    } else if (lowerTitle.contains('oop') ||
+        lowerTitle.contains('object oriented programming')) {
+      return 'assets/sections/oop.png';
+    }
+
+    return null;
+  }
+
+  int _getLessonCount(Lesson lesson) {
+    return _sectionLessonCounts[lesson.id] ?? lesson.contents.length;
+  }
+
+  int _getQuizCount(Lesson lesson) {
+    return _sectionQuizCounts[lesson.id] ?? lesson.questions.length;
+  }
+
+  int _getFinishedLessonCount(Lesson lesson) {
+    return _sectionFinishedLessonCounts[lesson.id] ?? 0;
+  }
+
+  int _getFinishedQuizCount(Lesson lesson) {
+    return _sectionFinishedQuizCounts[lesson.id] ?? 0;
   }
 
   @override
@@ -260,166 +328,254 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                         //     ? lesson.contents.first.chapterName
                         //     : 'General';
 
+                        final lessonCount = _getLessonCount(lesson);
+                        final quizCount = _getQuizCount(lesson);
+                        final isComingSoon = lessonCount == 0 && quizCount == 0;
                         return InkWell(
                           borderRadius: BorderRadius.circular(14),
-                          onTap: () => _openLessonPath(item),
+                          onTap: isComingSoon
+                              ? null
+                              : () => _openLessonPath(item),
                           child: Container(
-                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: theme.cardColor,
-                              borderRadius: BorderRadius.circular(14),
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: theme.dividerColor.withValues(
-                                  alpha: 0.5,
-                                ),
+                                color: theme.primaryColor.withValues(alpha: 0.3),
+                                width: 1,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      '#${item.index + 1}',
-                                      style: GoogleFonts.poppins(
-                                        color: theme.primaryColor,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // Background Icon
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      left: 5,
+                                      right: 5,
+                                      top: 5,
+                                      bottom: 35,
                                     ),
-                                    PopupMenuButton<String>(
-                                      icon: const Icon(Icons.more_vert),
-                                      onSelected: (value) {
-                                        switch (value) {
-                                          case 'contents':
-                                            if (lesson.contents.isNotEmpty) {
-                                              _openLessonContents(item);
-                                            }
-                                            break;
-                                          case 'quiz':
-                                            if (lesson.questions.isNotEmpty) {
-                                              _openLessonQuiz(item);
-                                            }
-                                            break;
-                                          case 'path':
-                                            _openLessonPath(item);
-                                            break;
+                                    child: Builder(
+                                      builder: (context) {
+                                        final iconPath = _getSectionIconPath(lesson.title);
+                                        if (iconPath != null) {
+                                          return Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Image.asset(
+                                              iconPath,
+                                              fit: BoxFit.contain,
+                                            ),
+                                          );
+                                        } else {
+                                          return Center(
+                                            child: Icon(
+                                              isChapterTest
+                                                  ? Icons.local_cafe_outlined
+                                                  : lesson.questions.isNotEmpty
+                                                      ? Icons.quiz_outlined
+                                                      : Icons.menu_book_outlined,
+                                              size: 50,
+                                              color: theme.primaryColor,
+                                            ),
+                                          );
                                         }
                                       },
-                                      itemBuilder: (context) =>
-                                          <PopupMenuEntry<String>>[
-                                            if (lesson.contents.isNotEmpty)
-                                              PopupMenuItem<String>(
-                                                value: 'contents',
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.list_rounded,
-                                                      size: 18,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      'View Contents',
-                                                      style:
-                                                          GoogleFonts.poppins(),
-                                                    ),
-                                                  ],
-                                                ),
+                                    ),
+                                  ),
+                                  // Content Section at the bottom in an opacity container
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: ClipRRect(
+                                      borderRadius: const BorderRadius.only(
+                                        bottomLeft: Radius.circular(16),
+                                        bottomRight: Radius.circular(16),
+                                      ),
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(alpha: 0.3),
+                                            border: Border(
+                                              top: BorderSide(
+                                                color: theme.primaryColor.withValues(alpha: 0.6),
+                                                width: 1.5,
                                               ),
-                                            if (lesson.questions.isNotEmpty)
-                                              PopupMenuItem<String>(
-                                                value: 'quiz',
-                                                child: Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.quiz_outlined,
-                                                      size: 18,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      'Take Quiz',
-                                                      style:
-                                                          GoogleFonts.poppins(),
-                                                    ),
-                                                  ],
-                                                ),
+                                            ),
+                                          ),
+                                      padding: const EdgeInsets.all(10.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Title
+                                          Text(
+                                            lesson.title,
+                                            textAlign: TextAlign.center,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (isComingSoon)
+                                            const SizedBox.shrink()
+                                          else
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 8),
+                                              child: Builder(
+                                                builder: (context) {
+                                                  final finishedItems = _getFinishedLessonCount(lesson) + _getFinishedQuizCount(lesson);
+                                                  final totalItems = _getLessonCount(lesson) + _getQuizCount(lesson);
+                                                  final progress = totalItems > 0 ? finishedItems / totalItems : 0.0;
+                                                  
+                                                  return Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: ClipRRect(
+                                                          borderRadius: BorderRadius.circular(4),
+                                                          child: LinearProgressIndicator(
+                                                            value: progress,
+                                                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                                            color: theme.primaryColor,
+                                                            minHeight: 6,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        '${(progress * 100).toInt()}%',
+                                                        style: GoogleFonts.poppins(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: theme.primaryColor,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
                                               ),
-                                            PopupMenuItem<String>(
-                                              value: 'path',
-                                              child: Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.account_tree_outlined,
-                                                    size: 18,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Full Learning Path',
-                                                    style:
-                                                        GoogleFonts.poppins(),
+                                            ),
+                                        ],
+                                      ), // Column
+                                    ), // Container
+                                  ), // BackdropFilter
+                                  ), // ClipRRect
+                                  ), // Positioned
+                                          if (!isComingSoon)
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: PopupMenuButton<String>(
+                                                icon: const Icon(
+                                                  Icons.more_vert,
+                                                ),
+                                                onSelected: (value) {
+                                                  switch (value) {
+                                                    case 'contents':
+                                                      if (lesson
+                                                          .contents
+                                                          .isNotEmpty) {
+                                                        _openLessonContents(
+                                                          item,
+                                                        );
+                                                      }
+                                                      break;
+                                                    case 'quiz':
+                                                      if (lesson
+                                                          .questions
+                                                          .isNotEmpty) {
+                                                        _openLessonQuiz(item);
+                                                      }
+                                                      break;
+                                                    case 'path':
+                                                      _openLessonPath(item);
+                                                      break;
+                                                  }
+                                                },
+                                                itemBuilder: (context) => <PopupMenuEntry<String>>[
+                                                  if (lesson
+                                                      .contents
+                                                      .isNotEmpty)
+                                                    PopupMenuItem<String>(
+                                                      value: 'contents',
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.list_rounded,
+                                                            size: 18,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Text(
+                                                            'View Contents',
+                                                            style:
+                                                                GoogleFonts.poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  if (lesson
+                                                      .questions
+                                                      .isNotEmpty)
+                                                    PopupMenuItem<String>(
+                                                      value: 'quiz',
+                                                      child: Row(
+                                                        children: [
+                                                          const Icon(
+                                                            Icons.quiz_outlined,
+                                                            size: 18,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Text(
+                                                            'Take Quiz',
+                                                            style:
+                                                                GoogleFonts.poppins(),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  PopupMenuItem<String>(
+                                                    value: 'path',
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons
+                                                              .account_tree_outlined,
+                                                          size: 18,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Text(
+                                                          'Full Learning Path',
+                                                          style:
+                                                              GoogleFonts.poppins(),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                          ],
-                                    ),
-                                  ],
-                                ),
-                                // const SizedBox(height: 6),
-                                // Icon(
-                                //     isChapterTest
-                                //       ? Icons.local_cafe_outlined
-                                //       : lesson.questions.isNotEmpty
-                                //       ? Icons.quiz_outlined
-                                //       : Icons.menu_book_outlined,
-                                //   size: 28,
-                                //     color: isChapterTest
-                                //       ? Colors.brown
-                                //       : lesson.questions.isNotEmpty
-                                //       ? Colors.orange
-                                //       : Colors.blue,
-                                // ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  lesson.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 25,
-                                  ),
-                                ),
-                                const Spacer(),
-                                // Text(
-                                //   chapterName,
-                                //   maxLines: 1,
-                                //   overflow: TextOverflow.ellipsis,
-                                //   style: GoogleFonts.poppins(
-                                //     color: Colors.grey,
-                                //     fontSize: 12,
-                                //   ),
-                                // ),
-                                Row(
-                                  children: [
-                                    _Badge(
-                                      icon: isChapterTest
-                                          ? Icons.local_cafe_outlined
-                                          : Icons.menu_book_outlined,
-                                      text:
-                                          '${_sectionLessonCounts[lesson.id] ?? lesson.contents.length}',
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _Badge(
-                                      icon: lesson.questions.isNotEmpty
-                                          ? Icons.quiz_outlined
-                                          : Icons.local_cafe_outlined,
-                                      text:
-                                          '${_sectionQuizCounts[lesson.id] ?? lesson.questions.length}',
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );

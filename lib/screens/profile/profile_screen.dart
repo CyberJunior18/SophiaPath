@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:sophia_path/services/profile_state.dart';
 import 'package:sophia_path/widgets/profileImage.dart';
 import '../../models/data.dart';
+import '../authentication/login.dart';
 import 'achievements_screen.dart';
 import '../../services/course/user_stats_service.dart';
 
@@ -12,13 +13,14 @@ import '../../models/user/achievements.dart';
 import '../../models/user/user.dart';
 import '../authentication/authService.dart';
 import '../../services/user_preferences_services.dart';
-import '../../services/course/firestore_course_service.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../models/user/user_role.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileUpdated;
+  final VoidCallback? onToggleTheme;
 
-  const ProfileScreen({super.key, this.onProfileUpdated});
+  const ProfileScreen({super.key, this.onProfileUpdated, this.onToggleTheme});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -30,10 +32,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // final FirestoreCourseService _courseService = FirestoreCourseService();
   final UserStatsService _statsService = UserStatsService();
   User? _currentUser;
-
+  int _registeredCoursesCount = 0;
+  int _totalLessonsCompleted = 0;
+  int _currentStreak = 0;
   bool _isLoading = true;
   List<Achievement> _achievements = [];
   bool _showAllAchievements = false;
+  bool _isGuest = false;
 
   Map<String, bool> get achievementCompletionMap {
     return {for (var a in _achievements) a.name: a.isCompleted};
@@ -54,6 +59,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     setState(() => _isLoading = true);
     try {
+      final token = await AuthStorage.getToken();
+      if (token == null) {
+        if (mounted) {
+          setState(() {
+            _isGuest = true;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      _isGuest = false;
+
       _currentUser = await _userService.getUser();
       if (_currentUser != null) {
         final xp = await _authService.getMyXp();
@@ -64,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('❌ Error loading user data: $e');
+      debugPrint('❌ Error loading user data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -72,29 +89,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<List<Achievement>> _calculateAchievementsProgress() async {
-    List<Course> courses = [];
+    int registeredCoursesCount = 0;
+    int totalLessonsCompleted = 0;
+
     try {
-      // courses = await _courseService.getCourses().timeout(
-      //   const Duration(seconds: 10),
-      //   onTimeout: () {
-      //     print('❌ Firestore load timeout in profile');
-      //     return [];
-      //   },
-      // );
+      final registrations = await _authService.getMyRegistrations();
+      registeredCoursesCount = registrations.length;
+
+      final grades = await _authService.getMyGrades();
+      totalLessonsCompleted = grades.length;
     } catch (e) {
-      print('❌ Error fetching courses in profile: $e');
+      debugPrint('❌ Error fetching courses/grades in profile: $e');
     }
 
     final achievements = List<Achievement>.from(achievementsInfo);
     final statsService = UserStatsService();
 
-    final totalLessonsCompleted = courses.fold(
-      0,
-      (sum, course) => sum + course.lessonsFinished,
-    );
-    final registeredCoursesCount = courses.length;
+    // Save to state
+    _registeredCoursesCount = registeredCoursesCount;
+    _totalLessonsCompleted = totalLessonsCompleted;
+
     final hasPerfectScore = await statsService.hasPerfectScore();
     final currentStreak = await statsService.getCurrentStreak();
+    _currentStreak = currentStreak;
     final todayLessonCount = await statsService.getTodayLessonCount();
     final shareCount = await statsService.getShareCount();
     final correctAnswersCount = await statsService.getCorrectAnswersCount();
@@ -187,6 +204,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _shareProgress() async {
+    final username =
+        Provider.of<ProfileState>(
+          context,
+          listen: false,
+        ).currentUser?.username ??
+        'Student';
     try {
       if (kIsWeb) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -198,27 +221,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      List<Course> courses = [];
-      try {
-        // courses = await _courseService.getCourses().timeout(
-        //   const Duration(seconds: 10),
-        //   onTimeout: () {
-        //     print('❌ Firestore timeout in share');
-        //     return [];
-        //   },
-        // );
-      } catch (e) {
-        print('❌ Error fetching courses for share: $e');
-      }
-
-      int totalLessonsCompleted = 0;
-      int totalCourses = courses.length;
-
-      for (var course in courses) {
-        totalLessonsCompleted += course.lessonsFinished;
-      }
-
       final achievements = await _calculateAchievementsProgress();
+
+      int totalLessonsCompleted = _totalLessonsCompleted;
+      int totalCourses = _registeredCoursesCount;
       final completedAchievements = achievements
           .where((a) => a.isCompleted)
           .length;
@@ -228,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           '''
 🎯 My Learning Progress 📚
 
-👤 User: ${Provider.of<ProfileState>(context, listen: false).currentUser?.username ?? 'Student'}
+👤 User: $username
 📊 Courses: $totalCourses registered
 ✅ Lessons: $totalLessonsCompleted completed
 🏆 Achievements: $completedAchievements/$totalAchievements unlocked
@@ -277,6 +283,75 @@ Keep learning with me! 💪
     }
 
     final theme = Theme.of(context);
+
+    if (_isGuest) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person_outline,
+                size: 80,
+                color: theme.primaryColor.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Login Required',
+                style: GoogleFonts.poppins(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Please log in to view your profile, achievements, and progress.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => LoginScreen(
+                          onToggleTheme: widget.onToggleTheme ?? () {},
+                        ),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Log In or Register',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final screenSize = MediaQuery.of(context).size;
     final screenWidth = screenSize.width;
     final screenHeight = screenSize.height;
@@ -296,146 +371,372 @@ Keep learning with me! 💪
           ),
           child: Column(
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isDark
-                        ? const Color.fromRGBO(217, 217, 217, 100)
-                        : theme.primaryColor,
-                    width: 3,
-                  ),
-                ),
-                child: ProfileImage(
-                  imageUrl: displayUser.profileImage,
-                  radius: 70,
-                  name: displayUser.fullName,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.02),
-
-              Text(
-                displayUser.username,
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen
-                      ? screenWidth * 0.065
-                      : screenWidth * 0.06,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: screenHeight * 0.008),
-
-              Text(
-                displayUser.role.label,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: screenWidth * 0.05,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.008),
-
-              Text(
-                "${displayUser.age}, ${displayUser.sex}",
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen
-                      ? screenWidth * 0.037
-                      : screenWidth * 0.039,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.03),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.primaryColor,
-                      theme.primaryColor.withValues(alpha: 0.7),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.primaryColor.withValues(alpha: 0.22),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+              // Top User Info Card (Like Screenshot)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            shape: BoxShape.circle,
+                        Text(
+                          displayUser.username,
+                          style: GoogleFonts.poppins(
+                            fontSize: isSmallScreen ? 20 : 24,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
-                          child: const Icon(
-                            Icons.bolt,
-                            color: Colors.white,
-                            size: 22,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 12),
+                        Row(
                           children: [
+                            Icon(
+                              displayUser.role == UserRole.student
+                                  ? Icons.school
+                                  : Icons.verified,
+                              size: 16,
+                              color: theme.primaryColor,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              'XP',
+                              displayUser.role.label,
                               style: GoogleFonts.poppins(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 12,
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
+                            const SizedBox(width: 16),
+                            // Registered Courses
+                            const Icon(
+                              Icons.inventory_2,
+                              size: 16,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              '${displayUser.xp}',
+                              '$_registeredCoursesCount',
                               style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Finished Lessons
+                            const Icon(
+                              Icons.check_circle_outline,
+                              size: 16,
+                              color: Colors.greenAccent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_totalLessonsCompleted',
+                              style: GoogleFonts.poppins(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                  ),
+                  const SizedBox(width: 16),
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.greenAccent, width: 2),
+                    ),
+                    child: ProfileImage(
+                      imageUrl: displayUser.profileImage,
+                      radius: isSmallScreen ? 35 : 40,
+                      name: displayUser.fullName,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: screenHeight * 0.03),
+
+              // Stats Row: XP and Streak Cards
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(999),
+                        color: isDark
+                            ? const Color(0xFF141A27)
+                            : theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
                         ),
                       ),
-                      child: Text(
-                        '${displayUser.xp} XP',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'XP',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.military_tech,
+                                size: 16,
+                                color: Colors.purpleAccent,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Lvl ${(displayUser.xp / 100).floor() + 1}',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${displayUser.xp % 100}/100',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: (displayUser.xp % 100) / 100.0,
+                              minHeight: 4,
+                              backgroundColor: theme.colorScheme.outline
+                                  .withValues(alpha: 0.1),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.greenAccent,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF141A27)
+                            : theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Streak',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.local_fire_department,
+                                size: 16,
+                                color: Colors.deepOrange,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '$_currentStreak',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Days',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: 0.0,
+                              minHeight: 4,
+                              backgroundColor: theme.colorScheme.outline.withValues(
+                                alpha: 0.1,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.deepOrange,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF141A27)
+                            : theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Finished',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.check_circle_outline,
+                                size: 16,
+                                color: Colors.greenAccent,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '$_totalLessonsCompleted',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Lessons',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: 1.0,
+                              minHeight: 4,
+                              backgroundColor: theme.colorScheme.outline.withValues(
+                                alpha: 0.1,
+                              ),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                Colors.greenAccent,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               SizedBox(height: screenHeight * 0.025),

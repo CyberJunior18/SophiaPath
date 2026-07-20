@@ -23,7 +23,10 @@ AppBar screenAppBar(
   final theme = Theme.of(context);
   final colors = theme.colorScheme;
 
-  if (index != 0) {
+  final isGuest = profileState.currentUser == null;
+  final profileIndex = isGuest ? 1 : 2;
+
+  if (index == profileIndex) {
     return AppBar(
       backgroundColor: Colors.transparent,
       toolbarHeight: 60,
@@ -63,7 +66,7 @@ AppBar screenAppBar(
       children: [
         FittedBox(
           child: Text(
-            'Hi, ${user.fullName}',
+            (!isGuest && index == 0) ? 'Hi, ${user.fullName}' : 'Courses',
             style: theme.textTheme.titleLarge?.copyWith(
               color: Colors.white,
               fontSize: 18,
@@ -71,7 +74,7 @@ AppBar screenAppBar(
           ),
         ),
         Text(
-          "Let's start learning",
+          (!isGuest && index == 0) ? "Let's start learning" : "Explore available courses",
           style: theme.textTheme.bodyMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.7),
             fontSize: 12,
@@ -80,6 +83,7 @@ AppBar screenAppBar(
       ],
     ),
     actions: [
+      if (!isGuest)
       Padding(
         padding: const EdgeInsets.only(right: 16),
         child: PopupMenuButton<String>(

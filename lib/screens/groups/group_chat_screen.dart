@@ -129,7 +129,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 messages[i].pinned != _messages[i].pinned ||
                 messages[i].deleted != _messages[i].deleted ||
                 messages[i].edited != _messages[i].edited ||
-                messages[i].pollVotes?.toString() != _messages[i].pollVotes?.toString()) {
+                messages[i].pollVotes?.toString() !=
+                    _messages[i].pollVotes?.toString()) {
               hasChanges = true;
               break;
             }
@@ -763,9 +764,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                   children: [
                                     Center(
                                       child: GestureDetector(
-                                        onTap: () {}, // Prevent tap from bubbling up to close the dialog
+                                        onTap:
+                                            () {}, // Prevent tap from bubbling up to close the dialog
                                         child: InteractiveViewer(
-                                          child: localImageUrl.startsWith('data:')
+                                          child:
+                                              localImageUrl.startsWith('data:')
                                               ? Image.memory(
                                                   Base64ImageCache.decode(
                                                     localImageUrl
@@ -969,11 +972,11 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                 onTap: _showGroupInfo,
                 child: Row(
                   children: [
-                     ProfileImage(
-                       imageUrl: _currentGroup.avatar,
-                       radius: 18,
-                       name: _currentGroup.name,
-                     ),
+                    ProfileImage(
+                      imageUrl: _currentGroup.avatar,
+                      radius: 18,
+                      name: _currentGroup.name,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -991,7 +994,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                           Text(
                             _typingUsers.isNotEmpty
                                 ? '${_typingUsers.map((t) => t['username']).take(2).join(', ')} typing...'
-                                : '${_currentGroup.members?.length ?? _currentGroup.membersCount ?? 0} members',
+                                : '${_currentGroup.members.length ?? _currentGroup.membersCount ?? 0} members',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: _typingUsers.isNotEmpty
@@ -1040,7 +1043,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                     : ListView.builder(
                         reverse: true,
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         itemCount: filteredMessages.length,
                         itemBuilder: (context, index) =>
                             _buildMessageBubble(filteredMessages[index]),

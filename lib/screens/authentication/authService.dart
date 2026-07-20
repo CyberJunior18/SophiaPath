@@ -205,7 +205,7 @@ class AuthService {
           'fullname': fullname,
           'tag': tag,
           'gender': gender,
-          if (avatar != null) 'avatar': avatar,
+          'avatar': ?avatar,
         }),
       );
 
@@ -614,6 +614,38 @@ class AuthService {
       return [];
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Fetches the section metadata including the optional [cheatsheet] field.
+  /// Returns the cheatsheet map if the section has one, otherwise null.
+  Future<Map<String, dynamic>?> getSectionCheatsheet({
+    required int courseId,
+    required int sectionId,
+  }) async {
+    final token = await AuthStorage.getToken();
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/courses/$courseId/sections/$sectionId'),
+        headers: _jsonHeaders(token: token),
+      );
+
+      final responseBody = response.body.trim();
+      final dynamic data = responseBody.isEmpty
+          ? null
+          : _tryDecodeJson(responseBody);
+
+      if (response.statusCode == 200 && data is Map) {
+        final cheatsheet = data['cheatsheet'];
+        if (cheatsheet is Map && cheatsheet['id'] != null) {
+          return Map<String, dynamic>.from(cheatsheet);
+        }
+      }
+
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -1112,37 +1144,55 @@ class AuthService {
 
   Future<dynamic> getConversationHistory(int userId1, int userId2) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getUserConversations(int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/user/$userId/conversations'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/user/$userId/conversations'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> clearConversation(int userId1, int userId2) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2/clear'), headers: _jsonHeaders(token: token));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2/clear'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> markMessagesAsRead(int userId1, int userId2) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2/mark-read'), headers: _jsonHeaders(token: token));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/conversation/$userId1/$userId2/mark-read'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getUnreadCount(int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/user/$userId/unread-count'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/user/$userId/unread-count'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getStatistics() async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/statistics'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/statistics'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1163,35 +1213,54 @@ class AuthService {
       'recipientId': recipientId,
       'message': message,
       'username': username,
-      if (avatar != null) 'avatar': avatar,
-      if (replyToId != null) 'replyToId': replyToId,
-      if (replyToMessage != null) 'replyToMessage': replyToMessage,
-      if (replyToUsername != null) 'replyToUsername': replyToUsername,
-      if (forwarded != null) 'forwarded': forwarded,
+      'avatar': ?avatar,
+      'replyToId': ?replyToId,
+      'replyToMessage': ?replyToMessage,
+      'replyToUsername': ?replyToUsername,
+      'forwarded': ?forwarded,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/send-message'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/send-message'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> pinMessage(String messageId, bool pin) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/message/$messageId/pin'), headers: _jsonHeaders(token: token), body: jsonEncode({'pin': pin}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/message/$messageId/pin'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'pin': pin}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteMessage(String messageId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.delete(Uri.parse('$baseUrl/api/chat/message/$messageId?userId=$userId'), headers: _jsonHeaders(token: token));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/chat/message/$messageId?userId=$userId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> searchMessages(int userId, String query) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/user/$userId/search-messages?query=$query'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/user/$userId/search-messages?query=$query'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> setTypingStatus(int userId, int recipientId, String username, bool typing) async {
+  Future<dynamic> setTypingStatus(
+    int userId,
+    int recipientId,
+    String username,
+    bool typing,
+  ) async {
     final token = await AuthStorage.getToken();
     final body = jsonEncode({
       'userId': userId,
@@ -1199,25 +1268,43 @@ class AuthService {
       'username': username,
       'typing': typing,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/typing'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/typing'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> checkTypingStatus(int userId, int otherUserId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/typing/$userId/$otherUserId'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/typing/$userId/$otherUserId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> editDirectMessage(String messageId, String text, int userId) async {
+  Future<dynamic> editDirectMessage(
+    String messageId,
+    String text,
+    int userId,
+  ) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/chat/message/$messageId/edit'), headers: _jsonHeaders(token: token), body: jsonEncode({'text': text, 'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/chat/message/$messageId/edit'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'text': text, 'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getActiveTypingStates(int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/chat/users/$userId/active-typing-states'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/chat/users/$userId/active-typing-states'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1227,14 +1314,20 @@ class AuthService {
 
   Future<dynamic> getGroups(int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/groups/user/$userId'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/groups/user/$userId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getGroupById(int groupId, {int? userId}) async {
     final token = await AuthStorage.getToken();
     final query = userId != null ? '?userId=$userId' : '';
-    final response = await http.get(Uri.parse('$baseUrl/api/groups/$groupId$query'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/groups/$groupId$query'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1251,19 +1344,28 @@ class AuthService {
       'memberIds': memberIds,
       'creatorId': creatorId,
       'creatorName': creatorName,
-      if (description != null) 'description': description,
+      'description': ?description,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/create'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/create'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> addGroupMembers(int groupId, List<int> memberIds, {int? userId}) async {
+  Future<dynamic> addGroupMembers(
+    int groupId,
+    List<int> memberIds, {
+    int? userId,
+  }) async {
     final token = await AuthStorage.getToken();
-    final body = jsonEncode({
-      'memberIds': memberIds,
-      if (userId != null) 'userId': userId,
-    });
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/add-members'), headers: _jsonHeaders(token: token), body: body);
+    final body = jsonEncode({'memberIds': memberIds, 'userId': ?userId});
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/add-members'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1285,90 +1387,150 @@ class AuthService {
       'senderId': senderId,
       'senderName': senderName,
       'text': text,
-      if (senderAvatar != null) 'senderAvatar': senderAvatar,
-      if (replyToId != null) 'replyToId': replyToId,
-      if (replyToMessage != null) 'replyToMessage': replyToMessage,
-      if (replyToUsername != null) 'replyToUsername': replyToUsername,
-      if (forwarded != null) 'forwarded': forwarded,
-      if (pollQuestion != null) 'pollQuestion': pollQuestion,
-      if (pollOptions != null) 'pollOptions': pollOptions,
+      'senderAvatar': ?senderAvatar,
+      'replyToId': ?replyToId,
+      'replyToMessage': ?replyToMessage,
+      'replyToUsername': ?replyToUsername,
+      'forwarded': ?forwarded,
+      'pollQuestion': ?pollQuestion,
+      'pollOptions': ?pollOptions,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/send-message'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/send-message'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> makeGroupAdmin(int groupId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/make-admin'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/make-admin'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> removeGroupAdmin(int groupId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/remove-admin'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/remove-admin'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> removeGroupMember(int groupId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/remove-member'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/remove-member'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> updateGroupDetails(int groupId, int userId, Map<String, dynamic> updates) async {
+  Future<dynamic> updateGroupDetails(
+    int groupId,
+    int userId,
+    Map<String, dynamic> updates,
+  ) async {
     final token = await AuthStorage.getToken();
-    final body = jsonEncode({
-      'userId': userId,
-      'updates': updates,
-    });
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/update'), headers: _jsonHeaders(token: token), body: body);
+    final body = jsonEncode({'userId': userId, 'updates': updates});
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/update'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> pinGroupMessage(String messageId, bool pin) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/message/$messageId/pin'), headers: _jsonHeaders(token: token), body: jsonEncode({'pin': pin}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/message/$messageId/pin'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'pin': pin}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteGroupMessage(String messageId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.delete(Uri.parse('$baseUrl/api/groups/message/$messageId?userId=$userId'), headers: _jsonHeaders(token: token));
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/groups/message/$messageId?userId=$userId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> voteGroupMessagePoll(String messageId, int userId, int optionIndex) async {
+  Future<dynamic> voteGroupMessagePoll(
+    String messageId,
+    int userId,
+    int optionIndex,
+  ) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/message/$messageId/vote-poll'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId, 'optionIndex': optionIndex}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/message/$messageId/vote-poll'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId, 'optionIndex': optionIndex}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> editGroupMessage(String messageId, String text, int userId) async {
+  Future<dynamic> editGroupMessage(
+    String messageId,
+    String text,
+    int userId,
+  ) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/message/$messageId/edit'), headers: _jsonHeaders(token: token), body: jsonEncode({'text': text, 'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/message/$messageId/edit'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'text': text, 'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> setGroupTypingStatus(int groupId, int userId, String username, bool typing) async {
+  Future<dynamic> setGroupTypingStatus(
+    int groupId,
+    int userId,
+    String username,
+    bool typing,
+  ) async {
     final token = await AuthStorage.getToken();
     final body = jsonEncode({
       'userId': userId,
       'username': username,
       'typing': typing,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/$groupId/typing'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/$groupId/typing'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getGroupTypingStatus(int groupId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/groups/$groupId/typing'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/groups/$groupId/typing'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> joinGroupByLink(String inviteToken, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/groups/join-by-link/$inviteToken'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/groups/join-by-link/$inviteToken'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1379,13 +1541,19 @@ class AuthService {
   Future<dynamic> getCommunities({int? userId}) async {
     final token = await AuthStorage.getToken();
     final query = userId != null ? '?userId=$userId' : '';
-    final response = await http.get(Uri.parse('$baseUrl/api/communities$query'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/communities$query'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getCommunityById(int communityId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/communities/$communityId'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/communities/$communityId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1404,45 +1572,74 @@ class AuthService {
     final body = jsonEncode({
       'name': name,
       'ownerId': ownerId,
-      if (description != null) 'description': description,
-      if (icon != null) 'icon': icon,
-      if (isPrivate != null) 'isPrivate': isPrivate,
-      if (isNSFW != null) 'isNSFW': isNSFW,
-      if (rules != null) 'rules': rules,
-      if (category != null) 'category': category,
-      if (maxMembers != null) 'maxMembers': maxMembers,
+      'description': ?description,
+      'icon': ?icon,
+      'isPrivate': ?isPrivate,
+      'isNSFW': ?isNSFW,
+      'rules': ?rules,
+      'category': ?category,
+      'maxMembers': ?maxMembers,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/create'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/create'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> toggleJoinCommunity(int communityId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/join'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/join'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> createRoom(int communityId, String name, String description, int creatorId) async {
+  Future<dynamic> createRoom(
+    int communityId,
+    String name,
+    String description,
+    int creatorId,
+  ) async {
     final token = await AuthStorage.getToken();
     final body = jsonEncode({
       'name': name,
       'description': description,
       'creatorId': creatorId,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/create-room'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/create-room'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getQuestionById(int questionId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/communities/questions/$questionId'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> getQuestions(int roomId, {String sortBy = 'new', int? userId}) async {
+  Future<dynamic> getQuestions(
+    int roomId, {
+    String sortBy = 'new',
+    int? userId,
+  }) async {
     final token = await AuthStorage.getToken();
-    final query = userId != null ? '?sortBy=$sortBy&userId=$userId' : '?sortBy=$sortBy';
-    final response = await http.get(Uri.parse('$baseUrl/api/communities/rooms/$roomId/questions$query'), headers: _jsonHeaders(token: token));
+    final query = userId != null
+        ? '?sortBy=$sortBy&userId=$userId'
+        : '?sortBy=$sortBy';
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/communities/rooms/$roomId/questions$query'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1462,29 +1659,44 @@ class AuthService {
       'content': content,
       'authorId': authorId,
       'authorName': authorName,
-      if (authorAvatar != null) 'authorAvatar': authorAvatar,
-      if (pollQuestion != null) 'pollQuestion': pollQuestion,
-      if (pollOptions != null) 'pollOptions': pollOptions,
+      'authorAvatar': ?authorAvatar,
+      'pollQuestion': ?pollQuestion,
+      'pollOptions': ?pollOptions,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/rooms/$roomId/questions/create'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/rooms/$roomId/questions/create'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> upvoteQuestion(int questionId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/upvote'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/upvote'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> downvoteQuestion(int questionId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/downvote'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/downvote'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> getComments(int questionId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.get(Uri.parse('$baseUrl/api/communities/questions/$questionId/comments'), headers: _jsonHeaders(token: token));
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/comments'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1500,9 +1712,15 @@ class AuthService {
       'content': content,
       'authorId': authorId,
       'authorName': authorName,
-      if (authorAvatar != null) 'authorAvatar': authorAvatar,
+      'authorAvatar': ?authorAvatar,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/comments/create'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse(
+        '$baseUrl/api/communities/questions/$questionId/comments/create',
+      ),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
@@ -1519,106 +1737,178 @@ class AuthService {
       'content': content,
       'authorId': authorId,
       'authorName': authorName,
-      if (authorAvatar != null) 'authorAvatar': authorAvatar,
-      if (parentReplyId != null) 'parentReplyId': parentReplyId,
+      'authorAvatar': ?authorAvatar,
+      'parentReplyId': ?parentReplyId,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/comments/$commentId/replies/create'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/comments/$commentId/replies/create'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> upvoteComment(int commentId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/comments/$commentId/upvote'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/comments/$commentId/upvote'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> downvoteComment(int commentId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/comments/$commentId/downvote'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/comments/$commentId/downvote'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> approveQuestion(int questionId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/approve'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/approve'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> addModerator(int communityId, int moderatorId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/add-moderator'), headers: _jsonHeaders(token: token), body: jsonEncode({'moderatorId': moderatorId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/add-moderator'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'moderatorId': moderatorId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> removeModerator(int communityId, int moderatorId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/remove-moderator'), headers: _jsonHeaders(token: token), body: jsonEncode({'moderatorId': moderatorId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/remove-moderator'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'moderatorId': moderatorId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> updateCommunity(int communityId, Map<String, dynamic> updates) async {
+  Future<dynamic> updateCommunity(
+    int communityId,
+    Map<String, dynamic> updates,
+  ) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/update'), headers: _jsonHeaders(token: token), body: jsonEncode(updates));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/update'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode(updates),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteCommunity(int communityId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/delete'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/delete'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
-  Future<dynamic> updateQuestion(int questionId, String title, String content, {String? pollQuestion, List<String>? pollOptions}) async {
+  Future<dynamic> updateQuestion(
+    int questionId,
+    String title,
+    String content, {
+    String? pollQuestion,
+    List<String>? pollOptions,
+  }) async {
     final token = await AuthStorage.getToken();
     final body = jsonEncode({
       'title': title,
       'content': content,
-      if (pollQuestion != null) 'pollQuestion': pollQuestion,
-      if (pollOptions != null) 'pollOptions': pollOptions,
+      'pollQuestion': ?pollQuestion,
+      'pollOptions': ?pollOptions,
     });
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/update'), headers: _jsonHeaders(token: token), body: body);
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/update'),
+      headers: _jsonHeaders(token: token),
+      body: body,
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteQuestion(int questionId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$questionId/delete'), headers: _jsonHeaders(token: token));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$questionId/delete'),
+      headers: _jsonHeaders(token: token),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> updateComment(int commentId, String content) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/comments/$commentId/update'), headers: _jsonHeaders(token: token), body: jsonEncode({'content': content}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/comments/$commentId/update'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'content': content}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteComment(int commentId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/comments/$commentId/delete'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/comments/$commentId/delete'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> updateReply(int replyId, String content) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/replies/$replyId/update'), headers: _jsonHeaders(token: token), body: jsonEncode({'content': content}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/replies/$replyId/update'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'content': content}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> deleteReply(int replyId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/replies/$replyId/delete'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/replies/$replyId/delete'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> votePostPoll(int postId, int userId, int optionIndex) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/questions/$postId/vote-poll'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId, 'optionIndex': optionIndex}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/questions/$postId/vote-poll'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId, 'optionIndex': optionIndex}),
+    );
     return _tryDecodeJson(response.body);
   }
 
   Future<dynamic> joinCommunityByInviteLink(int communityId, int userId) async {
     final token = await AuthStorage.getToken();
-    final response = await http.post(Uri.parse('$baseUrl/api/communities/$communityId/join-invite'), headers: _jsonHeaders(token: token), body: jsonEncode({'userId': userId}));
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/communities/$communityId/join-invite'),
+      headers: _jsonHeaders(token: token),
+      body: jsonEncode({'userId': userId}),
+    );
     return _tryDecodeJson(response.body);
   }
 }

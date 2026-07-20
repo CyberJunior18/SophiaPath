@@ -166,7 +166,8 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+              builder: (context) =>
+                  CommunityDetailScreen(community: updatedCommunity),
             ),
           ).then((result) {
             _loadData();
@@ -180,8 +181,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
   }
 
   Future<void> _handleRulesJoinSubmit() async {
-    if (_rulesCommunity == null || !_rulesAccepted || _currentUser == null)
+    if (_rulesCommunity == null || !_rulesAccepted || _currentUser == null) {
       return;
+    }
     final userId =
         _chatSessionUser?.userId.toString() ??
         await _userService.getUserId() ??
@@ -189,7 +191,10 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
     if (userId.isEmpty) return;
 
     try {
-      final success = await _socialService.toggleJoinCommunity(_rulesCommunity!.id, userId);
+      final success = await _socialService.toggleJoinCommunity(
+        _rulesCommunity!.id,
+        userId,
+      );
       if (success) {
         final communityToEnter = _rulesCommunity!;
         setState(() {
@@ -206,7 +211,8 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+              builder: (context) =>
+                  CommunityDetailScreen(community: updatedCommunity),
             ),
           ).then((result) {
             _loadData();
@@ -681,7 +687,7 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _category,
+                    initialValue: _category,
                     decoration: InputDecoration(
                       labelText: 'Category',
                       border: OutlineInputBorder(
@@ -821,7 +827,9 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                         },
                       ),
                     ),
-                    if (_currentUser != null && (_currentUser!.isAdmin || _currentUser!.isModerator)) ...[
+                    if (_currentUser != null &&
+                        (_currentUser!.isAdmin ||
+                            _currentUser!.isModerator)) ...[
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _showCreateDialog,
@@ -1089,21 +1097,23 @@ class _CommunitiesListScreenState extends State<CommunitiesListScreen>
                                       await _userService.getUserId() ??
                                       '';
                                   if (userId.isNotEmpty) {
-                                    final success = await _socialService.toggleJoinCommunity(
-                                      comm.id,
-                                      userId,
-                                    );
+                                    final success = await _socialService
+                                        .toggleJoinCommunity(comm.id, userId);
                                     if (success) {
                                       await _loadData();
-                                      final updatedCommunity = _communities.firstWhere(
-                                        (c) => c.id == comm.id,
-                                        orElse: () => comm,
-                                      );
+                                      final updatedCommunity = _communities
+                                          .firstWhere(
+                                            (c) => c.id == comm.id,
+                                            orElse: () => comm,
+                                          );
                                       if (mounted) {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => CommunityDetailScreen(community: updatedCommunity),
+                                            builder: (context) =>
+                                                CommunityDetailScreen(
+                                                  community: updatedCommunity,
+                                                ),
                                           ),
                                         ).then((result) {
                                           _loadData();

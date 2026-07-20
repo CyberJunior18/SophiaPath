@@ -15,7 +15,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _tagController = TextEditingController(text: 'Student');
+  final TextEditingController _tagController = TextEditingController(
+    text: 'Student',
+  );
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -37,8 +39,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
-
 
   void _clearSensitiveFields() {
     _passwordController.clear();
@@ -401,7 +401,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                           // Gender Dropdown
                           DropdownButtonFormField<String>(
-                            value: _selectedGender,
+                            initialValue: _selectedGender,
                             decoration: InputDecoration(
                               labelText: 'Gender',
                               prefixIcon: const Icon(Icons.wc_outlined),
@@ -439,8 +439,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             validator: (v) =>
                                 v == null ? 'Please select a gender' : null,
                           ),
-
-
 
                           // Error Message
                           if (_errorMessage != null)

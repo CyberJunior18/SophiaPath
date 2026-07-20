@@ -5,6 +5,7 @@ import 'course_sections_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 import '../../services/course/scores_repo.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
 
 class CourseInfoScreen extends StatefulWidget {
   final CourseInfo course;
@@ -139,7 +140,14 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     }
   }
 
-  void _navigateToLessonPath() {
+  Future<void> _navigateToLessonPath() async {
+    final token = await AuthStorage.getToken();
+    if (token == null) {
+      if (!mounted) return;
+      _showLoginPrompt();
+      return;
+    }
+
     if (!_isCourseRegistered) {
       _registerCourse().then((_) {
         if (!mounted) return;
@@ -160,6 +168,41 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
         ),
       );
     }
+  }
+
+  void _showLoginPrompt() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Login Required', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Please log in or register to enroll in courses and save your progress.',
+          style: GoogleFonts.poppins(),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LoginScreen(onToggleTheme: () {}),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Log In', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -197,31 +240,46 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Center(
-                    child: widget.course.imageUrl.startsWith('http')
-                        ? Image.network(
-                            widget.course.imageUrl,
-                            height: 180,
-                            width: 180,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 180,
-                                width: 100,
-                                color: Colors.grey[200],
-                                child: Icon(
-                                  Icons.book,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
-                              );
-                            },
-                          )
-                        : Image.network(
-                            widget.course.imageUrl,
-                            height: 180,
-                            width: 100,
-                            fit: BoxFit.cover,
+                    child: Builder(
+                      builder: (context) {
+                        final assetPath = _getCourseAsset(widget.course.title);
+                        final fallback = _getCourseIcon(widget.course.title);
+                        final hasNetwork = widget.course.imageUrl.isNotEmpty;
+
+                        Widget fallbackWidget = Container(
+                          height: 220,
+                          width: 220,
+                          color: theme.primaryColor.withValues(alpha: 0.1),
+                          child: Center(
+                            child: Icon(
+                              fallback,
+                              size: 120,
+                              color: theme.primaryColor,
+                            ),
                           ),
+                        );
+
+                        if (assetPath != null) {
+                          return Image.asset(
+                            assetPath,
+                            height: 220,
+                            width: 220,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => fallbackWidget,
+                          );
+                        } else if (hasNetwork) {
+                          return Image.network(
+                            widget.course.imageUrl,
+                            height: 220,
+                            width: 220,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => fallbackWidget,
+                          );
+                        } else {
+                          return fallbackWidget;
+                        }
+                      },
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -242,28 +300,6 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatItem(
-                        icon: Icons.menu_book,
-                        label: 'Sections',
-                        value: sectionsInfo.length.toString(),
-                      ),
-                      _buildStatItem(
-                        icon: Icons.schedule,
-                        label: 'Duration',
-                        value: '${sectionsInfo.length * 30} min',
-                      ),
-                      _buildStatItem(
-                        icon: Icons.people,
-                        label: 'Level',
-                        value: 'Beginner',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
                   Text(
                     "Course Sections",
                     style: GoogleFonts.poppins(
@@ -277,44 +313,61 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
                     ...sectionsInfo.map(
                       (section) => Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 18,
-                              color: _isCourseRegistered
-                                  ? theme.primaryColor
-                                  : Colors.grey,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.dividerColor.withValues(alpha: 0.5),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
+                          ),
+                          child: Row(
+                            children: [
+                              Builder(
+                                builder: (context) {
+                                  final iconPath = _getSectionIconPath(
                                     section.title,
-                                    style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600,
-                                      color: theme.textTheme.bodyLarge?.color,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    section.description,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      color:
-                                          (theme.textTheme.bodyLarge?.color ??
-                                                  theme.colorScheme.onSurface)
-                                              .withValues(alpha: 0.6),
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                                  );
+                                  if (iconPath != null) {
+                                    return Image.asset(
+                                      iconPath,
+                                      height: 32,
+                                      width: 32,
+                                      fit: BoxFit.contain,
+                                    );
+                                  }
+                                  return Icon(
+                                    Icons.folder_outlined,
+                                    size: 32,
+                                    color: theme.primaryColor,
+                                  );
+                                },
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  section.title,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                    color: theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${section.contents.length} Lessons',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  color:
+                                      (theme.textTheme.bodyLarge?.color ??
+                                              theme.colorScheme.onSurface)
+                                          .withValues(alpha: 0.6),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     )
@@ -402,25 +455,66 @@ class _CourseInfoScreenState extends State<CourseInfoScreen> {
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Icon(icon, size: 30, color: theme.primaryColor),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
-        ),
-      ],
-    );
+  IconData _getCourseIcon(String courseTitle) {
+    switch (courseTitle.toLowerCase()) {
+      case 'cybersecurity':
+        return Icons.security;
+      case 'mobile app development':
+        return Icons.phone_android;
+      case 'physics':
+        return Icons.science;
+      case 'philosophy':
+        return Icons.psychology;
+      case 'artificial intelligence':
+        return Icons.smart_toy;
+      case 'web development':
+        return Icons.code;
+      case 'data science':
+        return Icons.analytics;
+      case 'digital marketing':
+        return Icons.trending_up;
+      case 'graphic design':
+        return Icons.palette;
+      default:
+        return Icons.school;
+    }
+  }
+
+  String? _getCourseAsset(String courseTitle) {
+    final normalized = courseTitle.toLowerCase().replaceAll(' ', '');
+    if (normalized.contains('cybersecurity')) {
+      return 'assets/courses/cybersecurity.png';
+    } else if (normalized.contains('computerscience')) {
+      return 'assets/courses/computerScience.png';
+    } else if (normalized.contains('philosophy')) {
+      return 'assets/courses/philosophy.png';
+    }
+    return null;
+  }
+
+  String? _getSectionIconPath(String title) {
+    final lowerTitle = title.trim().toLowerCase();
+
+    if (lowerTitle.contains('common vulnerabilities')) {
+      return 'assets/sections/commonVulnerabilities.png';
+    } else if (lowerTitle.contains('c++')) {
+      return 'assets/sections/cpp.png';
+    } else if (lowerTitle.contains('cryptography')) {
+      return 'assets/sections/cryptography.png';
+    } else if (lowerTitle.contains('data structures') ||
+        lowerTitle.contains('datastructures')) {
+      return 'assets/sections/datast.png';
+    } else if (lowerTitle.contains('intro') &&
+        lowerTitle.contains('cybersecurity')) {
+      return 'assets/sections/IntroToCybersecurity.png';
+    } else if (lowerTitle.contains('intro') &&
+        lowerTitle.contains('philosophy')) {
+      return 'assets/sections/IntroToPhilosophy.png';
+    } else if (lowerTitle.contains('oop') ||
+        lowerTitle.contains('object oriented programming')) {
+      return 'assets/sections/oop.png';
+    }
+
+    return null;
   }
 }

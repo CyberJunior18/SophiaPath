@@ -14,7 +14,11 @@ import '../../widgets/profileImage.dart';
 class RoomQuestionsScreen extends StatefulWidget {
   final Community community;
   final Room room;
-  const RoomQuestionsScreen({super.key, required this.community, required this.room});
+  const RoomQuestionsScreen({
+    super.key,
+    required this.community,
+    required this.room,
+  });
 
   @override
   State<RoomQuestionsScreen> createState() => _RoomQuestionsScreenState();
@@ -27,7 +31,7 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
   String? _currentUserId;
   String _currentUsername = 'User';
   String _currentUserAvatar = '';
-  List<StreamSubscription> _socketSubscriptions = [];
+  final List<StreamSubscription> _socketSubscriptions = [];
 
   @override
   void initState() {
@@ -44,7 +48,9 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
     } catch (_) {
       final localUser = await UserPreferencesService.instance.getUser();
       if (localUser != null) {
-        _currentUsername = localUser.fullName.isNotEmpty ? localUser.fullName : localUser.username;
+        _currentUsername = localUser.fullName.isNotEmpty
+            ? localUser.fullName
+            : localUser.username;
         _currentUserAvatar = localUser.profileImage;
       }
       _currentUserId = await UserPreferencesService.instance.getUserId();
@@ -61,54 +67,65 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
       socketService.joinRoom(roomIdInt);
     }
 
-    _socketSubscriptions.add(socketService.onQuestionCreated.listen((data) {
-      if (data['roomId'].toString() == widget.room.id) {
-        final question = _parseQuestionFromSocket(data);
-        setState(() {
-          final idx = _questions.indexWhere((q) => q.id == question.id);
-          if (idx == -1) {
-            _questions.insert(0, question);
-          }
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionCreated.listen((data) {
+        if (data['roomId'].toString() == widget.room.id) {
+          final question = _parseQuestionFromSocket(data);
+          setState(() {
+            final idx = _questions.indexWhere((q) => q.id == question.id);
+            if (idx == -1) {
+              _questions.insert(0, question);
+            }
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onQuestionVoted.listen((data) {
-      if (data['roomId'].toString() == widget.room.id) {
-        final question = _parseQuestionFromSocket(data);
-        setState(() {
-          final idx = _questions.indexWhere((q) => q.id == question.id);
-          if (idx != -1) {
-            _questions[idx] = question;
-          }
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionVoted.listen((data) {
+        if (data['roomId'].toString() == widget.room.id) {
+          final question = _parseQuestionFromSocket(data);
+          setState(() {
+            final idx = _questions.indexWhere((q) => q.id == question.id);
+            if (idx != -1) {
+              _questions[idx] = question;
+            }
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onQuestionUpdated.listen((data) {
-      if (data['roomId'].toString() == widget.room.id) {
-        final question = _parseQuestionFromSocket(data);
-        setState(() {
-          final idx = _questions.indexWhere((q) => q.id == question.id);
-          if (idx != -1) {
-            _questions[idx] = question;
-          }
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionUpdated.listen((data) {
+        if (data['roomId'].toString() == widget.room.id) {
+          final question = _parseQuestionFromSocket(data);
+          setState(() {
+            final idx = _questions.indexWhere((q) => q.id == question.id);
+            if (idx != -1) {
+              _questions[idx] = question;
+            }
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onQuestionDeleted.listen((data) {
-      final qId = data['id'].toString();
-      setState(() {
-        _questions.removeWhere((q) => q.id == qId);
-      });
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionDeleted.listen((data) {
+        final qId = data['id'].toString();
+        setState(() {
+          _questions.removeWhere((q) => q.id == qId);
+        });
+      }),
+    );
   }
 
   Future<void> _loadQuestions() async {
     setState(() => _isLoading = true);
     try {
-      final questions = await _socialService.getQuestions(widget.room.id, _currentUserId ?? "1");
+      final questions = await _socialService.getQuestions(
+        widget.room.id,
+        _currentUserId ?? "1",
+      );
       if (mounted) {
         setState(() {
           _questions = questions;
@@ -131,7 +148,11 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => QuestionDetailScreen(community: widget.community, room: widget.room, question: question),
+              builder: (context) => QuestionDetailScreen(
+                community: widget.community,
+                room: widget.room,
+                question: question,
+              ),
             ),
           ).then((_) => _loadQuestions());
         },
@@ -156,7 +177,10 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.poppins(
                   fontSize: 14,
-                  color: (theme.textTheme.bodyMedium?.color ?? theme.colorScheme.onSurface).withValues(alpha: 0.8),
+                  color:
+                      (theme.textTheme.bodyMedium?.color ??
+                              theme.colorScheme.onSurface)
+                          .withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 16),
@@ -176,15 +200,35 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Icon(Icons.thumb_up_alt_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.thumb_up_alt_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${question.upvotes}', style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${question.upvotes}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(width: 16),
-                  Icon(Icons.comment_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.comment_outlined,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 4),
-                  Text('${question.commentsCount}', style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${question.commentsCount}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -208,10 +252,14 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
     final map = Map<String, dynamic>.from(data);
     final userIdVal = int.tryParse(_currentUserId ?? '');
     final userIdStr = _currentUserId;
-    map['userUpvoted'] = map['upvotedUsers'] is List &&
-        ((map['upvotedUsers'] as List).contains(userIdVal) || (map['upvotedUsers'] as List).contains(userIdStr));
-    map['userDownvoted'] = map['downvotedUsers'] is List &&
-        ((map['downvotedUsers'] as List).contains(userIdVal) || (map['downvotedUsers'] as List).contains(userIdStr));
+    map['userUpvoted'] =
+        map['upvotedUsers'] is List &&
+        ((map['upvotedUsers'] as List).contains(userIdVal) ||
+            (map['upvotedUsers'] as List).contains(userIdStr));
+    map['userDownvoted'] =
+        map['downvotedUsers'] is List &&
+        ((map['downvotedUsers'] as List).contains(userIdVal) ||
+            (map['downvotedUsers'] as List).contains(userIdStr));
     return Question.fromMap(map);
   }
 
@@ -231,11 +279,17 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
           children: [
             Text(
               '# ${widget.room.name}',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18),
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             Text(
               widget.community.name,
-              style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -243,22 +297,25 @@ class _RoomQuestionsScreenState extends State<RoomQuestionsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _questions.isEmpty
-              ? Center(
-                  child: Text(
-                    'No posts in this room yet.',
-                    style: GoogleFonts.poppins(color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: _questions.length,
-                  itemBuilder: (context, index) => _buildQuestionCard(_questions[index]),
-                ),
+          ? Center(
+              child: Text(
+                'No posts in this room yet.',
+                style: GoogleFonts.poppins(color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: _questions.length,
+              itemBuilder: (context, index) =>
+                  _buildQuestionCard(_questions[index]),
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           if (_currentUserId == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('User details not loaded. Please try again.')),
+              const SnackBar(
+                content: Text('User details not loaded. Please try again.'),
+              ),
             );
             return;
           }

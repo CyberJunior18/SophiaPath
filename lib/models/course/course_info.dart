@@ -115,6 +115,15 @@ class CourseInfo {
       map['total_lessons'] ?? map['totalLessons'],
     );
 
+    String rawImageUrl = (map['image_url'] ?? map['imageUrl'] ?? '').toString();
+    if (rawImageUrl.contains('dropbox.com')) {
+      if (rawImageUrl.contains('dl=0')) {
+        rawImageUrl = rawImageUrl.replaceAll('dl=0', 'raw=1');
+      } else if (!rawImageUrl.contains('raw=1')) {
+        rawImageUrl += '${rawImageUrl.contains('?') ? '&' : '?'}raw=1';
+      }
+    }
+
     return CourseInfo(
       id: asInt(map['id']),
       title: map['title']?.toString() ?? '',
@@ -128,7 +137,7 @@ class CourseInfo {
                 ? parsedLessons.length
                 : parsedSections.length),
       about: map['about']?.toString() ?? '',
-      imageUrl: (map['image_url'] ?? map['imageUrl'] ?? '').toString(),
+      imageUrl: rawImageUrl,
       sections: parsedSections,
       lessons: parsedLessons,
     );

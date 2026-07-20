@@ -29,23 +29,125 @@ class SettingsProvider extends ChangeNotifier {
   static const String _emailUpdatesKey = 'settings_email_updates';
 
   static final Map<String, ThemePresetData> presets = {
-    'light': const ThemePresetData(bg: 0xFFFCFDFF, card: 0xFFFFFFFF, text: 0xFF2D2D4D, primary: 0xFF3D5CFF, isDark: false),
-    'dark': const ThemePresetData(bg: 0xFF161632, card: 0xFF1F1F39, text: 0xFFFFFFFF, primary: 0xFF3D5CFF, isDark: true),
-    'sepia': const ThemePresetData(bg: 0xFFFDF6E3, card: 0xFFF5EEDC, text: 0xFF5C3E21, primary: 0xFF856404, isDark: false),
-    'lava': const ThemePresetData(bg: 0xFF1C0A0A, card: 0xFF2C1414, text: 0xFFFFC83B, primary: 0xFFFF4500, isDark: true),
-    'ocean': const ThemePresetData(bg: 0xFF0F3057, card: 0xFF143F6B, text: 0xFFE0F7FA, primary: 0xFF00BCD4, isDark: true),
-    'forest': const ThemePresetData(bg: 0xFF0C2617, card: 0xFF133B24, text: 0xFFE2F3EB, primary: 0xFF10B981, isDark: true),
-    'amber': const ThemePresetData(bg: 0xFF002B36, card: 0xFF073642, text: 0xFFFDF6E3, primary: 0xFFB58900, isDark: true),
-    'dracula': const ThemePresetData(bg: 0xFF1E1F29, card: 0xFF282A36, text: 0xFFF8F8F2, primary: 0xFFFF79C6, isDark: true),
-    'amethyst': const ThemePresetData(bg: 0xFF29153A, card: 0xFF3A1F52, text: 0xFFFAE8FF, primary: 0xFFD4AF37, isDark: true),
-    'nordic': const ThemePresetData(bg: 0xFF3B4252, card: 0xFF434C5E, text: 0xFFECEFF4, primary: 0xFF88C0D0, isDark: true),
-    'mint': const ThemePresetData(bg: 0xFFF4FEF9, card: 0xFFE6FAF0, text: 0xFF0F3D2A, primary: 0xFF00A86B, isDark: false),
-    'lavender': const ThemePresetData(bg: 0xFFFDFAFF, card: 0xFFF5EEFF, text: 0xFF2E1065, primary: 0xFF7C3AED, isDark: false),
-    'peach': const ThemePresetData(bg: 0xFFFFFEFC, card: 0xFFFFF6ED, text: 0xFF431407, primary: 0xFFEA580C, isDark: false),
-    'rose': const ThemePresetData(bg: 0xFFFFFAFB, card: 0xFFFFF0F5, text: 0xFF500724, primary: 0xFFDB2777, isDark: false),
-    'clay': const ThemePresetData(bg: 0xFFFAFAFA, card: 0xFFF3F4F6, text: 0xFF111827, primary: 0xFF4B5563, isDark: false),
-    'kitty': const ThemePresetData(bg: 0xFFFFEBF0, card: 0xFFFFF2F5, text: 0xFF4A1525, primary: 0xFFFF6B8B, isDark: false),
-    'midnight': const ThemePresetData(bg: 0xFF101726, card: 0xFF1E293B, text: 0xFFFFFFFF, primary: 0xFFFBC02D, isDark: true),
+    'light': const ThemePresetData(
+      bg: 0xFFFCFDFF,
+      card: 0xFFFFFFFF,
+      text: 0xFF2D2D4D,
+      primary: 0xFF3D5CFF,
+      isDark: false,
+    ),
+    'dark': const ThemePresetData(
+      bg: 0xFF161632,
+      card: 0xFF1F1F39,
+      text: 0xFFFFFFFF,
+      primary: 0xFF3D5CFF,
+      isDark: true,
+    ),
+    'sepia': const ThemePresetData(
+      bg: 0xFFFDF6E3,
+      card: 0xFFF5EEDC,
+      text: 0xFF5C3E21,
+      primary: 0xFF856404,
+      isDark: false,
+    ),
+    'lava': const ThemePresetData(
+      bg: 0xFF1C0A0A,
+      card: 0xFF2C1414,
+      text: 0xFFFFC83B,
+      primary: 0xFFFF4500,
+      isDark: true,
+    ),
+    'ocean': const ThemePresetData(
+      bg: 0xFF0F3057,
+      card: 0xFF143F6B,
+      text: 0xFFE0F7FA,
+      primary: 0xFF00BCD4,
+      isDark: true,
+    ),
+    'forest': const ThemePresetData(
+      bg: 0xFF0C2617,
+      card: 0xFF133B24,
+      text: 0xFFE2F3EB,
+      primary: 0xFF10B981,
+      isDark: true,
+    ),
+    'amber': const ThemePresetData(
+      bg: 0xFF002B36,
+      card: 0xFF073642,
+      text: 0xFFFDF6E3,
+      primary: 0xFFB58900,
+      isDark: true,
+    ),
+    'dracula': const ThemePresetData(
+      bg: 0xFF1E1F29,
+      card: 0xFF282A36,
+      text: 0xFFF8F8F2,
+      primary: 0xFFFF79C6,
+      isDark: true,
+    ),
+    'amethyst': const ThemePresetData(
+      bg: 0xFF29153A,
+      card: 0xFF3A1F52,
+      text: 0xFFFAE8FF,
+      primary: 0xFFD4AF37,
+      isDark: true,
+    ),
+    'nordic': const ThemePresetData(
+      bg: 0xFF3B4252,
+      card: 0xFF434C5E,
+      text: 0xFFECEFF4,
+      primary: 0xFF88C0D0,
+      isDark: true,
+    ),
+    'mint': const ThemePresetData(
+      bg: 0xFFF4FEF9,
+      card: 0xFFE6FAF0,
+      text: 0xFF0F3D2A,
+      primary: 0xFF00A86B,
+      isDark: false,
+    ),
+    'lavender': const ThemePresetData(
+      bg: 0xFFFDFAFF,
+      card: 0xFFF5EEFF,
+      text: 0xFF2E1065,
+      primary: 0xFF7C3AED,
+      isDark: false,
+    ),
+    'peach': const ThemePresetData(
+      bg: 0xFFFFFEFC,
+      card: 0xFFFFF6ED,
+      text: 0xFF431407,
+      primary: 0xFFEA580C,
+      isDark: false,
+    ),
+    'rose': const ThemePresetData(
+      bg: 0xFFFFFAFB,
+      card: 0xFFFFF0F5,
+      text: 0xFF500724,
+      primary: 0xFFDB2777,
+      isDark: false,
+    ),
+    'clay': const ThemePresetData(
+      bg: 0xFFFAFAFA,
+      card: 0xFFF3F4F6,
+      text: 0xFF111827,
+      primary: 0xFF4B5563,
+      isDark: false,
+    ),
+    'kitty': const ThemePresetData(
+      bg: 0xFFFFEBF0,
+      card: 0xFFFFF2F5,
+      text: 0xFF4A1525,
+      primary: 0xFFFF6B8B,
+      isDark: false,
+    ),
+    'midnight': const ThemePresetData(
+      bg: 0xFF101726,
+      card: 0xFF1E293B,
+      text: 0xFFFFFFFF,
+      primary: 0xFFFBC02D,
+      isDark: true,
+    ),
   };
 
   static final Map<String, String> defaultCustomColors = {
@@ -60,7 +162,7 @@ class SettingsProvider extends ChangeNotifier {
   };
 
   String _themePreset = 'light';
-  Map<String, String> _customColors = Map.from(defaultCustomColors);
+  final Map<String, String> _customColors = Map.from(defaultCustomColors);
   bool _logoGradient = false;
   String _fontPreference = 'default';
   bool _globalBg = false;
@@ -83,9 +185,10 @@ class SettingsProvider extends ChangeNotifier {
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Check legacy theme preference first to preserve user preference
-    if (prefs.containsKey('theme_preference') && !prefs.containsKey(_themePresetKey)) {
+    if (prefs.containsKey('theme_preference') &&
+        !prefs.containsKey(_themePresetKey)) {
       final isDark = prefs.getBool('theme_preference') ?? false;
       _themePreset = isDark ? 'dark' : 'light';
     } else {
@@ -108,7 +211,7 @@ class SettingsProvider extends ChangeNotifier {
     _bgStyle = prefs.getString(_bgStyleKey) ?? 'constellation';
     _notifications = prefs.getBool(_notificationsKey) ?? true;
     _emailUpdates = prefs.getBool(_emailUpdatesKey) ?? false;
-    
+
     notifyListeners();
   }
 
@@ -119,7 +222,15 @@ class SettingsProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themePresetKey, preset);
     // Keep legacy value synchronized so other screens query correctly if needed
-    if (preset == 'dark' || preset == 'lava' || preset == 'ocean' || preset == 'forest' || preset == 'amber' || preset == 'dracula' || preset == 'amethyst' || preset == 'nordic' || preset == 'midnight') {
+    if (preset == 'dark' ||
+        preset == 'lava' ||
+        preset == 'ocean' ||
+        preset == 'forest' ||
+        preset == 'amber' ||
+        preset == 'dracula' ||
+        preset == 'amethyst' ||
+        preset == 'nordic' ||
+        preset == 'midnight') {
       await prefs.setBool('theme_preference', true);
     } else {
       await prefs.setBool('theme_preference', false);
@@ -199,13 +310,35 @@ class SettingsProvider extends ChangeNotifier {
     final Color dividerColor;
 
     if (_themePreset == 'custom') {
-      isDark = ThemeData.estimateBrightnessForColor(parseColor(_customColors['bgDefault'] ?? '#FFFFFF', Colors.white)) == Brightness.dark;
-      primaryColor = parseColor(_customColors['primaryMain'] ?? '#3D5CFF', const Color(0xFF3D5CFF));
-      scaffoldBgColor = parseColor(_customColors['bgDefault'] ?? '#FFFFFF', Colors.white);
-      cardBgColor = parseColor(_customColors['bgPaper'] ?? '#F7F9FC', const Color(0xFFF7F9FC));
-      textColor = parseColor(_customColors['textPrimary'] ?? '#1F1F39', const Color(0xFF1F1F39));
-      secondaryColor = parseColor(_customColors['bgPaperAlt'] ?? '#E6F2FF', const Color(0xFFE6F2FF));
-      dividerColor = parseColor(_customColors['divider'] ?? '#E5E7EB', const Color(0xFFE5E7EB));
+      isDark =
+          ThemeData.estimateBrightnessForColor(
+            parseColor(_customColors['bgDefault'] ?? '#FFFFFF', Colors.white),
+          ) ==
+          Brightness.dark;
+      primaryColor = parseColor(
+        _customColors['primaryMain'] ?? '#3D5CFF',
+        const Color(0xFF3D5CFF),
+      );
+      scaffoldBgColor = parseColor(
+        _customColors['bgDefault'] ?? '#FFFFFF',
+        Colors.white,
+      );
+      cardBgColor = parseColor(
+        _customColors['bgPaper'] ?? '#F7F9FC',
+        const Color(0xFFF7F9FC),
+      );
+      textColor = parseColor(
+        _customColors['textPrimary'] ?? '#1F1F39',
+        const Color(0xFF1F1F39),
+      );
+      secondaryColor = parseColor(
+        _customColors['bgPaperAlt'] ?? '#E6F2FF',
+        const Color(0xFFE6F2FF),
+      );
+      dividerColor = parseColor(
+        _customColors['divider'] ?? '#E5E7EB',
+        const Color(0xFFE5E7EB),
+      );
     } else if (preset != null) {
       isDark = preset.isDark;
       primaryColor = Color(preset.primary);
@@ -213,7 +346,9 @@ class SettingsProvider extends ChangeNotifier {
       cardBgColor = Color(preset.card);
       textColor = Color(preset.text);
       secondaryColor = primaryColor.withValues(alpha: 0.12);
-      dividerColor = isDark ? textColor.withValues(alpha: 0.12) : const Color(0xFFE5E7EB);
+      dividerColor = isDark
+          ? textColor.withValues(alpha: 0.12)
+          : const Color(0xFFE5E7EB);
     } else {
       isDark = false;
       primaryColor = const Color(0xFF3D5CFF);
@@ -239,7 +374,9 @@ class SettingsProvider extends ChangeNotifier {
             onSurface: textColor,
           );
 
-    TextTheme baseTextTheme = isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme;
+    TextTheme baseTextTheme = isDark
+        ? ThemeData.dark().textTheme
+        : ThemeData.light().textTheme;
     TextTheme styledTextTheme;
     switch (_fontPreference) {
       case 'sans':
@@ -262,10 +399,20 @@ class SettingsProvider extends ChangeNotifier {
 
     styledTextTheme = styledTextTheme.copyWith(
       bodyLarge: styledTextTheme.bodyLarge?.copyWith(color: textColor),
-      bodyMedium: styledTextTheme.bodyMedium?.copyWith(color: textColor.withValues(alpha: 0.85)),
-      bodySmall: styledTextTheme.bodySmall?.copyWith(color: textColor.withValues(alpha: 0.65)),
-      titleLarge: styledTextTheme.titleLarge?.copyWith(color: textColor, fontWeight: FontWeight.bold),
-      titleMedium: styledTextTheme.titleMedium?.copyWith(color: textColor, fontWeight: FontWeight.w600),
+      bodyMedium: styledTextTheme.bodyMedium?.copyWith(
+        color: textColor.withValues(alpha: 0.85),
+      ),
+      bodySmall: styledTextTheme.bodySmall?.copyWith(
+        color: textColor.withValues(alpha: 0.65),
+      ),
+      titleLarge: styledTextTheme.titleLarge?.copyWith(
+        color: textColor,
+        fontWeight: FontWeight.bold,
+      ),
+      titleMedium: styledTextTheme.titleMedium?.copyWith(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
       titleSmall: styledTextTheme.titleSmall?.copyWith(color: textColor),
     );
 
@@ -277,7 +424,6 @@ class SettingsProvider extends ChangeNotifier {
       colorScheme: colorScheme,
       primaryColor: primaryColor,
       dividerColor: dividerColor,
-      dialogBackgroundColor: cardBgColor,
       appBarTheme: AppBarTheme(
         backgroundColor: primaryColor,
         elevation: 0,
@@ -291,6 +437,7 @@ class SettingsProvider extends ChangeNotifier {
       drawerTheme: DrawerThemeData(backgroundColor: scaffoldBgColor),
       textTheme: styledTextTheme,
       iconTheme: IconThemeData(color: textColor),
+      dialogTheme: DialogThemeData(backgroundColor: cardBgColor),
     );
   }
 }

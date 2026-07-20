@@ -1,7 +1,7 @@
 name: sophia_path
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.2.0 # version 0.1.0 : initial version , 0.2.0 : created basic chat interface and implemented chat functionality
+version: 1.0.0 # version 0.1.0 : initial version , 0.2.0 : created basic chat interface and implemented chat functionality
 
 environment:
   sdk: ^3.10.4
@@ -32,4 +32,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/sp-logo.png
-
+    - assets/courses/
+    - assets/sections/

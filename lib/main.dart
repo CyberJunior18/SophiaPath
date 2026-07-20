@@ -124,15 +124,6 @@ class _MyAppState extends State<MyApp> {
       return const SplashScreen();
     }
 
-    // For new users or first launch
-    if (_isFirstLaunch || !_hasUser) {
-      return RegisterScreen(onToggleTheme: toggleTheme);
-    }
-
-    if (!_hasToken) {
-      return LoginScreen(onToggleTheme: toggleTheme);
-    }
-
     return NavigationScreen(onToggleTheme: toggleTheme);
   }
 }

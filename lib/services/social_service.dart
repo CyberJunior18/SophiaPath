@@ -38,7 +38,7 @@ class SocialService {
       final url = Uri.parse('${AuthService.baseUrl}/api/groups/user/$userId');
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return [];
-      
+
       final data = _decodeBody(response.body);
       if (data is List) {
         return data.map((g) => Group.fromMap(g)).toList();
@@ -51,7 +51,9 @@ class SocialService {
 
   Future<Group?> getGroupById(String groupId, {String? userId}) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId${userId != null ? '?userId=$userId' : ''}');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId${userId != null ? '?userId=$userId' : ''}',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return null;
 
@@ -97,19 +99,26 @@ class SocialService {
     }
   }
 
-  Future<List<GroupMessage>> getGroupMessages(String groupId, {String? userId}) async {
+  Future<List<GroupMessage>> getGroupMessages(
+    String groupId, {
+    String? userId,
+  }) async {
     // the web app returns the full group with messages array in getGroupById
     final group = await getGroupById(groupId, userId: userId);
     if (group != null) {
-      // This is a workaround since getGroupById returns messages usually in the map, but our Group model doesn't store them 
+      // This is a workaround since getGroupById returns messages usually in the map, but our Group model doesn't store them
       // directly. Let's make another call or just parse the messages from the getGroupById response directly here.
       try {
-        final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId${userId != null ? '?userId=$userId' : ''}');
+        final url = Uri.parse(
+          '${AuthService.baseUrl}/api/groups/$groupId${userId != null ? '?userId=$userId' : ''}',
+        );
         final response = await http.get(url, headers: await _getHeaders());
         if (response.statusCode == 200) {
           final data = _decodeBody(response.body);
           if (data is Map<String, dynamic> && data['messages'] is List) {
-            return (data['messages'] as List).map((m) => GroupMessage.fromMap(m)).toList();
+            return (data['messages'] as List)
+                .map((m) => GroupMessage.fromMap(m))
+                .toList();
           }
         }
       } catch (e) {
@@ -133,7 +142,9 @@ class SocialService {
     List<String>? pollOptions,
   }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/send-message');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/send-message',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -142,12 +153,12 @@ class SocialService {
           'senderName': senderName,
           'senderAvatar': senderAvatar,
           'text': text,
-          if (replyToId != null) 'replyToId': replyToId,
-          if (replyToMessage != null) 'replyToMessage': replyToMessage,
-          if (replyToUsername != null) 'replyToUsername': replyToUsername,
-          if (forwarded != null) 'forwarded': forwarded,
-          if (pollQuestion != null) 'pollQuestion': pollQuestion,
-          if (pollOptions != null) 'pollOptions': pollOptions,
+          'replyToId': ?replyToId,
+          'replyToMessage': ?replyToMessage,
+          'replyToUsername': ?replyToUsername,
+          'forwarded': ?forwarded,
+          'pollQuestion': ?pollQuestion,
+          'pollOptions': ?pollOptions,
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -164,7 +175,9 @@ class SocialService {
 
   Future<bool> pinGroupMessage(String messageId, bool pinned) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/messages/$messageId/pin');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/messages/$messageId/pin',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -178,7 +191,9 @@ class SocialService {
 
   Future<bool> deleteGroupMessage(String messageId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/messages/$messageId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/messages/$messageId',
+      );
       final response = await http.delete(
         url,
         headers: await _getHeaders(),
@@ -192,7 +207,9 @@ class SocialService {
 
   Future<Group?> makeGroupAdmin(String groupId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/admins/add');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/admins/add',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -212,7 +229,9 @@ class SocialService {
 
   Future<Group?> removeGroupAdmin(String groupId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/admins/remove');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/admins/remove',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -232,7 +251,9 @@ class SocialService {
 
   Future<Group?> removeGroupMember(String groupId, String memberId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/members/$memberId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/members/$memberId',
+      );
       final response = await http.delete(url, headers: await _getHeaders());
       if (response.statusCode == 200) {
         final data = _decodeBody(response.body);
@@ -250,14 +271,18 @@ class SocialService {
 
   Future<List<Community>> getCommunities(String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities?userId=$userId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities?userId=$userId',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return [];
-      
+
       final data = _decodeBody(response.body);
       if (data is List) {
         return data.map((c) {
-          final isJoined = c['members'] is List && (c['members'] as List).any((m) => m['id'].toString() == userId);
+          final isJoined =
+              c['members'] is List &&
+              (c['members'] as List).any((m) => m['id'].toString() == userId);
           final map = Map<String, dynamic>.from(c);
           map['isJoined'] = isJoined;
           return Community.fromMap(map);
@@ -271,13 +296,17 @@ class SocialService {
 
   Future<Community?> getCommunityById(String communityId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return null;
 
       final data = _decodeBody(response.body);
       if (data is Map<String, dynamic>) {
-        final isJoined = data['members'] is List && (data['members'] as List).any((m) => m['id'].toString() == userId);
+        final isJoined =
+            data['members'] is List &&
+            (data['members'] as List).any((m) => m['id'].toString() == userId);
         final map = Map<String, dynamic>.from(data);
         map['isJoined'] = isJoined;
         return Community.fromMap(map);
@@ -290,12 +319,14 @@ class SocialService {
 
   Future<List<Room>> getCommunityRooms(String communityId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode == 200) {
         final data = _decodeBody(response.body);
         if (data is Map<String, dynamic> && data['rooms'] is List) {
-           return (data['rooms'] as List).map((r) => Room.fromMap(r)).toList();
+          return (data['rooms'] as List).map((r) => Room.fromMap(r)).toList();
         }
       }
       return [];
@@ -306,7 +337,9 @@ class SocialService {
 
   Future<bool> toggleJoinCommunity(String communityId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/join');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/join',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -352,18 +385,32 @@ class SocialService {
 
   // --- QUESTIONS & COMMENTS ---
 
-  Future<List<Question>> getQuestions(String roomId, String userId, {String sortBy = 'hot'}) async {
+  Future<List<Question>> getQuestions(
+    String roomId,
+    String userId, {
+    String sortBy = 'hot',
+  }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/rooms/$roomId/questions?sortBy=$sortBy&userId=$userId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/rooms/$roomId/questions?sortBy=$sortBy&userId=$userId',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return [];
-      
+
       final data = _decodeBody(response.body);
       if (data is List) {
         return data.map((q) {
           final map = Map<String, dynamic>.from(q);
-          map['userUpvoted'] = map['upvotedUsers'] is List && (map['upvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-          map['userDownvoted'] = map['downvotedUsers'] is List && (map['downvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
+          map['userUpvoted'] =
+              map['upvotedUsers'] is List &&
+              (map['upvotedUsers'] as List).contains(
+                int.tryParse(userId) ?? userId,
+              );
+          map['userDownvoted'] =
+              map['downvotedUsers'] is List &&
+              (map['downvotedUsers'] as List).contains(
+                int.tryParse(userId) ?? userId,
+              );
           return Question.fromMap(map);
         }).toList();
       }
@@ -375,15 +422,25 @@ class SocialService {
 
   Future<Question?> getQuestionById(String questionId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return null;
 
       final data = _decodeBody(response.body);
       if (data is Map<String, dynamic>) {
         final map = Map<String, dynamic>.from(data);
-        map['userUpvoted'] = map['upvotedUsers'] is List && (map['upvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-        map['userDownvoted'] = map['downvotedUsers'] is List && (map['downvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
+        map['userUpvoted'] =
+            map['upvotedUsers'] is List &&
+            (map['upvotedUsers'] as List).contains(
+              int.tryParse(userId) ?? userId,
+            );
+        map['userDownvoted'] =
+            map['downvotedUsers'] is List &&
+            (map['downvotedUsers'] as List).contains(
+              int.tryParse(userId) ?? userId,
+            );
         return Question.fromMap(map);
       }
       return null;
@@ -394,7 +451,9 @@ class SocialService {
 
   Future<List<Comment>> getComments(String questionId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/comments');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/comments',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode != 200) return [];
 
@@ -402,16 +461,32 @@ class SocialService {
       if (data is List) {
         return data.map((c) {
           final map = Map<String, dynamic>.from(c);
-          map['userUpvoted'] = map['upvotedUsers'] is List && (map['upvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-          map['userDownvoted'] = map['downvotedUsers'] is List && (map['downvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-          
+          map['userUpvoted'] =
+              map['upvotedUsers'] is List &&
+              (map['upvotedUsers'] as List).contains(
+                int.tryParse(userId) ?? userId,
+              );
+          map['userDownvoted'] =
+              map['downvotedUsers'] is List &&
+              (map['downvotedUsers'] as List).contains(
+                int.tryParse(userId) ?? userId,
+              );
+
           if (map['replies'] is List) {
-             map['replies'] = (map['replies'] as List).map((r) {
-                final rMap = Map<String, dynamic>.from(r);
-                rMap['userUpvoted'] = rMap['upvotedUsers'] is List && (rMap['upvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-                rMap['userDownvoted'] = rMap['downvotedUsers'] is List && (rMap['downvotedUsers'] as List).contains(int.tryParse(userId) ?? userId);
-                return rMap;
-             }).toList();
+            map['replies'] = (map['replies'] as List).map((r) {
+              final rMap = Map<String, dynamic>.from(r);
+              rMap['userUpvoted'] =
+                  rMap['upvotedUsers'] is List &&
+                  (rMap['upvotedUsers'] as List).contains(
+                    int.tryParse(userId) ?? userId,
+                  );
+              rMap['userDownvoted'] =
+                  rMap['downvotedUsers'] is List &&
+                  (rMap['downvotedUsers'] as List).contains(
+                    int.tryParse(userId) ?? userId,
+                  );
+              return rMap;
+            }).toList();
           }
 
           return Comment.fromMap(map);
@@ -434,7 +509,9 @@ class SocialService {
     List<String>? pollOptions,
   }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/rooms/$roomId/questions/create');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/rooms/$roomId/questions/create',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -444,8 +521,8 @@ class SocialService {
           'authorId': int.tryParse(authorId) ?? authorId,
           'authorName': authorName,
           'authorAvatar': authorAvatar,
-          if (pollQuestion != null) 'pollQuestion': pollQuestion,
-          if (pollOptions != null) 'pollOptions': pollOptions,
+          'pollQuestion': ?pollQuestion,
+          'pollOptions': ?pollOptions,
         }),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -462,7 +539,9 @@ class SocialService {
     required String authorAvatar,
   }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/comments/create');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/comments/create',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -489,7 +568,9 @@ class SocialService {
     String? parentReplyId,
   }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/comments/$commentId/replies/create');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/comments/$commentId/replies/create',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -498,7 +579,9 @@ class SocialService {
           'authorId': int.tryParse(authorId) ?? authorId,
           'authorName': authorName,
           'authorAvatar': authorAvatar,
-          'parentReplyId': parentReplyId != null ? int.tryParse(parentReplyId) : null,
+          'parentReplyId': parentReplyId != null
+              ? int.tryParse(parentReplyId)
+              : null,
         }),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -509,13 +592,22 @@ class SocialService {
 
   // --- GROUP ADVANCED ---
 
-  Future<Map<String, dynamic>?> editGroupMessage(String messageId, String text, String userId) async {
+  Future<Map<String, dynamic>?> editGroupMessage(
+    String messageId,
+    String text,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/message/$messageId/edit');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/message/$messageId/edit',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
-        body: jsonEncode({'text': text, 'userId': int.tryParse(userId) ?? userId}),
+        body: jsonEncode({
+          'text': text,
+          'userId': int.tryParse(userId) ?? userId,
+        }),
       );
       if (response.statusCode == 200) {
         final data = _decodeBody(response.body);
@@ -527,9 +619,16 @@ class SocialService {
     }
   }
 
-  Future<void> setGroupTypingStatus(String groupId, String userId, String username, bool typing) async {
+  Future<void> setGroupTypingStatus(
+    String groupId,
+    String userId,
+    String username,
+    bool typing,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/typing');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/typing',
+      );
       await http.post(
         url,
         headers: await _getHeaders(),
@@ -544,9 +643,13 @@ class SocialService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getGroupTypingStatus(String groupId) async {
+  Future<List<Map<String, dynamic>>> getGroupTypingStatus(
+    String groupId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/typing');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/typing',
+      );
       final response = await http.get(url, headers: await _getHeaders());
       if (response.statusCode == 200) {
         final data = _decodeBody(response.body);
@@ -562,9 +665,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> addGroupMembers(String groupId, List<String> memberIds) async {
+  Future<Map<String, dynamic>?> addGroupMembers(
+    String groupId,
+    List<String> memberIds,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/add-members');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/add-members',
+      );
       final token = await _getToken();
       // Extract userId from token
       String? userId;
@@ -572,7 +680,9 @@ class SocialService {
         try {
           final parts = token.split('.');
           if (parts.length == 3) {
-            final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+            final payload = utf8.decode(
+              base64Url.decode(base64Url.normalize(parts[1])),
+            );
             final map = jsonDecode(payload);
             userId = map['sub']?.toString();
           }
@@ -595,9 +705,15 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> updateGroupDetails(String groupId, String userId, Map<String, dynamic> updates) async {
+  Future<Map<String, dynamic>?> updateGroupDetails(
+    String groupId,
+    String userId,
+    Map<String, dynamic> updates,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/$groupId/update');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/$groupId/update',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -615,9 +731,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> joinGroupByLink(String token, String userId) async {
+  Future<Map<String, dynamic>?> joinGroupByLink(
+    String token,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/join-by-link/$token');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/join-by-link/$token',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -632,9 +753,15 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> voteGroupPoll(String messageId, int optionIndex, String userId) async {
+  Future<Map<String, dynamic>?> voteGroupPoll(
+    String messageId,
+    int optionIndex,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/groups/message/$messageId/vote-poll');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/groups/message/$messageId/vote-poll',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -654,7 +781,11 @@ class SocialService {
 
   // --- COMMUNITY ADVANCED ---
 
-  Future<Room?> createRoom(String communityId, String name, String description) async {
+  Future<Room?> createRoom(
+    String communityId,
+    String name,
+    String description,
+  ) async {
     try {
       final token = await _getToken();
       String? creatorId;
@@ -662,13 +793,17 @@ class SocialService {
         try {
           final parts = token.split('.');
           if (parts.length == 3) {
-            final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+            final payload = utf8.decode(
+              base64Url.decode(base64Url.normalize(parts[1])),
+            );
             final map = jsonDecode(payload);
             creatorId = map['sub']?.toString();
           }
         } catch (_) {}
       }
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/create-room');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/create-room',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -690,9 +825,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> upvoteQuestion(String questionId, String userId) async {
+  Future<Map<String, dynamic>?> upvoteQuestion(
+    String questionId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/upvote');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/upvote',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -707,9 +847,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> downvoteQuestion(String questionId, String userId) async {
+  Future<Map<String, dynamic>?> downvoteQuestion(
+    String questionId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/downvote');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/downvote',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -724,9 +869,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> upvoteComment(String commentId, String userId) async {
+  Future<Map<String, dynamic>?> upvoteComment(
+    String commentId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/comments/$commentId/upvote');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/comments/$commentId/upvote',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -741,9 +891,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> downvoteComment(String commentId, String userId) async {
+  Future<Map<String, dynamic>?> downvoteComment(
+    String commentId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/comments/$commentId/downvote');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/comments/$commentId/downvote',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -758,9 +913,17 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> updateQuestion(String questionId, String title, String content, {String? pollQuestion, List<String>? pollOptions}) async {
+  Future<Map<String, dynamic>?> updateQuestion(
+    String questionId,
+    String title,
+    String content, {
+    String? pollQuestion,
+    List<String>? pollOptions,
+  }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/update');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/update',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -782,7 +945,9 @@ class SocialService {
 
   Future<bool> deleteQuestion(String questionId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/delete');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/delete',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -794,9 +959,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> updateComment(String commentId, String content) async {
+  Future<Map<String, dynamic>?> updateComment(
+    String commentId,
+    String content,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/comments/$commentId/update');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/comments/$commentId/update',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -813,7 +983,9 @@ class SocialService {
 
   Future<bool> deleteComment(String commentId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/comments/$commentId/delete');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/comments/$commentId/delete',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -825,9 +997,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> updateReply(String replyId, String content) async {
+  Future<Map<String, dynamic>?> updateReply(
+    String replyId,
+    String content,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/replies/$replyId/update');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/replies/$replyId/update',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -844,7 +1021,9 @@ class SocialService {
 
   Future<bool> deleteReply(String replyId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/replies/$replyId/delete');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/replies/$replyId/delete',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -856,9 +1035,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> approveQuestion(String questionId, String userId) async {
+  Future<Map<String, dynamic>?> approveQuestion(
+    String questionId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$questionId/approve');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$questionId/approve',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -873,13 +1057,20 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> addModerator(String communityId, String moderatorId) async {
+  Future<Map<String, dynamic>?> addModerator(
+    String communityId,
+    String moderatorId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/add-moderator');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/add-moderator',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
-        body: jsonEncode({'moderatorId': int.tryParse(moderatorId) ?? moderatorId}),
+        body: jsonEncode({
+          'moderatorId': int.tryParse(moderatorId) ?? moderatorId,
+        }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
@@ -890,13 +1081,20 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> removeModerator(String communityId, String moderatorId) async {
+  Future<Map<String, dynamic>?> removeModerator(
+    String communityId,
+    String moderatorId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/remove-moderator');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/remove-moderator',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
-        body: jsonEncode({'moderatorId': int.tryParse(moderatorId) ?? moderatorId}),
+        body: jsonEncode({
+          'moderatorId': int.tryParse(moderatorId) ?? moderatorId,
+        }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return _decodeBody(response.body) as Map<String, dynamic>?;
@@ -921,21 +1119,23 @@ class SocialService {
     String? ownerId,
   }) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/update');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/update',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
         body: jsonEncode({
-          if (name != null) 'name': name,
-          if (description != null) 'description': description,
-          if (icon != null) 'icon': icon,
-          if (isPrivate != null) 'isPrivate': isPrivate,
-          if (isNSFW != null) 'isNSFW': isNSFW,
-          if (rules != null) 'rules': rules,
-          if (category != null) 'category': category,
-          if (maxMembers != null) 'maxMembers': maxMembers,
-          if (nsfwAgeLimit != null) 'nsfwAgeLimit': nsfwAgeLimit,
-          if (ownerId != null) 'ownerId': ownerId,
+          'name': ?name,
+          'description': ?description,
+          'icon': ?icon,
+          'isPrivate': ?isPrivate,
+          'isNSFW': ?isNSFW,
+          'rules': ?rules,
+          'category': ?category,
+          'maxMembers': ?maxMembers,
+          'nsfwAgeLimit': ?nsfwAgeLimit,
+          'ownerId': ?ownerId,
         }),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -949,7 +1149,9 @@ class SocialService {
 
   Future<bool> deleteCommunity(String communityId, String userId) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/delete');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/delete',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -961,9 +1163,15 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> votePostPoll(String postId, int optionIndex, String userId) async {
+  Future<Map<String, dynamic>?> votePostPoll(
+    String postId,
+    int optionIndex,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/questions/$postId/vote-poll');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/questions/$postId/vote-poll',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -981,9 +1189,14 @@ class SocialService {
     }
   }
 
-  Future<Map<String, dynamic>?> joinCommunityByInvite(String communityId, String userId) async {
+  Future<Map<String, dynamic>?> joinCommunityByInvite(
+    String communityId,
+    String userId,
+  ) async {
     try {
-      final url = Uri.parse('${AuthService.baseUrl}/api/communities/$communityId/join-invite');
+      final url = Uri.parse(
+        '${AuthService.baseUrl}/api/communities/$communityId/join-invite',
+      );
       final response = await http.post(
         url,
         headers: await _getHeaders(),
@@ -998,4 +1211,3 @@ class SocialService {
     }
   }
 }
-

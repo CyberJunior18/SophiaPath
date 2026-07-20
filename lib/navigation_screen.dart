@@ -11,9 +11,13 @@ import 'screens/settings_screen.dart';
 import 'models/user/user.dart';
 import 'screens/course/course_info_screen.dart';
 import 'screens/course/learning_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/authentication/authService.dart';
 import 'package:sophia_path/widgets/background_animation_widget.dart';
 import 'services/user_preferences_services.dart';
+import 'package:provider/provider.dart';
+import 'package:sophia_path/services/profile_state.dart';
+import 'package:sophia_path/screens/authentication/login.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({
@@ -34,38 +38,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
   final AuthService _authService = AuthService();
   List<CourseInfo> courses = [];
   late List<CourseInfo> registeredCourses = [];
-  late Widget currentScreen;
-
+  late Widget currentScreen = const SizedBox();
+  
   @override
   void initState() {
     super.initState();
-    setState(() {
-      _selectedIndex = widget.selectedIndex;
-      if (_selectedIndex == 0) {
-        currentScreen = LearningScreen();
-      } else {
-        currentScreen = ProfileScreen(key: UniqueKey());
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) {
-            _loadUserData();
-          }
+    _selectedIndex = widget.selectedIndex;
+    _loadInitialData().then((_) {
+      if (mounted) {
+        setState(() {
+          switchScreen();
         });
       }
     });
-    _loadInitialData();
-    _loadUserData();
   }
 
   void switchScreen() {
-    if (_selectedIndex == 0) {
-      currentScreen = LearningScreen();
+    final isGuest = currentUser == null;
+    if (isGuest) {
+      currentScreen = CoursesScreen();
     } else {
-      currentScreen = ProfileScreen(key: UniqueKey());
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          _loadUserData();
-        }
-      });
+      if (_selectedIndex == 0) {
+        currentScreen = HomeScreen();
+      } else if (_selectedIndex == 1) {
+        currentScreen = CoursesScreen();
+      } else {
+        currentScreen = ProfileScreen(key: UniqueKey(), onToggleTheme: widget.onToggleTheme);
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) _loadUserData();
+        });
+      }
     }
   }
 
@@ -73,7 +75,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   Drawer _buildDrawer() {
     final theme = Theme.of(context);
-    final textColor = theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface;
+    final textColor =
+        theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface;
     return Drawer(
       width: MediaQuery.of(context).size.width * 0.8,
       backgroundColor: theme.drawerTheme.backgroundColor,
@@ -93,15 +96,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
             ),
             ListTile(
-              leading: Icon(
-                Icons.book,
-                color: textColor,
-              ),
+              leading: Icon(Icons.book, color: textColor),
               title: Text(
                 'Courses',
-                style: GoogleFonts.poppins(
-                  color: textColor,
-                ),
+                style: GoogleFonts.poppins(color: textColor),
               ),
               trailing: Icon(
                 coursesExpanded
@@ -120,16 +118,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 (course) => Padding(
                   padding: const EdgeInsets.only(left: 40),
                   child: ListTile(
-                    leading: Icon(
-                      Icons.circle,
-                      size: 10,
-                      color: textColor,
-                    ),
+                    leading: Icon(Icons.circle, size: 10, color: textColor),
                     title: Text(
                       course.title,
-                      style: GoogleFonts.poppins(
-                        color: textColor,
-                      ),
+                      style: GoogleFonts.poppins(color: textColor),
                     ),
                     onTap: () {
                       Navigator.pop(context);
@@ -151,18 +143,48 @@ class _NavigationScreenState extends State<NavigationScreen> {
               if (item == 'Communities') iconData = Icons.forum;
 
               return ListTile(
-                leading: Icon(
-                  iconData,
-                  color: textColor,
-                ),
-                title: Text(
-                  item,
-                  style: GoogleFonts.poppins(
-                    color: textColor,
-                  ),
-                ),
-                onTap: () {
+                leading: Icon(iconData, color: textColor),
+                title: Text(item, style: GoogleFonts.poppins(color: textColor)),
+                onTap: () async {
                   Navigator.pop(context);
+                  final token = await AuthStorage.getToken();
+                  if (token == null) {
+                    if (!context.mounted) return;
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text('Login Required', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                        content: Text(
+                          'Please log in to access $item.',
+                          style: GoogleFonts.poppins(),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => LoginScreen(onToggleTheme: widget.onToggleTheme),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: Text('Log In', style: GoogleFonts.poppins()),
+                          ),
+                        ],
+                      ),
+                    );
+                    return;
+                  }
+
                   Widget screen;
                   if (item == 'Groups') {
                     screen = const GroupsListScreen();
@@ -171,26 +193,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   } else {
                     screen = const ChatsListScreen();
                   }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (ctx) => screen,
-                    ),
-                  );
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (ctx) => screen),
+                    );
+                  }
                 },
               );
             }),
             const Spacer(),
             ListTile(
-              leading: Icon(
-                Icons.settings,
-                color: textColor,
-              ),
+              leading: Icon(Icons.settings, color: textColor),
               title: Text(
                 'Settings',
-                style: GoogleFonts.poppins(
-                  color: textColor,
-                ),
+                style: GoogleFonts.poppins(color: textColor),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -201,6 +218,47 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         SettingsScreen(onToggleTheme: widget.onToggleTheme),
                   ),
                 );
+              },
+            ),
+            const Divider(),
+            if (currentUser != null)
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.redAccent),
+                title: Text(
+                  'Log out',
+                  style: GoogleFonts.poppins(color: Colors.redAccent),
+                ),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  await UserPreferencesService.instance.clearAllData();
+                  await AuthStorage.clearToken();
+                  print('✅ Local data cleared');
+
+                  if (context.mounted) {
+                    Provider.of<ProfileState>(context, listen: false).refreshUser();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) {
+                          return LoginScreen(onToggleTheme: widget.onToggleTheme);
+                        },
+                      ),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                  print('❌ Error during logout: $e');
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logout failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
             ),
           ],
@@ -251,11 +309,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
 
     final theme = Theme.of(context);
-    final bool isDarkNav = ThemeData.estimateBrightnessForColor(theme.cardColor) == Brightness.dark;
+    final bool isDarkNav =
+        ThemeData.estimateBrightnessForColor(theme.cardColor) ==
+        Brightness.dark;
 
     return Scaffold(
       appBar: screenAppBar(context, _selectedIndex, widget.onToggleTheme),
-      drawer: _selectedIndex == 0 ? _buildDrawer() : null,
+      drawer: (_selectedIndex == 0 || _selectedIndex == 1) ? _buildDrawer() : null,
       body: BackgroundAnimationWidget(child: currentScreen),
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
@@ -267,6 +327,49 @@ class _NavigationScreenState extends State<NavigationScreen> {
         animationDuration: const Duration(milliseconds: 400),
         letIndexChange: (index) => true,
         items: [
+          if (currentUser != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.home,
+                    color: _selectedIndex == 0
+                        ? (ThemeData.estimateBrightnessForColor(
+                                    theme.primaryColor,
+                                  ) ==
+                                  Brightness.dark
+                              ? Colors.white
+                              : Colors.black)
+                        : (isDarkNav
+                              ? Colors.white70
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                )),
+                    size: 24,
+                  ),
+                  Text(
+                    'Home',
+                    style: TextStyle(
+                      color: _selectedIndex == 0
+                          ? (ThemeData.estimateBrightnessForColor(
+                                      theme.primaryColor,
+                                    ) ==
+                                    Brightness.dark
+                                ? Colors.white
+                                : Colors.black)
+                          : (isDarkNav
+                                ? Colors.white70
+                                : theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  )),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Container(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -274,55 +377,84 @@ class _NavigationScreenState extends State<NavigationScreen> {
               children: [
                 Icon(
                   Icons.school,
-                  color: _selectedIndex == 0
-                      ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
-                          ? Colors.white
-                          : Colors.black)
-                      : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                  size: 24,
-                ),
-                Text(
-                  'Learning',
-                  style: TextStyle(
-                    color: _selectedIndex == 0
-                        ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
+                  color: _selectedIndex == 1
+                      ? (ThemeData.estimateBrightnessForColor(
+                                  theme.primaryColor,
+                                ) ==
+                                Brightness.dark
                             ? Colors.white
                             : Colors.black)
-                        : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                    fontSize: 10,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.person,
-                  color: _selectedIndex == 1
-                      ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
-                          ? Colors.white
-                          : Colors.black)
-                      : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                      : (isDarkNav
+                            ? Colors.white70
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              )),
                   size: 24,
                 ),
                 Text(
-                  'Profile',
+                  'Courses',
                   style: TextStyle(
                     color: _selectedIndex == 1
-                        ? (ThemeData.estimateBrightnessForColor(theme.primaryColor) == Brightness.dark
-                            ? Colors.white
-                            : Colors.black)
-                        : (isDarkNav ? Colors.white70 : theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                        ? (ThemeData.estimateBrightnessForColor(
+                                    theme.primaryColor,
+                                  ) ==
+                                  Brightness.dark
+                              ? Colors.white
+                              : Colors.black)
+                        : (isDarkNav
+                              ? Colors.white70
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                )),
                     fontSize: 10,
                   ),
                 ),
               ],
             ),
           ),
+          if (currentUser != null)
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person,
+                    color: _selectedIndex == 2
+                        ? (ThemeData.estimateBrightnessForColor(
+                                    theme.primaryColor,
+                                  ) ==
+                                  Brightness.dark
+                              ? Colors.white
+                              : Colors.black)
+                        : (isDarkNav
+                              ? Colors.white70
+                              : theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.6,
+                                )),
+                    size: 24,
+                  ),
+                  Text(
+                    'Profile',
+                    style: TextStyle(
+                      color: _selectedIndex == 2
+                          ? (ThemeData.estimateBrightnessForColor(
+                                      theme.primaryColor,
+                                    ) ==
+                                    Brightness.dark
+                                ? Colors.white
+                                : Colors.black)
+                          : (isDarkNav
+                                ? Colors.white70
+                                : theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  )),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
         onTap: (index) {
           setState(() {
@@ -330,7 +462,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
             switchScreen();
           });
 
-          if (index == 1) {
+          final isGuest = currentUser == null;
+          final profileIndex = isGuest ? 1 : 2;
+
+          if (index == profileIndex) {
             Future.delayed(const Duration(milliseconds: 200), () {
               if (mounted) {
                 _loadUserData();

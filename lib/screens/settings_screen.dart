@@ -272,7 +272,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   await AuthStorage.clearToken();
 
                   if (context.mounted) {
-                    Provider.of<ProfileState>(context, listen: false).refreshUser();
+                    Provider.of<ProfileState>(
+                      context,
+                      listen: false,
+                    ).refreshUser();
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
@@ -367,8 +370,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // ),
 
             // SECTION 1: Account info
-            _buildSectionHeader('Account Details'),
-            Card(
+            if (user != null) ...[
+              _buildSectionHeader('Account Details'),
+              Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -422,6 +426,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            ],
 
             // SECTION 2: Style preferences
             _buildSectionHeader('Theme & Visual Styling'),
@@ -787,8 +792,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
 
             // SECTION 3: Communication preferences
-            _buildSectionHeader('Communications'),
-            Card(
+            if (user != null) ...[
+              _buildSectionHeader('Communications'),
+              Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -883,6 +889,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            ],
 
             // Footer brand signature
             Padding(
@@ -940,7 +947,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required IconData icon,
     required String title,
     required String value,
-    bool isTransparent = false,
   }) {
     final theme = Theme.of(context);
     return Row(

@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'course_info_screen.dart';
 import 'course_sections_screen.dart';
+import 'lesson_path_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
+import '../../widgets/course_card.dart';
 
-class LearningScreen extends StatefulWidget {
-  const LearningScreen({super.key});
+class CoursesScreen extends StatefulWidget {
+  const CoursesScreen({super.key});
 
   @override
-  State<LearningScreen> createState() => _LearningScreenState();
+  State<CoursesScreen> createState() => _CoursesScreenState();
 }
 
-class _LearningScreenState extends State<LearningScreen> {
+class _CoursesScreenState extends State<CoursesScreen> {
   final AuthService _authService = AuthService();
   List<CourseInfo> coursesInfo = [];
   bool _isLoading = true;
@@ -27,12 +29,11 @@ class _LearningScreenState extends State<LearningScreen> {
   }
 
   List<String> comingSoon = [
-    'Artificial Intelligence',
+    'AI',
     'Web Development',
     'Data Science',
     'Digital Marketing',
     'Graphic Design',
-    'Business Management',
   ];
   Future<void> _loadCourses() async {
     final regs = await _authService.getMyRegistrations();
@@ -124,10 +125,6 @@ class _LearningScreenState extends State<LearningScreen> {
     );
   }
 
-  bool _isCourseRegistered(String courseTitle) {
-    return coursesInfo.any((course) => course.title == courseTitle);
-  }
-
   int _getLessonsFinished(String courseTitle) {
     final index = coursesInfo.indexWhere(
       (course) => course.title == courseTitle,
@@ -161,7 +158,7 @@ class _LearningScreenState extends State<LearningScreen> {
         return Icons.science;
       case 'philosophy':
         return Icons.psychology;
-      case 'artificial intelligence':
+      case 'ai':
         return Icons.smart_toy;
       case 'web development':
         return Icons.code;
@@ -171,11 +168,21 @@ class _LearningScreenState extends State<LearningScreen> {
         return Icons.trending_up;
       case 'graphic design':
         return Icons.palette;
-      case 'business management':
-        return Icons.business;
       default:
         return Icons.school;
     }
+  }
+
+  String? _getCourseAsset(String courseTitle) {
+    final normalized = courseTitle.toLowerCase().replaceAll(' ', '');
+    if (normalized.contains('cybersecurity')) {
+      return 'assets/courses/cybersecurity.png';
+    } else if (normalized.contains('computerscience')) {
+      return 'assets/courses/computerScience.png';
+    } else if (normalized.contains('philosophy')) {
+      return 'assets/courses/philosophy.png';
+    }
+    return null;
   }
 
   @override
@@ -215,271 +222,120 @@ class _LearningScreenState extends State<LearningScreen> {
     }
 
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: 8,
-      ),
-      child: GridView.builder(
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+      child: CustomScrollView(
         physics: const BouncingScrollPhysics(),
-        itemCount: coursesInfo.length + comingSoon.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: screenWidth * 0.03,
-          crossAxisSpacing: screenWidth * 0.03,
-          childAspectRatio: 1.03,
-        ),
-        itemBuilder: (context, index) {
-          final bool isAvailable = index < coursesInfo.length;
-          final isDark = theme.brightness == Brightness.dark;
-
-          if (isAvailable) {
-            final sampleCourse = coursesInfo[index];
-            final isRegistered = _myRegisteredCourseIds.contains(
-              sampleCourse.id,
-            );
-            final lessonsFinished = _getLessonsFinished(sampleCourse.title);
-            final totalLessons = _getTotalLessons(sampleCourse.title);
-            final progress = totalLessons > 0
-                ? lessonsFinished / totalLessons
-                : 0.0;
-
-            return InkWell(
-              onTap: () {
-                // If user is registered, go straight to course sections grid
-                if (isRegistered) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          CourseSectionsGridScreen(course: sampleCourse),
-                    ),
-                  ).then((_) => _loadCourses());
-                  return;
-                }
-
-                // otherwise show course info screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseInfoScreen(course: sampleCourse),
+        slivers: [
+          // Available Courses Section
+          if (coursesInfo.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Available Courses',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
                   ),
-                ).then((_) => _loadCourses());
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: EdgeInsets.all(screenWidth * 0.04),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withValues(
-                      alpha: isDark ? 0.1 : 0.15,
-                    ),
-                    width: 1,
-                  ),
-                  boxShadow: isDark
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(screenWidth * 0.025),
-                          decoration: BoxDecoration(
-                            color: theme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            _getCourseIcon(sampleCourse.title),
-                            color: theme.primaryColor,
-                            size: screenWidth * 0.05,
-                          ),
-                        ),
-                        SizedBox(width: screenWidth * 0.02),
-                        Expanded(
-                          child: Text(
-                            sampleCourse.title,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                              fontSize: 14,
-                            ),
-                            softWrap: true,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    if (isRegistered)
-                      Column(
-                        children: [
-                          LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: theme.colorScheme.outline
-                                .withValues(alpha: 0.2),
-                            color: theme.primaryColor,
-                            borderRadius: BorderRadius.circular(4),
-                            minHeight: screenWidth * 0.01,
-                          ),
-                          SizedBox(height: screenWidth * 0.015),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '$lessonsFinished/$totalLessons',
-                                style: GoogleFonts.poppins(
-                                  fontSize: screenWidth * 0.032,
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                '${(progress * 100).toInt()}%',
-                                style: GoogleFonts.poppins(
-                                  fontSize: screenWidth * 0.032,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.primaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      )
-                    else
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.03,
-                          vertical: screenWidth * 0.02,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: theme.primaryColor.withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Start',
-                            style: GoogleFonts.poppins(
-                              fontSize: screenWidth * 0.038,
-                              color: theme.primaryColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final comingSoonCourseTitle = comingSoon[index - coursesInfo.length];
-
-          return InkWell(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: EdgeInsets.all(screenWidth * 0.04),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.orange.withValues(alpha: 0.1)
-                    : Colors.orange.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withValues(
-                    alpha: isDark ? 0.1 : 0.15,
-                  ),
-                  width: 1,
-                ),
-                boxShadow: isDark
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(screenWidth * 0.025),
-                        decoration: BoxDecoration(
-                          color: theme.primaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          _getCourseIcon(comingSoonCourseTitle),
-                          color: theme.primaryColor,
-                          size: screenWidth * 0.05,
-                        ),
-                      ),
-                      SizedBox(width: screenWidth * 0.02),
-                      Expanded(
-                        child: Text(
-                          comingSoonCourseTitle,
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                            fontSize: 14,
-                          ),
-                          softWrap: true,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  Center(
-                    child: Text(
-                      'Coming Soon',
-                      style: GoogleFonts.poppins(
-                        fontSize: screenWidth * 0.038,
-                        color: theme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 1),
-                ],
               ),
             ),
-          );
-        },
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 16),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: screenWidth * 0.03,
+                  crossAxisSpacing: screenWidth * 0.03,
+                  childAspectRatio: 1.0,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final sampleCourse = coursesInfo[index];
+                  final isRegistered = _myRegisteredCourseIds.contains(
+                    sampleCourse.id,
+                  );
+                  final lessonsFinished = _getLessonsFinished(
+                    sampleCourse.title,
+                  );
+                  final totalLessons = _getTotalLessons(sampleCourse.title);
+                  final progress = totalLessons > 0
+                      ? lessonsFinished / totalLessons
+                      : 0.0;
+
+                  return CourseCard(
+                    course: sampleCourse,
+                    assetImagePath: _getCourseAsset(sampleCourse.title),
+                    isRegistered: isRegistered,
+                    progress: progress,
+                    lessonsFinished: lessonsFinished,
+                    totalLessons: totalLessons,
+                    fallbackIcon: _getCourseIcon(sampleCourse.title),
+                    onTap: () {
+                      if (isRegistered) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                CourseSectionsGridScreen(course: sampleCourse),
+                          ),
+                        ).then((_) => _loadCourses());
+                        return;
+                      }
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CourseInfoScreen(course: sampleCourse),
+                        ),
+                      ).then((_) => _loadCourses());
+                    },
+                  );
+                }, childCount: coursesInfo.length),
+              ),
+            ),
+          ],
+
+          // Coming Soon Section
+          if (comingSoon.isNotEmpty) ...[
+            SliverPadding(
+              padding: const EdgeInsets.only(top: 16, bottom: 8),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  'Coming Soon',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.only(bottom: 24),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: screenWidth * 0.03,
+                  crossAxisSpacing: screenWidth * 0.03,
+                  childAspectRatio: 1.0,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final comingSoonCourseTitle = comingSoon[index];
+                  return CourseCard(
+                    title: comingSoonCourseTitle,
+                    assetImagePath: _getCourseAsset(comingSoonCourseTitle),
+                    isRegistered: false,
+                    isComingSoon: true,
+                    fallbackIcon: _getCourseIcon(comingSoonCourseTitle),
+                    onTap: () {},
+                  );
+                }, childCount: comingSoon.length),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -40,7 +40,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   String? _currentUserId;
   String? _currentUsername;
   bool _isSaved = false;
-  List<StreamSubscription> _socketSubscriptions = [];
+  final List<StreamSubscription> _socketSubscriptions = [];
 
   // Reply context state
   Comment? _replyingToComment;
@@ -98,181 +98,174 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     final userIdInt = int.tryParse(_currentUserId ?? '1') ?? 1;
     final socketService = CommunitiesSocketService();
     socketService.connect(userIdInt);
-    
+
     final questionIdInt = int.tryParse(_question.id);
     if (questionIdInt != null) {
       socketService.joinQuestionRoom(questionIdInt);
     }
 
-    _socketSubscriptions.add(socketService.onQuestionVoted.listen((data) {
-      if (data['id'].toString() == _question.id) {
-        setState(() {
-          _question = _parseQuestionFromSocket(data);
-        });
-      }
-    }));
-
-    _socketSubscriptions.add(socketService.onQuestionUpdated.listen((data) {
-      if (data['id'].toString() == _question.id) {
-        setState(() {
-          _question = _parseQuestionFromSocket(data);
-        });
-      }
-    }));
-
-    _socketSubscriptions.add(socketService.onQuestionDeleted.listen((data) {
-      if (data['id'].toString() == _question.id && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This question was deleted.')),
-        );
-        Navigator.pop(context);
-      }
-    }));
-
-    _socketSubscriptions.add(socketService.onCommentAdded.listen((data) {
-      if (data['questionId'].toString() == _question.id) {
-        final comment = _parseCommentFromSocket(data);
-        setState(() {
-          // Remove optimistic duplicates
-          _comments.removeWhere((c) =>
-              c.id.startsWith('temp_') &&
-              c.authorId == comment.authorId &&
-              c.content.trim() == comment.content.trim());
-
-          final idx = _comments.indexWhere((c) => c.id == comment.id);
-          if (idx == -1) {
-            _comments.add(comment);
-          } else {
-            _comments[idx] = comment;
-          }
-          _comments.sort((a, b) {
-            final voteDiff = (b.upvotes) - (a.upvotes);
-            if (voteDiff != 0) return voteDiff;
-            return a.timestamp.compareTo(b.timestamp);
+    _socketSubscriptions.add(
+      socketService.onQuestionVoted.listen((data) {
+        if (data['id'].toString() == _question.id) {
+          setState(() {
+            _question = _parseQuestionFromSocket(data);
           });
-        });
-      }
-    }));
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onCommentVoted.listen((data) {
-      if (data['questionId'].toString() == _question.id) {
-        final comment = _parseCommentFromSocket(data);
-        setState(() {
-          final idx = _comments.indexWhere((c) => c.id == comment.id);
-          if (idx != -1) {
-            final existingReplies = _comments[idx].replies;
-            _comments[idx] = Comment(
-              id: comment.id,
-              questionId: comment.questionId,
-              content: comment.content,
-              authorId: comment.authorId,
-              authorName: comment.authorName,
-              authorAvatar: comment.authorAvatar,
-              timestamp: comment.timestamp,
-              upvotes: comment.upvotes,
-              upvotedUsers: comment.upvotedUsers,
-              downvotedUsers: comment.downvotedUsers,
-              userUpvoted: comment.userUpvoted,
-              userDownvoted: comment.userDownvoted,
-              replies: comment.replies.isNotEmpty ? comment.replies : existingReplies,
-            );
-          }
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionUpdated.listen((data) {
+        if (data['id'].toString() == _question.id) {
+          setState(() {
+            _question = _parseQuestionFromSocket(data);
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onCommentUpdated.listen((data) {
-      if (data['questionId'].toString() == _question.id) {
-        final comment = _parseCommentFromSocket(data);
-        setState(() {
-          final idx = _comments.indexWhere((c) => c.id == comment.id);
-          if (idx != -1) {
-            final existingReplies = _comments[idx].replies;
-            _comments[idx] = Comment(
-              id: comment.id,
-              questionId: comment.questionId,
-              content: comment.content,
-              authorId: comment.authorId,
-              authorName: comment.authorName,
-              authorAvatar: comment.authorAvatar,
-              timestamp: comment.timestamp,
-              upvotes: comment.upvotes,
-              upvotedUsers: comment.upvotedUsers,
-              downvotedUsers: comment.downvotedUsers,
-              userUpvoted: comment.userUpvoted,
-              userDownvoted: comment.userDownvoted,
-              replies: comment.replies.isNotEmpty ? comment.replies : existingReplies,
-            );
-          }
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onQuestionDeleted.listen((data) {
+        if (data['id'].toString() == _question.id && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('This question was deleted.')),
+          );
+          Navigator.pop(context);
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onCommentDeleted.listen((data) {
-      final commentId = data['id'].toString();
-      setState(() {
-        _comments.removeWhere((c) => c.id == commentId);
-      });
-    }));
-
-    _socketSubscriptions.add(socketService.onReplyAdded.listen((data) {
-      final parentCommentId = data['commentId']?.toString();
-      if (parentCommentId != null) {
-        final reply = _parseCommentFromSocket(data);
-        setState(() {
-          final parentIdx = _comments.indexWhere((c) => c.id == parentCommentId);
-          if (parentIdx != -1) {
-            final parent = _comments[parentIdx];
-            
+    _socketSubscriptions.add(
+      socketService.onCommentAdded.listen((data) {
+        if (data['questionId'].toString() == _question.id) {
+          final comment = _parseCommentFromSocket(data);
+          setState(() {
             // Remove optimistic duplicates
-            final updatedReplies = List<Comment>.from(parent.replies)
-              ..removeWhere((r) =>
-                  r.id.startsWith('temp_') &&
-                  r.authorId == reply.authorId &&
-                  r.content.trim() == reply.content.trim());
-
-            final exists = updatedReplies.any((r) => r.id == reply.id);
-            if (!exists) {
-              updatedReplies.add(reply);
-            } else {
-              final idx = updatedReplies.indexWhere((r) => r.id == reply.id);
-              if (idx != -1) {
-                updatedReplies[idx] = reply;
-              }
-            }
-
-            _comments[parentIdx] = Comment(
-              id: parent.id,
-              questionId: parent.questionId,
-              content: parent.content,
-              authorId: parent.authorId,
-              authorName: parent.authorName,
-              authorAvatar: parent.authorAvatar,
-              timestamp: parent.timestamp,
-              upvotes: parent.upvotes,
-              upvotedUsers: parent.upvotedUsers,
-              downvotedUsers: parent.downvotedUsers,
-              userUpvoted: parent.userUpvoted,
-              userDownvoted: parent.userDownvoted,
-              replies: updatedReplies,
+            _comments.removeWhere(
+              (c) =>
+                  c.id.startsWith('temp_') &&
+                  c.authorId == comment.authorId &&
+                  c.content.trim() == comment.content.trim(),
             );
-          }
-        });
-      }
-    }));
 
-    _socketSubscriptions.add(socketService.onReplyUpdated.listen((data) {
-      final parentCommentId = data['commentId']?.toString();
-      if (parentCommentId != null) {
-        final reply = _parseCommentFromSocket(data);
+            final idx = _comments.indexWhere((c) => c.id == comment.id);
+            if (idx == -1) {
+              _comments.add(comment);
+            } else {
+              _comments[idx] = comment;
+            }
+            _comments.sort((a, b) {
+              final voteDiff = (b.upvotes) - (a.upvotes);
+              if (voteDiff != 0) return voteDiff;
+              return a.timestamp.compareTo(b.timestamp);
+            });
+          });
+        }
+      }),
+    );
+
+    _socketSubscriptions.add(
+      socketService.onCommentVoted.listen((data) {
+        if (data['questionId'].toString() == _question.id) {
+          final comment = _parseCommentFromSocket(data);
+          setState(() {
+            final idx = _comments.indexWhere((c) => c.id == comment.id);
+            if (idx != -1) {
+              final existingReplies = _comments[idx].replies;
+              _comments[idx] = Comment(
+                id: comment.id,
+                questionId: comment.questionId,
+                content: comment.content,
+                authorId: comment.authorId,
+                authorName: comment.authorName,
+                authorAvatar: comment.authorAvatar,
+                timestamp: comment.timestamp,
+                upvotes: comment.upvotes,
+                upvotedUsers: comment.upvotedUsers,
+                downvotedUsers: comment.downvotedUsers,
+                userUpvoted: comment.userUpvoted,
+                userDownvoted: comment.userDownvoted,
+                replies: comment.replies.isNotEmpty
+                    ? comment.replies
+                    : existingReplies,
+              );
+            }
+          });
+        }
+      }),
+    );
+
+    _socketSubscriptions.add(
+      socketService.onCommentUpdated.listen((data) {
+        if (data['questionId'].toString() == _question.id) {
+          final comment = _parseCommentFromSocket(data);
+          setState(() {
+            final idx = _comments.indexWhere((c) => c.id == comment.id);
+            if (idx != -1) {
+              final existingReplies = _comments[idx].replies;
+              _comments[idx] = Comment(
+                id: comment.id,
+                questionId: comment.questionId,
+                content: comment.content,
+                authorId: comment.authorId,
+                authorName: comment.authorName,
+                authorAvatar: comment.authorAvatar,
+                timestamp: comment.timestamp,
+                upvotes: comment.upvotes,
+                upvotedUsers: comment.upvotedUsers,
+                downvotedUsers: comment.downvotedUsers,
+                userUpvoted: comment.userUpvoted,
+                userDownvoted: comment.userDownvoted,
+                replies: comment.replies.isNotEmpty
+                    ? comment.replies
+                    : existingReplies,
+              );
+            }
+          });
+        }
+      }),
+    );
+
+    _socketSubscriptions.add(
+      socketService.onCommentDeleted.listen((data) {
+        final commentId = data['id'].toString();
         setState(() {
-          final parentIdx = _comments.indexWhere((c) => c.id == parentCommentId);
-          if (parentIdx != -1) {
-            final parent = _comments[parentIdx];
-            final replyIdx = parent.replies.indexWhere((r) => r.id == reply.id);
-            if (replyIdx != -1) {
-              final updatedReplies = List<Comment>.from(parent.replies);
-              updatedReplies[replyIdx] = reply;
+          _comments.removeWhere((c) => c.id == commentId);
+        });
+      }),
+    );
+
+    _socketSubscriptions.add(
+      socketService.onReplyAdded.listen((data) {
+        final parentCommentId = data['commentId']?.toString();
+        if (parentCommentId != null) {
+          final reply = _parseCommentFromSocket(data);
+          setState(() {
+            final parentIdx = _comments.indexWhere(
+              (c) => c.id == parentCommentId,
+            );
+            if (parentIdx != -1) {
+              final parent = _comments[parentIdx];
+
+              // Remove optimistic duplicates
+              final updatedReplies = List<Comment>.from(parent.replies)
+                ..removeWhere(
+                  (r) =>
+                      r.id.startsWith('temp_') &&
+                      r.authorId == reply.authorId &&
+                      r.content.trim() == reply.content.trim(),
+                );
+
+              final exists = updatedReplies.any((r) => r.id == reply.id);
+              if (!exists) {
+                updatedReplies.add(reply);
+              } else {
+                final idx = updatedReplies.indexWhere((r) => r.id == reply.id);
+                if (idx != -1) {
+                  updatedReplies[idx] = reply;
+                }
+              }
+
               _comments[parentIdx] = Comment(
                 id: parent.id,
                 questionId: parent.questionId,
@@ -289,53 +282,101 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 replies: updatedReplies,
               );
             }
-          }
-        });
-      }
-    }));
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onReplyDeleted.listen((data) {
-      final replyId = data['id'].toString();
-      final parentCommentId = data['commentId']?.toString();
-      if (parentCommentId != null) {
-        setState(() {
-          final parentIdx = _comments.indexWhere((c) => c.id == parentCommentId);
-          if (parentIdx != -1) {
-            final parent = _comments[parentIdx];
-            final updatedReplies = List<Comment>.from(parent.replies)
-              ..removeWhere((r) => r.id == replyId);
-            _comments[parentIdx] = Comment(
-              id: parent.id,
-              questionId: parent.questionId,
-              content: parent.content,
-              authorId: parent.authorId,
-              authorName: parent.authorName,
-              authorAvatar: parent.authorAvatar,
-              timestamp: parent.timestamp,
-              upvotes: parent.upvotes,
-              upvotedUsers: parent.upvotedUsers,
-              downvotedUsers: parent.downvotedUsers,
-              userUpvoted: parent.userUpvoted,
-              userDownvoted: parent.userDownvoted,
-              replies: updatedReplies,
+    _socketSubscriptions.add(
+      socketService.onReplyUpdated.listen((data) {
+        final parentCommentId = data['commentId']?.toString();
+        if (parentCommentId != null) {
+          final reply = _parseCommentFromSocket(data);
+          setState(() {
+            final parentIdx = _comments.indexWhere(
+              (c) => c.id == parentCommentId,
             );
-          }
-        });
-      }
-    }));
+            if (parentIdx != -1) {
+              final parent = _comments[parentIdx];
+              final replyIdx = parent.replies.indexWhere(
+                (r) => r.id == reply.id,
+              );
+              if (replyIdx != -1) {
+                final updatedReplies = List<Comment>.from(parent.replies);
+                updatedReplies[replyIdx] = reply;
+                _comments[parentIdx] = Comment(
+                  id: parent.id,
+                  questionId: parent.questionId,
+                  content: parent.content,
+                  authorId: parent.authorId,
+                  authorName: parent.authorName,
+                  authorAvatar: parent.authorAvatar,
+                  timestamp: parent.timestamp,
+                  upvotes: parent.upvotes,
+                  upvotedUsers: parent.upvotedUsers,
+                  downvotedUsers: parent.downvotedUsers,
+                  userUpvoted: parent.userUpvoted,
+                  userDownvoted: parent.userDownvoted,
+                  replies: updatedReplies,
+                );
+              }
+            }
+          });
+        }
+      }),
+    );
 
-    _socketSubscriptions.add(socketService.onPollVoted.listen((data) {
-      if (data['id'].toString() == _question.id) {
-        setState(() {
-          _question = _parseQuestionFromSocket(data);
-        });
-      }
-    }));
+    _socketSubscriptions.add(
+      socketService.onReplyDeleted.listen((data) {
+        final replyId = data['id'].toString();
+        final parentCommentId = data['commentId']?.toString();
+        if (parentCommentId != null) {
+          setState(() {
+            final parentIdx = _comments.indexWhere(
+              (c) => c.id == parentCommentId,
+            );
+            if (parentIdx != -1) {
+              final parent = _comments[parentIdx];
+              final updatedReplies = List<Comment>.from(parent.replies)
+                ..removeWhere((r) => r.id == replyId);
+              _comments[parentIdx] = Comment(
+                id: parent.id,
+                questionId: parent.questionId,
+                content: parent.content,
+                authorId: parent.authorId,
+                authorName: parent.authorName,
+                authorAvatar: parent.authorAvatar,
+                timestamp: parent.timestamp,
+                upvotes: parent.upvotes,
+                upvotedUsers: parent.upvotedUsers,
+                downvotedUsers: parent.downvotedUsers,
+                userUpvoted: parent.userUpvoted,
+                userDownvoted: parent.userDownvoted,
+                replies: updatedReplies,
+              );
+            }
+          });
+        }
+      }),
+    );
+
+    _socketSubscriptions.add(
+      socketService.onPollVoted.listen((data) {
+        if (data['id'].toString() == _question.id) {
+          setState(() {
+            _question = _parseQuestionFromSocket(data);
+          });
+        }
+      }),
+    );
   }
 
   Future<void> _refreshQuestion() async {
     try {
-      final updated = await _socialService.getQuestions(_question.roomId, _currentUserId ?? "1");
+      final updated = await _socialService.getQuestions(
+        _question.roomId,
+        _currentUserId ?? "1",
+      );
       final match = updated.firstWhere((q) => q.id == _question.id);
       if (mounted) {
         setState(() {
@@ -348,7 +389,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   Future<void> _loadComments() async {
     setState(() => _isLoading = true);
     try {
-      final comments = await _socialService.getComments(_question.id, _currentUserId ?? "1");
+      final comments = await _socialService.getComments(
+        _question.id,
+        _currentUserId ?? "1",
+      );
       if (mounted) {
         setState(() {
           _comments = comments;
@@ -390,7 +434,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         _inputController.clear();
       });
 
-      final response = await _socialService.updateComment(commentToEdit.id, text);
+      final response = await _socialService.updateComment(
+        commentToEdit.id,
+        text,
+      );
       if (response == null && mounted) {
         setState(() {
           _comments = oldComments;
@@ -421,7 +468,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       setState(() {
         final idx = _comments.indexWhere((c) => c.id == parentComment.id);
         if (idx != -1) {
-          final updatedReplies = List<Comment>.from(_comments[idx].replies)..add(optimisticReply);
+          final updatedReplies = List<Comment>.from(_comments[idx].replies)
+            ..add(optimisticReply);
           _comments[idx] = Comment(
             id: parentComment.id,
             questionId: parentComment.questionId,
@@ -454,9 +502,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         setState(() {
           _comments = oldComments;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to add reply.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to add reply.')));
       }
       return;
     }
@@ -493,9 +541,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       setState(() {
         _comments = oldComments;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add comment.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to add comment.')));
     }
   }
 
@@ -567,9 +615,15 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     Map<String, dynamic>? result;
     try {
       if (up) {
-        result = await _socialService.upvoteQuestion(_question.id, _currentUserId!);
+        result = await _socialService.upvoteQuestion(
+          _question.id,
+          _currentUserId!,
+        );
       } else {
-        result = await _socialService.downvoteQuestion(_question.id, _currentUserId!);
+        result = await _socialService.downvoteQuestion(
+          _question.id,
+          _currentUserId!,
+        );
       }
     } catch (_) {}
 
@@ -578,7 +632,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         _question = oldQuestion;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to vote. Please check your connection.')),
+        const SnackBar(
+          content: Text('Failed to vote. Please check your connection.'),
+        ),
       );
     }
   }
@@ -625,7 +681,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     }
 
     final newUpvotes = upvotedUsers.length - downvotedUsers.length;
-    
+
     setState(() {
       final idx = _comments.indexWhere((c) => c.id == comment.id);
       if (idx != -1) {
@@ -650,9 +706,15 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     Map<String, dynamic>? result;
     try {
       if (up) {
-        result = await _socialService.upvoteComment(comment.id, _currentUserId!);
+        result = await _socialService.upvoteComment(
+          comment.id,
+          _currentUserId!,
+        );
       } else {
-        result = await _socialService.downvoteComment(comment.id, _currentUserId!);
+        result = await _socialService.downvoteComment(
+          comment.id,
+          _currentUserId!,
+        );
       }
     } catch (_) {}
 
@@ -661,18 +723,23 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         _comments = oldComments;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to vote on comment. Please check connection.')),
+        const SnackBar(
+          content: Text('Failed to vote on comment. Please check connection.'),
+        ),
       );
     }
   }
 
   Future<void> _handleDeleteComment(Comment comment) async {
     if (_currentUserId == null) return;
-    final success = await _socialService.deleteComment(comment.id, _currentUserId!);
+    final success = await _socialService.deleteComment(
+      comment.id,
+      _currentUserId!,
+    );
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Comment deleted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Comment deleted')));
       _loadComments();
     }
   }
@@ -681,45 +748,51 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     if (_currentUserId == null) return;
     final success = await _socialService.deleteReply(reply.id, _currentUserId!);
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reply deleted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reply deleted')));
       _loadComments();
     }
   }
 
   Future<void> _handleDeleteQuestion() async {
     if (_currentUserId == null) return;
-    final success = await _socialService.deleteQuestion(_question.id, _currentUserId!);
+    final success = await _socialService.deleteQuestion(
+      _question.id,
+      _currentUserId!,
+    );
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Question deleted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Question deleted')));
       Navigator.pop(context);
     }
   }
 
   bool _canDeleteComment(Comment comment) {
     if (_currentUserId == null) return false;
-    
+
     // 1. Author can delete their own comment
     if (comment.authorId == _currentUserId) return true;
-    
+
     // 2. Global Admin or Moderator
-    if (_currentUserGlobalRole == UserRole.admin || _currentUserGlobalRole == UserRole.moderator) {
+    if (_currentUserGlobalRole == UserRole.admin ||
+        _currentUserGlobalRole == UserRole.moderator) {
       return true;
     }
-    
+
     // 3. Community Owner
-    if (widget.community != null && widget.community!.ownerId == _currentUserId) {
+    if (widget.community != null &&
+        widget.community!.ownerId == _currentUserId) {
       return true;
     }
-    
+
     // 4. Community Moderator
-    if (widget.community != null && widget.community!.moderatorIds.contains(_currentUserId)) {
+    if (widget.community != null &&
+        widget.community!.moderatorIds.contains(_currentUserId)) {
       return true;
     }
-    
+
     return false;
   }
 
@@ -751,7 +824,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               if (isMe)
                 ListTile(
                   leading: const Icon(Icons.edit),
-                  title: Text(isReply ? 'Edit Reply' : 'Edit Comment', style: GoogleFonts.poppins()),
+                  title: Text(
+                    isReply ? 'Edit Reply' : 'Edit Comment',
+                    style: GoogleFonts.poppins(),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     setState(() {
@@ -803,7 +879,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               decoration: BoxDecoration(
                 color: theme.brightness == Brightness.dark
                     ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
-                    : theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    : theme.colorScheme.surfaceContainerHighest.withOpacity(
+                        0.5,
+                      ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: theme.colorScheme.outlineVariant.withOpacity(0.4),
@@ -822,12 +900,18 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       const SizedBox(width: 8),
                       Text(
                         comment.authorName,
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 12),
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _formatDate(comment.timestamp),
-                        style: GoogleFonts.poppins(color: theme.colorScheme.onSurfaceVariant, fontSize: 10),
+                        style: GoogleFonts.poppins(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -841,22 +925,33 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     children: [
                       IconButton(
                         icon: Icon(
-                          comment.userUpvoted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                          comment.userUpvoted
+                              ? Icons.thumb_up
+                              : Icons.thumb_up_outlined,
                           size: 14,
-                          color: comment.userUpvoted ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                          color: comment.userUpvoted
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                         onPressed: () => _handleCommentVote(comment, true),
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
                       ),
                       const SizedBox(width: 4),
-                      Text('${comment.upvotes}', style: GoogleFonts.poppins(fontSize: 11)),
+                      Text(
+                        '${comment.upvotes}',
+                        style: GoogleFonts.poppins(fontSize: 11),
+                      ),
                       const SizedBox(width: 16),
                       IconButton(
                         icon: Icon(
-                          comment.userDownvoted ? Icons.thumb_down : Icons.thumb_down_outlined,
+                          comment.userDownvoted
+                              ? Icons.thumb_down
+                              : Icons.thumb_down_outlined,
                           size: 14,
-                          color: comment.userDownvoted ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+                          color: comment.userDownvoted
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                         onPressed: () => _handleCommentVote(comment, false),
                         constraints: const BoxConstraints(),
@@ -871,7 +966,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                           });
                         },
                         icon: const Icon(Icons.reply, size: 14),
-                        label: Text('Reply', style: GoogleFonts.poppins(fontSize: 11)),
+                        label: Text(
+                          'Reply',
+                          style: GoogleFonts.poppins(fontSize: 11),
+                        ),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -886,7 +984,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
           if (comment.replies.isNotEmpty)
             Column(
-              children: comment.replies.map((r) => _buildComment(r, isReply: true)).toList(),
+              children: comment.replies
+                  .map((r) => _buildComment(r, isReply: true))
+                  .toList(),
             ),
         ],
       ),
@@ -901,10 +1001,14 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     final map = Map<String, dynamic>.from(data);
     final userIdVal = int.tryParse(_currentUserId ?? '');
     final userIdStr = _currentUserId;
-    map['userUpvoted'] = map['upvotedUsers'] is List &&
-        ((map['upvotedUsers'] as List).contains(userIdVal) || (map['upvotedUsers'] as List).contains(userIdStr));
-    map['userDownvoted'] = map['downvotedUsers'] is List &&
-        ((map['downvotedUsers'] as List).contains(userIdVal) || (map['downvotedUsers'] as List).contains(userIdStr));
+    map['userUpvoted'] =
+        map['upvotedUsers'] is List &&
+        ((map['upvotedUsers'] as List).contains(userIdVal) ||
+            (map['upvotedUsers'] as List).contains(userIdStr));
+    map['userDownvoted'] =
+        map['downvotedUsers'] is List &&
+        ((map['downvotedUsers'] as List).contains(userIdVal) ||
+            (map['downvotedUsers'] as List).contains(userIdStr));
     return Question.fromMap(map);
   }
 
@@ -912,18 +1016,26 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     final map = Map<String, dynamic>.from(data);
     final userIdVal = int.tryParse(_currentUserId ?? '');
     final userIdStr = _currentUserId;
-    map['userUpvoted'] = map['upvotedUsers'] is List &&
-        ((map['upvotedUsers'] as List).contains(userIdVal) || (map['upvotedUsers'] as List).contains(userIdStr));
-    map['userDownvoted'] = map['downvotedUsers'] is List &&
-        ((map['downvotedUsers'] as List).contains(userIdVal) || (map['downvotedUsers'] as List).contains(userIdStr));
-    
+    map['userUpvoted'] =
+        map['upvotedUsers'] is List &&
+        ((map['upvotedUsers'] as List).contains(userIdVal) ||
+            (map['upvotedUsers'] as List).contains(userIdStr));
+    map['userDownvoted'] =
+        map['downvotedUsers'] is List &&
+        ((map['downvotedUsers'] as List).contains(userIdVal) ||
+            (map['downvotedUsers'] as List).contains(userIdStr));
+
     if (map['replies'] is List) {
       map['replies'] = (map['replies'] as List).map((r) {
         final rMap = Map<String, dynamic>.from(r);
-        rMap['userUpvoted'] = rMap['upvotedUsers'] is List &&
-            ((rMap['upvotedUsers'] as List).contains(userIdVal) || (rMap['upvotedUsers'] as List).contains(userIdStr));
-        rMap['userDownvoted'] = rMap['downvotedUsers'] is List &&
-            ((rMap['downvotedUsers'] as List).contains(userIdVal) || (rMap['downvotedUsers'] as List).contains(userIdStr));
+        rMap['userUpvoted'] =
+            rMap['upvotedUsers'] is List &&
+            ((rMap['upvotedUsers'] as List).contains(userIdVal) ||
+                (rMap['upvotedUsers'] as List).contains(userIdStr));
+        rMap['userDownvoted'] =
+            rMap['downvotedUsers'] is List &&
+            ((rMap['downvotedUsers'] as List).contains(userIdVal) ||
+                (rMap['downvotedUsers'] as List).contains(userIdStr));
         return rMap;
       }).toList();
     }
@@ -943,7 +1055,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
         currentUserId: _currentUserId,
         onVote: (idx) async {
           if (_currentUserId == null) return;
-          final res = await _socialService.votePostPoll(_question.id, idx, _currentUserId!);
+          final res = await _socialService.votePostPoll(
+            _question.id,
+            idx,
+            _currentUserId!,
+          );
           if (res != null) {
             _refreshQuestion();
           }
@@ -979,13 +1095,19 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           IconButton(
             icon: Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border),
             onPressed: () async {
-              final newState = await LocalSocialStorage.instance.toggleSavePost(_question.id);
+              final newState = await LocalSocialStorage.instance.toggleSavePost(
+                _question.id,
+              );
               setState(() {
                 _isSaved = newState;
               });
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(newState ? 'Post saved' : 'Post removed from saved list')),
+                  SnackBar(
+                    content: Text(
+                      newState ? 'Post saved' : 'Post removed from saved list',
+                    ),
+                  ),
                 );
               }
             },
@@ -1026,11 +1148,16 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                               children: [
                                 Text(
                                   _question.authorName,
-                                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 Text(
                                   _formatDate(_question.timestamp),
-                                  style: GoogleFonts.poppins(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1039,7 +1166,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _question.title,
-                          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -1051,31 +1181,49 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
                                 children: [
                                   IconButton(
                                     icon: Icon(
-                                      _question.userUpvoted ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                      _question.userUpvoted
+                                          ? Icons.thumb_up
+                                          : Icons.thumb_up_outlined,
                                       size: 16,
-                                      color: _question.userUpvoted ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                                      color: _question.userUpvoted
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface,
                                     ),
                                     onPressed: () => _handleQuestionVote(true),
                                     constraints: const BoxConstraints(),
                                     padding: const EdgeInsets.all(4),
                                   ),
                                   const SizedBox(width: 4),
-                                  Text('${_question.upvotes}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(
+                                    '${_question.upvotes}',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                   const SizedBox(width: 4),
                                   IconButton(
                                     icon: Icon(
-                                      _question.userDownvoted ? Icons.thumb_down : Icons.thumb_down_outlined,
+                                      _question.userDownvoted
+                                          ? Icons.thumb_down
+                                          : Icons.thumb_down_outlined,
                                       size: 16,
-                                      color: _question.userDownvoted ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                                      color: _question.userDownvoted
+                                          ? theme.colorScheme.error
+                                          : theme.colorScheme.onSurface,
                                     ),
                                     onPressed: () => _handleQuestionVote(false),
                                     constraints: const BoxConstraints(),
@@ -1096,7 +1244,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'Comments (${_comments.length})',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
 
@@ -1139,7 +1290,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   Expanded(
                     child: Text(
                       'Replying to ${_replyingToComment!.authorName}',
-                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -1160,7 +1314,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   Expanded(
                     child: Text(
                       'Editing comment',
-                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -1180,7 +1337,9 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
-                border: Border(top: BorderSide(color: theme.dividerColor.withOpacity(0.1))),
+                border: Border(
+                  top: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
+                ),
               ),
               child: Row(
                 children: [
@@ -1191,21 +1350,26 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                         hintText: _editingComment != null
                             ? 'Edit comment...'
                             : _replyingToComment != null
-                                ? 'Add a reply...'
-                                : 'Add a comment...',
+                            ? 'Add a reply...'
+                            : 'Add a comment...',
                         filled: true,
                         fillColor: theme.colorScheme.surfaceContainerHighest,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: Icon(_editingComment != null ? Icons.check : Icons.send),
+                    icon: Icon(
+                      _editingComment != null ? Icons.check : Icons.send,
+                    ),
                     color: theme.colorScheme.primary,
                     onPressed: _handleSubmit,
                   ),
