@@ -125,18 +125,16 @@ class CourseCard extends StatelessWidget {
                           displayTitle,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
-                        // Progress or Action Section
-                        if (isComingSoon)
-                          const SizedBox.shrink()
-                        else if (isRegistered)
+                        // Progress Section
+                        if (isRegistered && !isComingSoon) ...[
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
@@ -162,31 +160,8 @@ class CourseCard extends StatelessWidget {
                                 ),
                               ),
                             ],
-                          )
-                        else
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 6),
-                            decoration: BoxDecoration(
-                              color: theme.primaryColor.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: theme.primaryColor.withValues(
-                                  alpha: 0.5,
-                                ),
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                'Start',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
                           ),
+                        ],
                       ],
                     ),
                   ),

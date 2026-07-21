@@ -96,8 +96,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final registrations = await _authService.getMyRegistrations();
       registeredCoursesCount = registrations.length;
 
-      final grades = await _authService.getMyGrades();
-      totalLessonsCompleted = grades.length;
+      final allCourses = await _authService.getAllCourses();
+      final completedLessonKeys = <String>{};
+
+      await Future.wait(
+        allCourses.map((course) async {
+          final courseId = course.id;
+          if (courseId == null || courseId <= 0) return;
+
+          if (course.sections.isNotEmpty) {
+            await Future.wait(
+              course.sections.map((section) async {
+                final sectionId = section.id;
+                if (sectionId != null && sectionId > 0) {
+                  try {
+                    final doneList = await _authService.getSectionLessonsGrades(
+                      courseID: courseId,
+                      sectionID: sectionId,
+                    );
+                    for (final done in doneList) {
+                      final lId =
+                          done['lessonId'] ?? done['id'] ?? done['doneLessonId'];
+                      if (lId != null) {
+                        completedLessonKeys.add('${courseId}_$lId');
+                      }
+                    }
+                  } catch (_) {}
+                }
+              }),
+            );
+          }
+
+          try {
+            final courseDoneList = await _authService.getDoneLessonsInCourse(
+              courseId: courseId,
+            );
+            for (final done in courseDoneList) {
+              final lId = done['lessonId'] ?? done['id'];
+              if (lId != null) {
+                completedLessonKeys.add('${courseId}_$lId');
+              }
+            }
+          } catch (_) {}
+        }),
+      );
+
+      totalLessonsCompleted = completedLessonKeys.length;
     } catch (e) {
       debugPrint('❌ Error fetching courses/grades in profile: $e');
     }
@@ -433,126 +477,34 @@ Keep learning with me! 💪
 
               SizedBox(height: screenHeight * 0.03),
 
-              // Stats Row: XP and Streak Cards
+              // Stats Row: Level, Streak, and Lessons Finished Cards
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF141A27)
-                            : theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.person,
-                            size: 28,
-                            color: theme.primaryColor,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Lvl ${(displayUser.xp / 100).floor() + 1}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _buildStatCard(
+                    label: 'Level',
+                    value: 'Lvl ${(displayUser.xp / 100).floor() + 1}',
+                    icon: Icons.military_tech_rounded,
+                    iconColor: Colors.amber,
+                    theme: theme,
+                    isDark: isDark,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF141A27)
-                            : theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Streak',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Text(
-                                '$_currentStreak',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.local_fire_department,
-                                size: 18,
-                                color: Colors.deepOrange,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                  _buildStatCard(
+                    label: 'Streak',
+                    value: '$_currentStreak ${_currentStreak == 1 ? 'Day' : 'Days'}',
+                    icon: Icons.local_fire_department_rounded,
+                    iconColor: Colors.deepOrange,
+                    theme: theme,
+                    isDark: isDark,
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF141A27)
-                            : theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Finished',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            '$_totalLessonsCompleted',
-                            style: GoogleFonts.poppins(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _buildStatCard(
+                    label: 'Finished',
+                    value: '$_totalLessonsCompleted',
+                    icon: Icons.school_rounded,
+                    iconColor: theme.primaryColor,
+                    theme: theme,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -743,6 +695,79 @@ Keep learning with me! 💪
               SizedBox(height: screenHeight * 0.02),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    required ThemeData theme,
+    required bool isDark,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF141A27) : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    value,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 18, color: iconColor),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

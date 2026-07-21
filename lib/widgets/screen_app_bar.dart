@@ -24,7 +24,7 @@ AppBar screenAppBar(
   final colors = theme.colorScheme;
 
   final isGuest = profileState.currentUser == null;
-  final profileIndex = isGuest ? 1 : 2;
+  const profileIndex = 2;
 
   if (index == profileIndex) {
     return AppBar(

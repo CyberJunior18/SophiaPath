@@ -47,6 +47,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _loadInitialData().then((_) {
       if (mounted) {
         setState(() {
+          if (currentUser == null) {
+            _selectedIndex = 1;
+          }
           switchScreen();
         });
       }
@@ -56,12 +59,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
   void switchScreen() {
     final isGuest = currentUser == null;
     if (isGuest) {
-      currentScreen = CoursesScreen();
+      _selectedIndex = 1;
+      currentScreen = const CoursesScreen();
     } else {
       if (_selectedIndex == 0) {
-        currentScreen = HomeScreen();
+        currentScreen = const HomeScreen();
       } else if (_selectedIndex == 1) {
-        currentScreen = CoursesScreen();
+        currentScreen = const CoursesScreen();
       } else {
         currentScreen = ProfileScreen(key: UniqueKey(), onToggleTheme: widget.onToggleTheme);
         Future.delayed(const Duration(milliseconds: 100), () {
@@ -85,16 +89,37 @@ class _NavigationScreenState extends State<NavigationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                'Menu',
-                style: GoogleFonts.poppins(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/sp-logo.png',
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.school,
+                        size: 32,
+                        color: theme.primaryColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'SophiaPath',
+                    style: GoogleFonts.poppins(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ],
               ),
             ),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
             ListTile(
               leading: Icon(Icons.book, color: textColor),
               title: Text(
@@ -325,10 +350,62 @@ class _NavigationScreenState extends State<NavigationScreen> {
         buttonBackgroundColor: theme.primaryColor,
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 400),
-        letIndexChange: (index) => true,
+        letIndexChange: (index) {
+          if (currentUser == null && (index == 0 || index == 2)) {
+            final featureName = index == 0 ? 'Home' : 'Profile';
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(
+                  'Login Required',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                ),
+                content: Text(
+                  'Please log in to access $featureName.',
+                  style: GoogleFonts.poppins(),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(color: Colors.grey),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LoginScreen(
+                            onToggleTheme: widget.onToggleTheme,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Log In', style: GoogleFonts.poppins()),
+                  ),
+                ],
+              ),
+            );
+            return false;
+          }
+          return true;
+        },
         items: [
-          if (currentUser != null)
-            Container(
+          // Home (Index 0)
+          Opacity(
+            opacity: currentUser == null ? 0.35 : 1.0,
+            child: Container(
               padding: const EdgeInsets.all(8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -370,6 +447,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ],
               ),
             ),
+          ),
+          // Courses (Index 1)
           Container(
             padding: const EdgeInsets.all(8),
             child: Column(
@@ -412,8 +491,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ],
             ),
           ),
-          if (currentUser != null)
-            Container(
+          // Profile (Index 2)
+          Opacity(
+            opacity: currentUser == null ? 0.35 : 1.0,
+            child: Container(
               padding: const EdgeInsets.all(8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -455,6 +536,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ],
               ),
             ),
+          ),
         ],
         onTap: (index) {
           setState(() {
@@ -462,10 +544,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
             switchScreen();
           });
 
-          final isGuest = currentUser == null;
-          final profileIndex = isGuest ? 1 : 2;
-
-          if (index == profileIndex) {
+          if (index == 2) {
             Future.delayed(const Duration(milliseconds: 200), () {
               if (mounted) {
                 _loadUserData();
