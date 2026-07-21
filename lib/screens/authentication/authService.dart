@@ -14,9 +14,7 @@ class AuthService {
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:3000';
 
-    return defaultTargetPlatform == TargetPlatform.android
-        ? 'http://10.0.2.2:3000'
-        : 'http://localhost:3000';
+    return 'http://localhost:3000';
   }
 
   // login, register, logout shit
