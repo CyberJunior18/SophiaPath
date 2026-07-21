@@ -12,7 +12,7 @@ class CourseCard extends StatelessWidget {
   final int lessonsFinished;
   final int totalLessons;
   final bool isComingSoon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final IconData fallbackIcon;
 
   const CourseCard({
@@ -25,7 +25,7 @@ class CourseCard extends StatelessWidget {
     this.lessonsFinished = 0,
     this.totalLessons = 0,
     this.isComingSoon = false,
-    required this.onTap,
+    this.onTap,
     required this.fallbackIcon,
   });
 

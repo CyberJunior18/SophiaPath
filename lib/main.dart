@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sophia_path/screens/authentication/login.dart';
-import 'package:sophia_path/screens/authentication/register.dart';
 import 'navigation_screen.dart';
-// import 'screens/register_screen.dart';
+// import 'screens/register_screen.dart';*
 import 'services/course/user_stats_service.dart';
 import 'services/profile_state.dart';
 import 'services/user_preferences_services.dart';

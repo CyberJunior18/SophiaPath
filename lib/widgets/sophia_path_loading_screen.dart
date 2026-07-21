@@ -266,9 +266,15 @@ class _SophiaPathLoadingScreenState extends State<SophiaPathLoadingScreen>
     );
 
     if (widget.appBarTitle != null) {
-      return Scaffold(body: content);
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: content,
+      );
     }
 
-    return Scaffold(body: content);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: content,
+    );
   }
 }

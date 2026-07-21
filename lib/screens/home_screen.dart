@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'course/lesson_path_screen.dart';
 import '../models/course/course_info.dart';
 import 'authentication/authService.dart';
-import '../widgets/background_animation_widget.dart';
 
 class ActiveSectionData {
   final CourseInfo course;

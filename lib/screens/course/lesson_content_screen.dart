@@ -1053,22 +1053,48 @@ class _LessonContentScreenState extends State<LessonContentScreen> {
                 onPressed: starterCodeText.isEmpty
                     ? null
                     : () {
-                        final detectedLang = _detectLanguage(starterLines);
-                        final finalLanguage = language.isNotEmpty
-                            ? language
-                            : detectedLang;
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Solve on Web Recommended'),
+                              content: const Text(
+                                'For the best experience, we recommend tackling code challenges on the web application where you have a full keyboard and a larger screen.\n\nWould you prefer to solve it here on mobile, or skip for now?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('Skip'),
+                                ),
+                                FilledButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    final detectedLang =
+                                        _detectLanguage(starterLines);
+                                    final finalLanguage = language.isNotEmpty
+                                        ? language
+                                        : detectedLang;
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CodePlaygroundScreen(
-                              title: 'Code Challenge',
-                              initialCode: starterCodeText,
-                              language: finalLanguage,
-                              testCases: testCases,
-                              challengeInfo: challengeInfo,
-                            ),
-                          ),
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => CodePlaygroundScreen(
+                                          title: 'Code Challenge',
+                                          initialCode: starterCodeText,
+                                          language: finalLanguage,
+                                          testCases: testCases,
+                                          challengeInfo: challengeInfo,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text('Solve on Mobile'),
+                                ),
+                              ],
+                            );
+                          },
                         );
                       },
                 icon: const Icon(Icons.play_arrow_rounded),
@@ -2169,7 +2195,19 @@ class _InlineCodeExerciseWidgetState extends State<_InlineCodeExerciseWidget> {
     };
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.instruction.isNotEmpty) ...[
+          Text(
+            widget.instruction,
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              height: 1.5,
+              color: colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -2222,38 +2260,6 @@ class _InlineCodeExerciseWidgetState extends State<_InlineCodeExerciseWidget> {
                     ),
                 ],
               ),
-              // if (widget.instruction.isNotEmpty) ...[
-              //   const SizedBox(height: 10),
-              //   Text(
-              //     widget.instruction,
-              //     style: GoogleFonts.poppins(
-              //       fontSize: 14,
-              //       height: 1.5,
-              //       color: colorScheme.onSurface,
-              //     ),
-              //   ),
-              // ],
-              // if (widget.fileName.isNotEmpty) ...[
-              //   const SizedBox(height: 6),
-              //   Row(
-              //     children: [
-              //       Icon(
-              //         Icons.insert_drive_file_outlined,
-              //         size: 14,
-              //         color: colorScheme.onSurfaceVariant,
-              //       ),
-              //       const SizedBox(width: 4),
-              //       Text(
-              //         widget.fileName,
-              //         style: GoogleFonts.poppins(
-              //           fontSize: 12,
-              //           fontWeight: FontWeight.w600,
-              //           color: colorScheme.onSurfaceVariant,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ],
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,

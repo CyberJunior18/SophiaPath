@@ -336,8 +336,10 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                           onTap: isComingSoon
                               ? null
                               : () => _openLessonPath(item),
-                          child: Container(
-                            decoration: BoxDecoration(
+                          child: Opacity(
+                            opacity: isComingSoon ? 0.4 : 1.0,
+                            child: Container(
+                              decoration: BoxDecoration(
                               color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
@@ -432,7 +434,17 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (isComingSoon)
-                                            const SizedBox.shrink()
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 8),
+                                              child: Text(
+                                                'Coming Soon',
+                                                style: GoogleFonts.poppins(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.amber,
+                                                ),
+                                              ),
+                                            )
                                           else
                                             Padding(
                                               padding: const EdgeInsets.only(top: 8),
@@ -578,7 +590,8 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                               ),
                             ),
                           ),
-                        );
+                        ),
+                      );
                       },
                     ),
             ),

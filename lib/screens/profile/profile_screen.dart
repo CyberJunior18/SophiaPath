@@ -410,38 +410,6 @@ Keep learning with me! 💪
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            // Registered Courses
-                            const Icon(
-                              Icons.inventory_2,
-                              size: 16,
-                              color: Colors.green,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_registeredCoursesCount',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            // Finished Lessons
-                            const Icon(
-                              Icons.check_circle_outline,
-                              size: 16,
-                              color: Colors.greenAccent,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '$_totalLessonsCompleted',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -481,75 +449,21 @@ Keep learning with me! 💪
                         ),
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'XP',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.military_tech,
-                                size: 16,
-                                color: Colors.purpleAccent,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Lvl ${(displayUser.xp / 100).floor() + 1}',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${displayUser.xp % 100}/100',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : theme.colorScheme.onSurface.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.person,
+                            size: 28,
+                            color: theme.primaryColor,
                           ),
                           const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: (displayUser.xp % 100) / 100.0,
-                              minHeight: 4,
-                              backgroundColor: theme.colorScheme.outline
-                                  .withValues(alpha: 0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.greenAccent,
-                              ),
+                          Text(
+                            'Lvl ${(displayUser.xp / 100).floor() + 1}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
@@ -572,76 +486,33 @@ Keep learning with me! 💪
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            'Streak',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  'Streak',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                '$_currentStreak',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               const Icon(
                                 Icons.local_fire_department,
-                                size: 16,
+                                size: 18,
                                 color: Colors.deepOrange,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '$_currentStreak',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Days',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : theme.colorScheme.onSurface.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: 0.0,
-                              minHeight: 4,
-                              backgroundColor: theme.colorScheme.outline.withValues(
-                                alpha: 0.1,
-                              ),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.deepOrange,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -662,74 +533,21 @@ Keep learning with me! 💪
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Finished',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const Icon(
-                                Icons.check_circle_outline,
-                                size: 16,
-                                color: Colors.greenAccent,
-                              ),
-                            ],
+                          Text(
+                            'Finished',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
                           const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  '$_totalLessonsCompleted',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Lessons',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : theme.colorScheme.onSurface.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(999),
-                            child: LinearProgressIndicator(
-                              value: 1.0,
-                              minHeight: 4,
-                              backgroundColor: theme.colorScheme.outline.withValues(
-                                alpha: 0.1,
-                              ),
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                Colors.greenAccent,
-                              ),
+                          Text(
+                            '$_totalLessonsCompleted',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],

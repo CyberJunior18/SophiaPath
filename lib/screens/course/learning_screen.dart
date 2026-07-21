@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'course_info_screen.dart';
 import 'course_sections_screen.dart';
-import 'lesson_path_screen.dart';
 import '../../models/course/course_info.dart';
 import '../authentication/authService.dart';
 import '../../widgets/course_card.dart';
@@ -329,7 +328,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     isRegistered: false,
                     isComingSoon: true,
                     fallbackIcon: _getCourseIcon(comingSoonCourseTitle),
-                    onTap: () {},
+                    onTap: null,
                   );
                 }, childCount: comingSoon.length),
               ),

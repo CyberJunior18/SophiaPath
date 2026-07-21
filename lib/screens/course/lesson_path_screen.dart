@@ -224,8 +224,7 @@ String _displayGroupedLessonTitle(String title) {
 }
 
 bool _isCheatsheetLesson(_LessonNodeData lesson) {
-  // Legacy title-based check kept only for the offline/fallback path.
-  return lesson.title.trim().toLowerCase().startsWith('cheatsheet:');
+  return lesson.title.trim().toLowerCase().contains('cheatsheet');
 }
 
 IconData _lessonCategoryIcon(String category, [String title = '']) {
@@ -298,6 +297,44 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   final GlobalKey _topHeaderKey = GlobalKey();
   double _topHeaderHeight = 0.0;
   bool _didAutoLaunch = false;
+  bool _showFab = false;
+  bool _isArrowUp = false;
+
+  void _updateFabVisibility() {
+    if (!mounted) return;
+    final targetIndex = _completedLessons > 0 ? _completedLessons - 1 : 0;
+    if (targetIndex < 0 || targetIndex >= _lessonNodeKeys.length) return;
+
+    final targetContext = _lessonNodeKeys[targetIndex].currentContext;
+    if (targetContext == null) return;
+
+    final RenderBox? renderBox = targetContext.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    final position = renderBox.localToGlobal(Offset.zero);
+    final top = position.dy;
+    final bottom = position.dy + renderBox.size.height;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Check if the node is in the viewport (visible)
+    final isVisible = bottom >= 80 && top <= screenHeight;
+
+    if (isVisible) {
+      if (_showFab) {
+        setState(() {
+          _showFab = false;
+        });
+      }
+    } else {
+      final isUpward = position.dy < 0;
+      if (!_showFab || _isArrowUp != isUpward) {
+        setState(() {
+          _showFab = true;
+          _isArrowUp = isUpward;
+        });
+      }
+    }
+  }
 
   String? _getSectionIconPath(String title) {
     final lowerTitle = title.trim().toLowerCase();
@@ -584,10 +621,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   void initState() {
     super.initState();
     _initializeScreen();
+    _scrollController.addListener(_updateFabVisibility);
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_updateFabVisibility);
     _scrollController.dispose();
     super.dispose();
   }
@@ -794,7 +833,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         }
       }
 
-      return _groupLessonNodes(rawLessons);
+      return _groupLessonNodes(_separateCheatsheetLessons(rawLessons));
     }
 
     return _fallbackLessonNodes();
@@ -859,11 +898,32 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     );
   }
 
+  Widget _buildCircularIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        shape: BoxShape.circle,
+      ),
+      child: IconButton(
+        icon: Icon(icon, size: 20, color: Colors.white),
+        tooltip: tooltip,
+        onPressed: onPressed,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+      ),
+    );
+  }
+
   List<Widget> _buildAppBarActions({int? totalNodesInPage}) {
     return [
       if (_cheatsheetLesson != null)
-        IconButton(
-          icon: const Icon(Icons.article_outlined),
+        _buildCircularIconButton(
+          icon: Icons.article_outlined,
           tooltip: 'Cheatsheet',
           onPressed: _openCheatsheetLesson,
         ),
@@ -901,10 +961,12 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
   }) {
     final bool isHighlighted = isCompleted || isWorkingOn;
     final Color highlightColor = isCompleted
-        ? (theme.brightness == Brightness.dark ? Colors.green[400]! : Colors.green[600]!)
+        ? (theme.brightness == Brightness.dark
+              ? Colors.green[400]!
+              : Colors.green[600]!)
         : (theme.brightness == Brightness.dark
-            ? const Color(0xFFFFB300)
-            : const Color(0xFFD97706));
+              ? const Color(0xFFFFB300)
+              : const Color(0xFFD97706));
 
     return BoxDecoration(
       color: theme.brightness == Brightness.dark
@@ -1127,7 +1189,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     }
 
     final elapsedMs = stopwatch.elapsedMilliseconds;
-    const requiredMs = 2000;
+    const requiredMs = 3500;
     if (elapsedMs < requiredMs) {
       await Future.delayed(Duration(milliseconds: requiredMs - elapsedMs));
     }
@@ -1564,14 +1626,38 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isStartingLesson) {
-      return SophiaPathLoadingScreen(appBarTitle: widget.course.title);
-    }
+    return Stack(
+      children: [
+        _buildMainContent(context),
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: !_isStartingLesson,
+            child: AnimatedOpacity(
+              opacity: _isStartingLesson ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: SophiaPathLoadingScreen(appBarTitle: widget.course.title),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainContent(BuildContext context) {
+    final theme = Theme.of(context);
 
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.sectionTitle ?? widget.course.title),
+          backgroundColor: theme.primaryColor,
+          foregroundColor: Colors.white,
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              widget.sectionTitle ?? widget.course.title,
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
           actions: _buildAppBarActions(),
         ),
         body: const Center(child: CircularProgressIndicator()),
@@ -1581,14 +1667,21 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     if (lessonsByPages.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: Text(widget.sectionTitle ?? widget.course.title),
+          backgroundColor: theme.primaryColor,
+          foregroundColor: Colors.white,
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              widget.sectionTitle ?? widget.course.title,
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
           actions: _buildAppBarActions(),
         ),
         body: const Center(child: Text('No lessons found in this section.')),
       );
     }
 
-    final theme = Theme.of(context);
     final nodeSpacing = 120.0;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final List<_ChapterPosition> chapters = [];
@@ -2033,11 +2126,18 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         ),
       );
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateHeaderHeight());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateHeaderHeight();
+      _updateFabVisibility();
+    });
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 65,
         centerTitle: true,
+        leading: _buildCircularIconButton(
+          icon: Icons.arrow_back,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: AnimatedBuilder(
           animation: _scrollController,
           builder: (context, child) {
@@ -2074,7 +2174,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                       errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.book_rounded,
                         size: 30,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                   );
@@ -2089,7 +2189,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                       errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.book_rounded,
                         size: 30,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: Colors.white,
                       ),
                     ),
                   );
@@ -2098,7 +2198,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                 iconWidget = Icon(
                   Icons.book_rounded,
                   size: 30,
-                  color: isDark ? Colors.white : Colors.black87,
+                  color: Colors.white,
                 );
               }
 
@@ -2109,14 +2209,16 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                   iconWidget,
                   const SizedBox(width: 15),
                   Flexible(
-                    child: Text(
-                      widget.sectionTitle ?? widget.course.title,
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: isDark ? Colors.white : Colors.black87,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        widget.sectionTitle ?? widget.course.title,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -2134,13 +2236,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
             );
           },
         ),
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: theme.primaryColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
+        foregroundColor: Colors.white,
         actions: _buildAppBarActions(totalNodesInPage: totalNodesInPage),
       ),
-
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Column(
         children: [
           Expanded(
@@ -2169,8 +2271,13 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
                                   nodeCentersY,
                                   connectNext: connectNext,
                                   unlocked: currentUnlocked,
-                                  isCompletedList: currentPageLessons.map((l) => l.isCompleted(_doneLessonIds)).toList(),
-                                  isCurrentList: List.generate(currentPageLessons.length, (index) => index == _completedLessons),
+                                  isCompletedList: currentPageLessons
+                                      .map((l) => l.isCompleted(_doneLessonIds))
+                                      .toList(),
+                                  isCurrentList: List.generate(
+                                    currentPageLessons.length,
+                                    (index) => index == _completedLessons,
+                                  ),
                                   theme: theme,
                                 ),
                               ),
@@ -2195,6 +2302,32 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
           ),
         ],
       ),
+      floatingActionButton: _showFab
+          ? FloatingActionButton(
+              onPressed: () {
+                final targetIndex = _completedLessons > 0
+                    ? _completedLessons - 1
+                    : 0;
+                if (targetIndex >= 0 && targetIndex < _lessonNodeKeys.length) {
+                  final targetContext =
+                      _lessonNodeKeys[targetIndex].currentContext;
+                  if (targetContext != null) {
+                    Scrollable.ensureVisible(
+                      targetContext,
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                      alignment: 0.35,
+                    );
+                  }
+                }
+              },
+              backgroundColor: theme.primaryColor,
+              foregroundColor: Colors.white,
+              child: Icon(
+                _isArrowUp ? Icons.arrow_upward : Icons.arrow_downward,
+              ),
+            )
+          : null,
     );
   }
 }
@@ -2630,7 +2763,9 @@ class LessonPathPainter extends CustomPainter {
       } else if (unlocked.length > i + 1 && unlocked[i + 1]) {
         pathColor = const Color(0xFFFFC800); // Yellow for in progress
       } else {
-        pathColor = isDark ? const Color(0xFF2C323D) : const Color(0xFFE5E5E5); // Grey for not reached
+        pathColor = isDark
+            ? const Color(0xFF2C323D)
+            : const Color(0xFFE5E5E5); // Grey for not reached
       }
 
       final paint = Paint()
