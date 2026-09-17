@@ -124,6 +124,10 @@ class CyberLabWidget extends StatelessWidget {
 // 1. Denial of Service (DoS) Lab
 // ==========================================
 
+class _LabRepaintNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 class _DosRequestParticle {
   final double startX;
   final double startY;
@@ -156,8 +160,12 @@ class DenialOfServiceLabWidget extends StatefulWidget {
 class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
     with SingleTickerProviderStateMixin {
   double requestLevel = 20.0;
+
+  bool get isOverloaded => requestLevel > 70;
   late bool firewallEnabled;
   final List<_DosRequestParticle> requests = [];
+  final _LabRepaintNotifier _canvasNotifier = _LabRepaintNotifier();
+  String _currentStatus = 'normal';
 
   Ticker? _ticker;
   Duration _lastElapsed = Duration.zero;
@@ -168,12 +176,16 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
   void initState() {
     super.initState();
     firewallEnabled = widget.startMitigated;
+    _currentStatus = (requestLevel > 70)
+        ? (firewallEnabled ? 'protected' : 'crashing')
+        : 'normal';
     _ticker = createTicker(_onTick)..start();
   }
 
   @override
   void dispose() {
     _ticker?.dispose();
+    _canvasNotifier.dispose();
     super.dispose();
   }
 
@@ -192,21 +204,20 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
     final dt = (elapsed - _lastElapsed).inMilliseconds;
     _lastElapsed = elapsed;
 
-    final isOverloaded = requestLevel > 70;
-    final status = isOverloaded
+    final newStatus = isOverloaded
         ? (firewallEnabled ? 'protected' : 'crashing')
         : 'normal';
+    final statusChanged = newStatus != _currentStatus;
+    _currentStatus = newStatus;
 
     // Update particle positions
-    setState(() {
-      for (var i = requests.length - 1; i >= 0; i--) {
-        final req = requests[i];
-        req.progress += dt / 800.0;
-        if (req.progress >= 1.0) {
-          requests.removeAt(i);
-        }
+    for (var i = requests.length - 1; i >= 0; i--) {
+      final req = requests[i];
+      req.progress += dt / 800.0;
+      if (req.progress >= 1.0) {
+        requests.removeAt(i);
       }
-    });
+    }
 
     // Attacker spawn logic
     final spawnSpeed = (600.0 - (requestLevel * 5.85))
@@ -214,20 +225,18 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
         .toInt();
     if (elapsed - _lastAttackerSpawn > Duration(milliseconds: spawnSpeed)) {
       _lastAttackerSpawn = elapsed;
-      final targetR = status == 'protected' ? 80.0 + 25.0 : 45.0 + 4.0;
+      final targetR = _currentStatus == 'protected' ? 80.0 + 25.0 : 45.0 + 4.0;
       final target = getTarget(80.0, 250.0, targetR);
-      setState(() {
-        requests.add(
-          _DosRequestParticle(
-            id: DateTime.now().microsecondsSinceEpoch,
-            startX: 80.0,
-            startY: 250.0,
-            targetX: target.dx,
-            targetY: target.dy,
-            type: 'attacker',
-          ),
-        );
-      });
+      requests.add(
+        _DosRequestParticle(
+          id: DateTime.now().microsecondsSinceEpoch,
+          startX: 80.0,
+          startY: 250.0,
+          targetX: target.dx,
+          targetY: target.dy,
+          type: 'attacker',
+        ),
+      );
     }
 
     // Normal spawn logic
@@ -235,28 +244,27 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
       _lastNormalSpawn = elapsed;
       final userY = Random().nextBool() ? 100.0 : 400.0;
       final target = getTarget(80.0, userY, 45.0 + 4.0);
-      setState(() {
-        requests.add(
-          _DosRequestParticle(
-            id: DateTime.now().microsecondsSinceEpoch,
-            startX: 80.0,
-            startY: userY,
-            targetX: target.dx,
-            targetY: target.dy,
-            type: 'normal',
-          ),
-        );
-      });
+      requests.add(
+        _DosRequestParticle(
+          id: DateTime.now().microsecondsSinceEpoch,
+          startX: 80.0,
+          startY: userY,
+          targetX: target.dx,
+          targetY: target.dy,
+          type: 'normal',
+        ),
+      );
+    }
+
+    _canvasNotifier.notify();
+
+    if (statusChanged) {
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOverloaded = requestLevel > 70;
-    final status = isOverloaded
-        ? (firewallEnabled ? 'protected' : 'crashing')
-        : 'normal';
-
     return Column(
       children: [
         // SVG Visualizer Canvas
@@ -268,12 +276,15 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: CustomPaint(
-              painter: _DosPainter(
-                requestLevel: requestLevel,
-                firewallEnabled: firewallEnabled,
-                requests: requests,
-                status: status,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _DosPainter(
+                  repaint: _canvasNotifier,
+                  requestLevel: requestLevel,
+                  firewallEnabled: firewallEnabled,
+                  requests: requests,
+                  status: _currentStatus,
+                ),
               ),
             ),
           ),
@@ -339,7 +350,7 @@ class _DenialOfServiceLabWidgetState extends State<DenialOfServiceLabWidget>
           ),
         ),
         // Status banner
-        _buildStatusBanner(status),
+        _buildStatusBanner(_currentStatus),
       ],
     );
   }
@@ -471,9 +482,13 @@ class _DistributedDenialOfServiceLabWidgetState
     extends State<DistributedDenialOfServiceLabWidget>
     with SingleTickerProviderStateMixin {
   double requestLevel = 20.0;
+
+  bool get isOverloaded => requestLevel > 70;
   late bool firewallEnabled;
   final List<_DdosRequestParticle> externalRequests = [];
   final List<_DdosRequestParticle> internalRequests = [];
+  final _LabRepaintNotifier _canvasNotifier = _LabRepaintNotifier();
+  String _currentStatus = 'normal';
 
   Ticker? _ticker;
   Duration _lastElapsed = Duration.zero;
@@ -484,12 +499,16 @@ class _DistributedDenialOfServiceLabWidgetState
   void initState() {
     super.initState();
     firewallEnabled = widget.startMitigated;
+    _currentStatus = (requestLevel > 70)
+        ? (firewallEnabled ? 'protected' : 'crashing')
+        : 'normal';
     _ticker = createTicker(_onTick)..start();
   }
 
   @override
   void dispose() {
     _ticker?.dispose();
+    _canvasNotifier.dispose();
     super.dispose();
   }
 
@@ -498,32 +517,31 @@ class _DistributedDenialOfServiceLabWidgetState
     final dt = (elapsed - _lastElapsed).inMilliseconds;
     _lastElapsed = elapsed;
 
-    final isOverloaded = requestLevel > 70;
-    final status = isOverloaded
+    final newStatus = isOverloaded
         ? (firewallEnabled ? 'protected' : 'crashing')
         : 'normal';
+    final statusChanged = newStatus != _currentStatus;
+    _currentStatus = newStatus;
 
     final numClients = (4 + (requestLevel / 100.0) * 28).floor();
     final clients = getClients(numClients, requestLevel);
 
-    setState(() {
-      // Update external
-      for (var i = externalRequests.length - 1; i >= 0; i--) {
-        final req = externalRequests[i];
-        req.progress += dt / 800.0;
-        if (req.progress >= 1.0) {
-          externalRequests.removeAt(i);
-        }
+    // Update external
+    for (var i = externalRequests.length - 1; i >= 0; i--) {
+      final req = externalRequests[i];
+      req.progress += dt / 800.0;
+      if (req.progress >= 1.0) {
+        externalRequests.removeAt(i);
       }
-      // Update internal
-      for (var i = internalRequests.length - 1; i >= 0; i--) {
-        final req = internalRequests[i];
-        req.progress += dt / 400.0;
-        if (req.progress >= 1.0) {
-          internalRequests.removeAt(i);
-        }
+    }
+    // Update internal
+    for (var i = internalRequests.length - 1; i >= 0; i--) {
+      final req = internalRequests[i];
+      req.progress += dt / 400.0;
+      if (req.progress >= 1.0) {
+        internalRequests.removeAt(i);
       }
-    });
+    }
 
     // Spawn external
     final extSpawnSpeed = (800.0 - (requestLevel * 7.8))
@@ -533,28 +551,26 @@ class _DistributedDenialOfServiceLabWidgetState
       _lastExtSpawn = elapsed;
       if (clients.isNotEmpty) {
         final client = clients[Random().nextInt(clients.length)];
-        final isRed = status == 'crashing' ? true : client.isRedBase;
-        final targetR = status == 'protected' ? 75.0 : 45.0 + 4.0;
+        final isRed = _currentStatus == 'crashing' ? true : client.isRedBase;
+        final targetR = _currentStatus == 'protected' ? 75.0 : 45.0 + 4.0;
         final tx = 250.0 + targetR * cos(client.angle);
         final ty = 250.0 + targetR * sin(client.angle);
 
-        setState(() {
-          externalRequests.add(
-            _DdosRequestParticle(
-              id: DateTime.now().microsecondsSinceEpoch,
-              startX: client.cx,
-              startY: client.cy,
-              targetX: tx,
-              targetY: ty,
-              isRed: isRed,
-            ),
-          );
-        });
+        externalRequests.add(
+          _DdosRequestParticle(
+            id: DateTime.now().microsecondsSinceEpoch,
+            startX: client.cx,
+            startY: client.cy,
+            targetX: tx,
+            targetY: ty,
+            isRed: isRed,
+          ),
+        );
       }
     }
 
     // Spawn internal
-    if (status == 'protected') {
+    if (_currentStatus == 'protected') {
       if (elapsed - _lastIntSpawn > const Duration(milliseconds: 250)) {
         _lastIntSpawn = elapsed;
         final index = Random().nextInt(8);
@@ -564,29 +580,28 @@ class _DistributedDenialOfServiceLabWidgetState
         final tx = 250.0 + (45.0 + 4.0) * cos(angle);
         final ty = 250.0 + (45.0 + 4.0) * sin(angle);
 
-        setState(() {
-          internalRequests.add(
-            _DdosRequestParticle(
-              id: DateTime.now().microsecondsSinceEpoch + 1,
-              startX: cx,
-              startY: cy,
-              targetX: tx,
-              targetY: ty,
-              isRed: false,
-            ),
-          );
-        });
+        internalRequests.add(
+          _DdosRequestParticle(
+            id: DateTime.now().microsecondsSinceEpoch + 1,
+            startX: cx,
+            startY: cy,
+            targetX: tx,
+            targetY: ty,
+            isRed: false,
+          ),
+        );
       }
+    }
+
+    _canvasNotifier.notify();
+
+    if (statusChanged) {
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOverloaded = requestLevel > 70;
-    final status = isOverloaded
-        ? (firewallEnabled ? 'protected' : 'crashing')
-        : 'normal';
-
     return Column(
       children: [
         // Canvas aspect ratio 1:1
@@ -598,13 +613,16 @@ class _DistributedDenialOfServiceLabWidgetState
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: CustomPaint(
-              painter: _DdosPainter(
-                requestLevel: requestLevel,
-                firewallEnabled: firewallEnabled,
-                externalRequests: externalRequests,
-                internalRequests: internalRequests,
-                status: status,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _DdosPainter(
+                  repaint: _canvasNotifier,
+                  requestLevel: requestLevel,
+                  firewallEnabled: firewallEnabled,
+                  externalRequests: externalRequests,
+                  internalRequests: internalRequests,
+                  status: _currentStatus,
+                ),
               ),
             ),
           ),
@@ -665,7 +683,7 @@ class _DistributedDenialOfServiceLabWidgetState
             ],
           ),
         ),
-        _buildStatusBanner(status),
+        _buildStatusBanner(_currentStatus),
       ],
     );
   }
@@ -755,6 +773,7 @@ class _RansomwareLabWidgetState extends State<RansomwareLabWidget>
     12,
     (i) => _RansomwareFile(id: i),
   );
+  final _LabRepaintNotifier _canvasNotifier = _LabRepaintNotifier();
 
   Ticker? _ticker;
   Duration _lastElapsed = Duration.zero;
@@ -771,6 +790,7 @@ class _RansomwareLabWidgetState extends State<RansomwareLabWidget>
   @override
   void dispose() {
     _ticker?.dispose();
+    _canvasNotifier.dispose();
     super.dispose();
   }
 
@@ -780,44 +800,41 @@ class _RansomwareLabWidgetState extends State<RansomwareLabWidget>
     _lastElapsed = elapsed;
 
     if (attackPhase == 'sending') {
-      setState(() {
-        payloadPos += dt * (100.0 / 1000.0); // 1 second flight time
-        if (edrEnabled && payloadPos >= 73) {
-          payloadPos = 73;
-          attackPhase = 'blocked';
-        } else if (payloadPos >= 100) {
-          payloadPos = 100;
-          attackPhase = 'encrypting';
-          _lastEncryptionStep = elapsed;
-        }
-      });
+      payloadPos += dt * (100.0 / 1000.0); // 1 second flight time
+      if (edrEnabled && payloadPos >= 73) {
+        payloadPos = 73;
+        attackPhase = 'blocked';
+        setState(() {});
+      } else if (payloadPos >= 100) {
+        payloadPos = 100;
+        attackPhase = 'encrypting';
+        _lastEncryptionStep = elapsed;
+        setState(() {});
+      }
+      _canvasNotifier.notify();
     } else if (attackPhase == 'encrypting') {
       if (elapsed - _lastEncryptionStep > const Duration(milliseconds: 250)) {
         _lastEncryptionStep = elapsed;
         final normal = files.where((f) => f.status == 'normal').toList();
         if (normal.isEmpty) {
-          setState(() {
-            attackPhase = 'ransomed';
-          });
+          attackPhase = 'ransomed';
+          setState(() {});
         } else {
-          setState(() {
-            normal[Random().nextInt(normal.length)].status = 'locked';
-          });
+          normal[Random().nextInt(normal.length)].status = 'locked';
         }
+        _canvasNotifier.notify();
       }
     } else if (attackPhase == 'restoring') {
       if (elapsed - _lastRestoreStep > const Duration(milliseconds: 100)) {
         _lastRestoreStep = elapsed;
         final locked = files.where((f) => f.status == 'locked').toList();
         if (locked.isEmpty) {
-          setState(() {
-            attackPhase = 'idle';
-          });
+          attackPhase = 'idle';
+          setState(() {});
         } else {
-          setState(() {
-            locked[Random().nextInt(locked.length)].status = 'normal';
-          });
+          locked[Random().nextInt(locked.length)].status = 'normal';
         }
+        _canvasNotifier.notify();
       }
     }
   }
@@ -930,12 +947,15 @@ class _RansomwareLabWidgetState extends State<RansomwareLabWidget>
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: CustomPaint(
-              painter: _RansomwarePainter(
-                attackPhase: attackPhase,
-                edrEnabled: edrEnabled,
-                files: files,
-                payloadPos: payloadPos,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _RansomwarePainter(
+                  repaint: _canvasNotifier,
+                  attackPhase: attackPhase,
+                  edrEnabled: edrEnabled,
+                  files: files,
+                  payloadPos: payloadPos,
+                ),
               ),
             ),
           ),
@@ -1109,6 +1129,7 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
   late bool trainingEnabled;
   late bool mfaEnabled;
   double animProgress = 0.0;
+  final _LabRepaintNotifier _canvasNotifier = _LabRepaintNotifier();
 
   Ticker? _ticker;
   Duration _lastElapsed = Duration.zero;
@@ -1124,6 +1145,7 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
   @override
   void dispose() {
     _ticker?.dispose();
+    _canvasNotifier.dispose();
     super.dispose();
   }
 
@@ -1133,52 +1155,42 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
     _lastElapsed = elapsed;
 
     if (['lure', 'stealing', 'attacking_vault', 'mfa_prompt'].contains(phase)) {
-      setState(() {
-        animProgress += dt * (100.0 / 1200.0); // 1.2 seconds per phase
-        if (animProgress >= 100.0) {
-          animProgress = 100.0;
-          _handlePhaseComplete();
-        }
-      });
+      animProgress += dt * (100.0 / 1200.0); // 1.2 seconds per phase
+      if (animProgress >= 100.0) {
+        animProgress = 100.0;
+        _handlePhaseComplete();
+      } else {
+        _canvasNotifier.notify();
+      }
     }
   }
 
   void _handlePhaseComplete() {
     if (phase == 'lure') {
       if (trainingEnabled) {
-        setState(() {
-          phase = 'blocked_training';
-          animProgress = 100;
-        });
+        phase = 'blocked_training';
+        animProgress = 100;
       } else {
-        setState(() {
-          phase = 'stealing';
-          animProgress = 0;
-        });
+        phase = 'stealing';
+        animProgress = 0;
       }
     } else if (phase == 'stealing') {
-      setState(() {
-        phase = 'attacking_vault';
-        animProgress = 0;
-      });
+      phase = 'attacking_vault';
+      animProgress = 0;
     } else if (phase == 'attacking_vault') {
       if (mfaEnabled) {
-        setState(() {
-          phase = 'mfa_prompt';
-          animProgress = 0;
-        });
+        phase = 'mfa_prompt';
+        animProgress = 0;
       } else {
-        setState(() {
-          phase = 'breached';
-          animProgress = 100;
-        });
+        phase = 'breached';
+        animProgress = 100;
       }
     } else if (phase == 'mfa_prompt') {
-      setState(() {
-        phase = 'blocked_mfa';
-        animProgress = 100;
-      });
+      phase = 'blocked_mfa';
+      animProgress = 100;
     }
+    _canvasNotifier.notify();
+    setState(() {});
   }
 
   void handleLaunch(String type) {
@@ -1187,6 +1199,7 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
       animProgress = 0;
       phase = 'lure';
     });
+    _canvasNotifier.notify();
   }
 
   void resetSim() {
@@ -1194,6 +1207,7 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
       phase = 'idle';
       animProgress = 0;
     });
+    _canvasNotifier.notify();
   }
 
   @override
@@ -1275,13 +1289,16 @@ class _SocialEngineeringLabWidgetState extends State<SocialEngineeringLabWidget>
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: CustomPaint(
-              painter: _SocialEngineeringPainter(
-                phase: phase,
-                attackType: attackType,
-                trainingEnabled: trainingEnabled,
-                mfaEnabled: mfaEnabled,
-                animProgress: animProgress,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _SocialEngineeringPainter(
+                  repaint: _canvasNotifier,
+                  phase: phase,
+                  attackType: attackType,
+                  trainingEnabled: trainingEnabled,
+                  mfaEnabled: mfaEnabled,
+                  animProgress: animProgress,
+                ),
               ),
             ),
           ),
@@ -1469,6 +1486,7 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
   late bool uebaEnabled;
   late bool dlpEnabled;
   double animProgress = 0.0;
+  final _LabRepaintNotifier _canvasNotifier = _LabRepaintNotifier();
 
   Ticker? _ticker;
   Duration _lastElapsed = Duration.zero;
@@ -1484,6 +1502,7 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
   @override
   void dispose() {
     _ticker?.dispose();
+    _canvasNotifier.dispose();
     super.dispose();
   }
 
@@ -1493,42 +1512,36 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
     _lastElapsed = elapsed;
 
     if (['gathering', 'exfiltrating'].contains(phase)) {
-      setState(() {
-        animProgress += dt * (100.0 / 1200.0); // 1.2s per phase
-        if (animProgress >= 100.0) {
-          animProgress = 100.0;
-          _handlePhaseComplete();
-        }
-      });
+      animProgress += dt * (100.0 / 1200.0); // 1.2s per phase
+      if (animProgress >= 100.0) {
+        animProgress = 100.0;
+        _handlePhaseComplete();
+      } else {
+        _canvasNotifier.notify();
+      }
     }
   }
 
   void _handlePhaseComplete() {
     if (phase == 'gathering') {
       if (uebaEnabled) {
-        setState(() {
-          phase = 'blocked_ueba';
-          animProgress = 100;
-        });
+        phase = 'blocked_ueba';
+        animProgress = 100;
       } else {
-        setState(() {
-          phase = 'exfiltrating';
-          animProgress = 0;
-        });
+        phase = 'exfiltrating';
+        animProgress = 0;
       }
     } else if (phase == 'exfiltrating') {
       if (dlpEnabled) {
-        setState(() {
-          phase = 'blocked_dlp';
-          animProgress = 100;
-        });
+        phase = 'blocked_dlp';
+        animProgress = 100;
       } else {
-        setState(() {
-          phase = 'breached';
-          animProgress = 100;
-        });
+        phase = 'breached';
+        animProgress = 100;
       }
     }
+    _canvasNotifier.notify();
+    setState(() {});
   }
 
   void handleLaunch(String type) {
@@ -1537,6 +1550,7 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
       animProgress = 0;
       phase = 'gathering';
     });
+    _canvasNotifier.notify();
   }
 
   void resetSim() {
@@ -1544,6 +1558,7 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
       phase = 'idle';
       animProgress = 0;
     });
+    _canvasNotifier.notify();
   }
 
   @override
@@ -1613,13 +1628,16 @@ class _InsiderThreatLabWidgetState extends State<InsiderThreatLabWidget>
               color: Colors.black.withOpacity(0.2),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: CustomPaint(
-              painter: _InsiderThreatPainter(
-                phase: phase,
-                attackType: attackType,
-                uebaEnabled: uebaEnabled,
-                dlpEnabled: dlpEnabled,
-                animProgress: animProgress,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _InsiderThreatPainter(
+                  repaint: _canvasNotifier,
+                  phase: phase,
+                  attackType: attackType,
+                  uebaEnabled: uebaEnabled,
+                  dlpEnabled: dlpEnabled,
+                  animProgress: animProgress,
+                ),
               ),
             ),
           ),
@@ -1795,6 +1813,7 @@ class _DosPainter extends CustomPainter {
   final String status;
 
   _DosPainter({
+    super.repaint,
     required this.requestLevel,
     required this.firewallEnabled,
     required this.requests,
@@ -2109,6 +2128,7 @@ class _DdosPainter extends CustomPainter {
   final String status;
 
   _DdosPainter({
+    super.repaint,
     required this.requestLevel,
     required this.firewallEnabled,
     required this.externalRequests,
@@ -2427,6 +2447,7 @@ class _RansomwarePainter extends CustomPainter {
   final double payloadPos;
 
   _RansomwarePainter({
+    super.repaint,
     required this.attackPhase,
     required this.edrEnabled,
     required this.files,
@@ -2851,6 +2872,7 @@ class _SocialEngineeringPainter extends CustomPainter {
   final double animProgress;
 
   _SocialEngineeringPainter({
+    super.repaint,
     required this.phase,
     required this.attackType,
     required this.trainingEnabled,
@@ -3419,6 +3441,7 @@ class _InsiderThreatPainter extends CustomPainter {
   final double animProgress;
 
   _InsiderThreatPainter({
+    super.repaint,
     required this.phase,
     required this.attackType,
     required this.uebaEnabled,

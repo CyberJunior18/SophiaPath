@@ -372,7 +372,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                         final iconPath = _getSectionIconPath(lesson.title);
                                         if (iconPath != null) {
                                           return Padding(
-                                            padding: const EdgeInsets.all(8.0),
+                                            padding: const EdgeInsets.all(22.0),
                                             child: Image.asset(
                                               iconPath,
                                               fit: BoxFit.contain,
@@ -386,7 +386,7 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                                   : lesson.questions.isNotEmpty
                                                       ? Icons.quiz_outlined
                                                       : Icons.menu_book_outlined,
-                                              size: 50,
+                                              size: 36,
                                               color: theme.primaryColor,
                                             ),
                                           );
@@ -426,11 +426,11 @@ class _CourseSectionsGridScreenState extends State<CourseSectionsGridScreen> {
                                             lesson.title,
                                             textAlign: TextAlign.center,
                                             style: GoogleFonts.poppins(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
                                               color: Colors.white,
                                             ),
-                                            maxLines: 2,
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (isComingSoon)

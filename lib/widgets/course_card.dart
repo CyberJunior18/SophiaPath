@@ -125,7 +125,7 @@ class CourseCard extends StatelessWidget {
                           displayTitle,
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),

@@ -424,30 +424,47 @@ Keep learning with me! 💪
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          displayUser.username,
+                          displayUser.fullName.isNotEmpty
+                              ? displayUser.fullName
+                              : displayUser.username,
                           style: GoogleFonts.poppins(
-                            fontSize: isSmallScreen ? 20 : 24,
+                            fontSize: isSmallScreen ? 18 : 22,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 12),
+                        if (displayUser.fullName.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '@${displayUser.username}',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.6,
+                              ),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Icon(
                               displayUser.role == UserRole.student
                                   ? Icons.school
                                   : Icons.verified,
-                              size: 16,
+                              size: 14,
                               color: theme.primaryColor,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               displayUser.role.label,
                               style: GoogleFonts.poppins(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: theme.colorScheme.onSurface.withValues(
                                   alpha: 0.7,
                                 ),
@@ -459,7 +476,7 @@ Keep learning with me! 💪
                       ],
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
@@ -468,7 +485,7 @@ Keep learning with me! 💪
                     ),
                     child: ProfileImage(
                       imageUrl: displayUser.profileImage,
-                      radius: isSmallScreen ? 35 : 40,
+                      radius: isSmallScreen ? 32 : 36,
                       name: displayUser.fullName,
                     ),
                   ),
@@ -710,17 +727,17 @@ Keep learning with me! 💪
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF141A27) : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: theme.colorScheme.outline.withValues(alpha: 0.12),
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
@@ -732,14 +749,14 @@ Keep learning with me! 💪
             Text(
               label,
               style: GoogleFonts.poppins(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -748,7 +765,7 @@ Keep learning with me! 💪
                   child: Text(
                     value,
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -756,15 +773,7 @@ Keep learning with me! 💪
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 18, color: iconColor),
-                ),
+                Icon(icon, size: 18, color: iconColor),
               ],
             ),
           ],
@@ -784,7 +793,6 @@ Keep learning with me! 💪
     return Tooltip(
       message: achievement.description,
       child: Container(
-        padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: isCompleted
@@ -799,62 +807,65 @@ Keep learning with me! 💪
             width: isCompleted ? 1.5 : 1,
           ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isCompleted
-                        ? achievement.color.withValues(alpha: 0.2)
-                        : Colors.grey.withValues(alpha: 0.2),
-                  ),
-                  child: Icon(
-                    achievement.icon,
-                    size: isSmallScreen ? 20 : 24,
-                    color: isCompleted ? achievement.color : Colors.grey,
-                  ),
-                ),
-                if (isCompleted)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(isSmallScreen ? 8 : 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.green,
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
+                        color: isCompleted
+                            ? achievement.color.withValues(alpha: 0.2)
+                            : Colors.grey.withValues(alpha: 0.2),
                       ),
-                      child: const Icon(
-                        Icons.check,
-                        size: 10,
-                        color: Colors.white,
+                      child: Icon(
+                        achievement.icon,
+                        size: isSmallScreen ? 20 : 24,
+                        color: isCompleted ? achievement.color : Colors.grey,
                       ),
                     ),
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            FittedBox(
-              child: Text(
-                achievement.name,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: isSmallScreen ? 10 : 12,
-                  fontWeight: isCompleted ? FontWeight.w600 : FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
+                    const SizedBox(height: 8),
+                    FittedBox(
+                      child: Text(
+                        achievement.name,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(
+                          fontSize: isSmallScreen ? 10 : 12,
+                          fontWeight:
+                              isCompleted ? FontWeight.w600 : FontWeight.w500,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (isCompleted)
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

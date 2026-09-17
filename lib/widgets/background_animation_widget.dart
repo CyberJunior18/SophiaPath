@@ -44,19 +44,21 @@ class _BackgroundAnimationWidgetState extends State<BackgroundAnimationWidget> w
       children: [
         // Animation backdrop
         Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, _) {
-              return CustomPaint(
-                painter: BackdropPainter(
-                  style: settings.bgStyle,
-                  progress: _controller.value,
-                  primaryColor: theme.primaryColor,
-                  textColor: theme.colorScheme.onSurface,
-                  isDark: isDark,
-                ),
-              );
-            },
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: BackdropPainter(
+                    style: settings.bgStyle,
+                    progress: _controller.value,
+                    primaryColor: theme.primaryColor,
+                    textColor: theme.colorScheme.onSurface,
+                    isDark: isDark,
+                  ),
+                );
+              },
+            ),
           ),
         ),
         // Transparent/glassmorphism tint overlay for text readability

@@ -45,7 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case 'monospace':
         return 'Fira Code (Monospace)';
       case 'dyslexic':
-        return 'Lexend Deca (Dyslexic-Friendly)';
+        return 'Lexend Deca (Dyslexic)';
       case 'default':
       default:
         return 'Poppins (Default)';
@@ -310,6 +310,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _handleLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: const [
+              Icon(Icons.logout, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text('Log Out'),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to log out of your account?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await UserPreferencesService.instance.clearAllData();
+                  await AuthStorage.clearToken();
+                  if (context.mounted) {
+                    Provider.of<ProfileState>(
+                      context,
+                      listen: false,
+                    ).refreshUser();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            LoginScreen(onToggleTheme: widget.onToggleTheme),
+                      ),
+                      (route) => false,
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Logout failed: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Log Out'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
@@ -459,9 +522,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 2.2,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: 2.3,
                           ),
                       itemCount: gridThemeIds.length,
                       itemBuilder: (context, index) {
@@ -493,7 +556,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         return GestureDetector(
                           onTap: () => settings.setThemePreset(id),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 23),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: bg,
                               borderRadius: BorderRadius.circular(10),
@@ -517,16 +583,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
-                                  width: 10,
-                                  height: 10,
+                                  width: 8,
+                                  height: 8,
                                   decoration: BoxDecoration(
                                     color: primary,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     name,
@@ -534,10 +601,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     textAlign: TextAlign.center,
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.poppins(
-                                      fontSize: 12,
+                                      fontSize: 10.5,
                                       fontWeight: isSelected
                                           ? FontWeight.bold
-                                          : FontWeight.normal,
+                                          : FontWeight.w500,
                                       color:
                                           ThemeData.estimateBrightnessForColor(
                                                 bg,
@@ -651,48 +718,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     // Typography selection
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Font Family:',
-                              style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: theme.textTheme.bodyLarge?.color,
-                              ),
-                            ),
-                            // Text(
-                            //   'Select default text typeface',
-                            //   style: GoogleFonts.poppins(
-                            //     fontSize: 12,
-                            //     color: theme.textTheme.bodyMedium?.color
-                            //         ?.withValues(alpha: 0.6),
-                            //   ),
-                            // ),
-                          ],
-                        ),
-                        DropdownButton<String>(
-                          value: settings.fontPreference,
-                          underline: Container(),
+                        Text(
+                          'Font Family:',
                           style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                             color: theme.textTheme.bodyLarge?.color,
-                            fontWeight: FontWeight.w600,
                           ),
-                          onChanged: (val) {
-                            if (val != null) settings.setFontPreference(val);
-                          },
-                          items: _fontOptions.map((opt) {
-                            return DropdownMenuItem<String>(
-                              value: opt,
-                              child: Text(
-                                _getFontLabel(opt),
-                                style: TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              isDense: true,
+                              value: settings.fontPreference,
+                              style: GoogleFonts.poppins(
+                                color: theme.textTheme.bodyLarge?.color,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
-                            );
-                          }).toList(),
+                              onChanged: (val) {
+                                if (val != null) settings.setFontPreference(val);
+                              },
+                              items: _fontOptions.map((opt) {
+                                return DropdownMenuItem<String>(
+                                  value: opt,
+                                  child: Text(
+                                    _getFontLabel(opt),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 12,
+                                      color: theme.textTheme.bodyLarge?.color,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -864,6 +928,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _exportData,
+                    ),
+                    const Divider(height: 8),
+                    ListTile(
+                      leading: const Icon(
+                        Icons.logout,
+                        color: Colors.redAccent,
+                      ),
+                      title: Text(
+                        'Log Out',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        color: Colors.redAccent,
+                      ),
+                      onTap: _handleLogout,
                     ),
                     const Divider(height: 8),
                     ListTile(

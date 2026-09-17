@@ -39,7 +39,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   List<CourseInfo> courses = [];
   late List<CourseInfo> registeredCourses = [];
   late Widget currentScreen = const SizedBox();
-  
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +67,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
       } else if (_selectedIndex == 1) {
         currentScreen = const CoursesScreen();
       } else {
-        currentScreen = ProfileScreen(key: UniqueKey(), onToggleTheme: widget.onToggleTheme);
+        currentScreen = ProfileScreen(
+          key: UniqueKey(),
+          onToggleTheme: widget.onToggleTheme,
+        );
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) _loadUserData();
         });
@@ -77,216 +80,246 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   List<String> menuItems = ["Chats", "Groups", "Communities"];
 
-  Drawer _buildDrawer() {
+  Widget _buildDrawer() {
     final theme = Theme.of(context);
     final textColor =
         theme.textTheme.bodyLarge?.color ?? theme.colorScheme.onSurface;
-    return Drawer(
-      width: MediaQuery.of(context).size.width * 0.8,
-      backgroundColor: theme.drawerTheme.backgroundColor,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/sp-logo.png',
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.school,
-                        size: 32,
-                        color: theme.primaryColor,
+    return RepaintBoundary(
+      child: Drawer(
+        width: MediaQuery.of(context).size.width * 0.8,
+        backgroundColor: theme.drawerTheme.backgroundColor,
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/sp-logo.png',
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.school,
+                          size: 32,
+                          color: theme.primaryColor,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'SophiaPath',
-                    style: GoogleFonts.poppins(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
+                    const SizedBox(width: 12),
+                    Text(
+                      'SophiaPath',
+                      style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Icon(Icons.book, color: textColor),
+                title: Text(
+                  'Courses',
+                  style: GoogleFonts.poppins(color: textColor),
+                ),
+                trailing: Icon(
+                  coursesExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: textColor,
+                ),
+                onTap: () {
+                  setState(() {
+                    coursesExpanded = !coursesExpanded;
+                  });
+                },
+              ),
+              if (coursesExpanded)
+                ...courses.map(
+                  (course) => Padding(
+                    padding: const EdgeInsets.only(left: 40),
+                    child: ListTile(
+                      leading: Icon(Icons.circle, size: 10, color: textColor),
+                      title: Text(
+                        course.title,
+                        style: GoogleFonts.poppins(color: textColor),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) {
+                              return CourseInfoScreen(course: course);
+                            },
+                          ),
+                        );
+                      },
                     ),
                   ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Icon(Icons.book, color: textColor),
-              title: Text(
-                'Courses',
-                style: GoogleFonts.poppins(color: textColor),
-              ),
-              trailing: Icon(
-                coursesExpanded
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
-                color: textColor,
-              ),
-              onTap: () {
-                setState(() {
-                  coursesExpanded = !coursesExpanded;
-                });
-              },
-            ),
-            if (coursesExpanded)
-              ...courses.map(
-                (course) => Padding(
-                  padding: const EdgeInsets.only(left: 40),
-                  child: ListTile(
-                    leading: Icon(Icons.circle, size: 10, color: textColor),
-                    title: Text(
-                      course.title,
-                      style: GoogleFonts.poppins(color: textColor),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (ctx) {
-                            return CourseInfoScreen(course: course);
-                          },
+                ),
+              ...menuItems.map((item) {
+                IconData iconData = Icons.chat;
+                if (item == 'Groups') iconData = Icons.group;
+                if (item == 'Communities') iconData = Icons.forum;
+
+                return ListTile(
+                  leading: Icon(iconData, color: textColor),
+                  title: Text(
+                    item,
+                    style: GoogleFonts.poppins(color: textColor),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final token = await AuthStorage.getToken();
+                    if (token == null) {
+                      if (!context.mounted) return;
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: Text(
+                            'Login Required',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          content: Text(
+                            'Please log in to access $item.',
+                            style: GoogleFonts.poppins(),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: Text(
+                                'Cancel',
+                                style: GoogleFonts.poppins(color: Colors.grey),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LoginScreen(
+                                      onToggleTheme: widget.onToggleTheme,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                'Log In',
+                                style: GoogleFonts.poppins(),
+                              ),
+                            ),
+                          ],
                         ),
                       );
-                    },
-                  ),
-                ),
-              ),
-            ...menuItems.map((item) {
-              IconData iconData = Icons.chat;
-              if (item == 'Groups') iconData = Icons.group;
-              if (item == 'Communities') iconData = Icons.forum;
+                      return;
+                    }
 
-              return ListTile(
-                leading: Icon(iconData, color: textColor),
-                title: Text(item, style: GoogleFonts.poppins(color: textColor)),
-                onTap: () async {
+                    Widget screen;
+                    if (item == 'Groups') {
+                      screen = const GroupsListScreen();
+                    } else if (item == 'Communities') {
+                      screen = const CommunitiesListScreen();
+                    } else {
+                      screen = const ChatsListScreen();
+                    }
+                    if (context.mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (ctx) => screen),
+                      );
+                    }
+                  },
+                );
+              }),
+              const Spacer(),
+              ListTile(
+                leading: Icon(Icons.settings, color: textColor),
+                title: Text(
+                  'Settings',
+                  style: GoogleFonts.poppins(color: textColor),
+                ),
+                onTap: () {
                   Navigator.pop(context);
-                  final token = await AuthStorage.getToken();
-                  if (token == null) {
-                    if (!context.mounted) return;
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text('Login Required', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                        content: Text(
-                          'Please log in to access $item.',
-                          style: GoogleFonts.poppins(),
-                        ),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey)),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginScreen(onToggleTheme: widget.onToggleTheme),
-                                ),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          SettingsScreen(onToggleTheme: widget.onToggleTheme),
+                    ),
+                  );
+                },
+              ),
+              const Divider(),
+              if (currentUser != null)
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.redAccent),
+                  title: Text(
+                    'Log out',
+                    style: GoogleFonts.poppins(color: Colors.redAccent),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    try {
+                      await UserPreferencesService.instance.clearAllData();
+                      await AuthStorage.clearToken();
+                      print('✅ Local data cleared');
+
+                      if (context.mounted) {
+                        Provider.of<ProfileState>(
+                          context,
+                          listen: false,
+                        ).refreshUser();
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) {
+                              return LoginScreen(
+                                onToggleTheme: widget.onToggleTheme,
                               );
                             },
-                            style: ElevatedButton.styleFrom(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: Text('Log In', style: GoogleFonts.poppins()),
                           ),
-                        ],
-                      ),
-                    );
-                    return;
-                  }
+                          (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      print('❌ Error during logout: $e');
 
-                  Widget screen;
-                  if (item == 'Groups') {
-                    screen = const GroupsListScreen();
-                  } else if (item == 'Communities') {
-                    screen = const CommunitiesListScreen();
-                  } else {
-                    screen = const ChatsListScreen();
-                  }
-                  if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (ctx) => screen),
-                    );
-                  }
-                },
-              );
-            }),
-            const Spacer(),
-            ListTile(
-              leading: Icon(Icons.settings, color: textColor),
-              title: Text(
-                'Settings',
-                style: GoogleFonts.poppins(color: textColor),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        SettingsScreen(onToggleTheme: widget.onToggleTheme),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            if (currentUser != null)
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.redAccent),
-                title: Text(
-                  'Log out',
-                  style: GoogleFonts.poppins(color: Colors.redAccent),
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Logout failed: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
                 ),
-              onTap: () async {
-                Navigator.pop(context);
-                try {
-                  await UserPreferencesService.instance.clearAllData();
-                  await AuthStorage.clearToken();
-                  print('✅ Local data cleared');
-
-                  if (context.mounted) {
-                    Provider.of<ProfileState>(context, listen: false).refreshUser();
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) {
-                          return LoginScreen(onToggleTheme: widget.onToggleTheme);
-                        },
-                      ),
-                      (route) => false,
-                    );
-                  }
-                } catch (e) {
-                  print('❌ Error during logout: $e');
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Logout failed: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -340,7 +373,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     return Scaffold(
       appBar: screenAppBar(context, _selectedIndex, widget.onToggleTheme),
-      drawer: (_selectedIndex == 0 || _selectedIndex == 1) ? _buildDrawer() : null,
+      drawer: (_selectedIndex == 0 || _selectedIndex == 1)
+          ? _buildDrawer()
+          : null,
       body: BackgroundAnimationWidget(child: currentScreen),
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
@@ -381,9 +416,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => LoginScreen(
-                            onToggleTheme: widget.onToggleTheme,
-                          ),
+                          builder: (_) =>
+                              LoginScreen(onToggleTheme: widget.onToggleTheme),
                         ),
                       );
                     },

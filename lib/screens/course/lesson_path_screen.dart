@@ -588,6 +588,19 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     return pathLessons;
   }
 
+  Color _getScoreColor(double percent) {
+    final double t = (percent / 100.0).clamp(0.0, 1.0);
+    const yellow = Color(0xFFFFC107);     // Amber/Yellow
+    const lime = Color(0xFF9CCC65);       // Light Lime Green
+    const lightGreen = Color(0xFF4CAF50); // Average Light Green
+
+    if (t < 0.5) {
+      return Color.lerp(yellow, lime, t * 2.0)!;
+    } else {
+      return Color.lerp(lime, lightGreen, (t - 0.5) * 2.0)!;
+    }
+  }
+
   Future<void> _loadScores() async {
     final int currentCourseIndex =
         widget.course.id != null && widget.course.id! > 0
@@ -717,8 +730,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     final courseId = widget.course.id;
     if (courseId == null || courseId <= 0) return;
 
-    final cardColor = Theme.of(context).cardColor;
-
     try {
       final grades = await _authService.getSectionLessonsGrades(
         courseID: courseId,
@@ -748,14 +759,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         final percent = gradeVal <= 1.0 ? (gradeVal * 100.0) : gradeVal;
         newPercents[lessonId] = percent;
 
-        Color nodeColor = cardColor;
-        if (percent >= 70) {
-          nodeColor = Colors.green[700]!;
-        } else if (percent >= 50) {
-          nodeColor = Colors.amber.withValues(alpha: 0.18);
-        } else {
-          nodeColor = Colors.blue.withValues(alpha: 0.10);
-        }
+        Color nodeColor = _getScoreColor(percent);
         newColors[lessonId] = nodeColor;
       }
 
@@ -1115,7 +1119,6 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
     int pageIndex, {
     bool practice = false,
   }) async {
-    final cardColor = Theme.of(context).cardColor;
     final currentPageLessons = lessonsByPages[_currentLessonPageIndex];
     final currentScores = _normalizedScores(currentPageLessons.length);
     final currentUnlocked = _normalizedUnlocked(currentPageLessons.length);
@@ -1299,14 +1302,7 @@ class _LessonPathScreenState extends State<LessonPathScreen> {
         // update UI with the latest score percentage and node color for this lesson
         if (targetLessonId > 0) {
           final double percent = score.toDouble();
-          Color nodeColor = cardColor;
-          if (percent >= 70) {
-            nodeColor = Colors.green[700]!;
-          } else if (percent >= 50) {
-            nodeColor = Colors.amber.withValues(alpha: 0.18);
-          } else {
-            nodeColor = Colors.blue.withValues(alpha: 0.10);
-          }
+          Color nodeColor = _getScoreColor(percent);
 
           if (mounted) {
             setState(() {
